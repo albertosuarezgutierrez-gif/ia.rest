@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createServerClient } from '@/lib/supabase'
 
-// VAPID keys — override via Vercel env vars in production
+// VAPID keys — set via Vercel env vars in production
+// Fallback keys sólo para desarrollo local; en producción SIEMPRE usar env vars reales
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  || 'BJX86InXgcg1m2KFJbhkuiZ2LhDjFKSDJmkZOM_Y9xkuvCGtu0ZxDq0wIGXbGhNHfXnRARDne8U2cfcAGjcA8pI'
+  || 'BKLVkE3Cz7RjzFoSqOdmdXQOaRyoh6lNLPEtMNsA-xATgG-6q6MqbwA2NQkcRk5EWQLbpdaagD_o918fWOwmUbc'
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY
-  || 'ze1PPTMYRUvnX8ifW-fjd5-5IbIcd8hEe1mDWPrH2IY'
+  || 'HiqNXomOefV33fzBdpZkzHtqCi-rjjnLTZ_PQFSbFJ4'
 
-webpush.setVapidDetails('mailto:hola@ia.rest', VAPID_PUBLIC, VAPID_PRIVATE)
+// Lazy init — NO llamar setVapidDetails en top-level (falla en Next.js build time)
+function getWebPush() {
+  webpush.setVapidDetails('mailto:hola@ia.rest', VAPID_PUBLIC, VAPID_PRIVATE)
+  return webpush
+}
 
 export async function POST(req: NextRequest) {
   const supabase = createServerClient()
@@ -29,7 +34,7 @@ export async function POST(req: NextRequest) {
     subs.map(async (row) => {
       try {
         const sub = JSON.parse(row.subscription)
-        await webpush.sendNotification(sub, payload)
+        await getWebPush().sendNotification(sub, payload)
         sent++
       } catch (err: unknown) {
         // Suscripción expirada — limpiar
