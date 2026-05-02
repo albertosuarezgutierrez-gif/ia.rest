@@ -150,6 +150,7 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
 
 /* ─── Tab: Camareros ─── */
 function CamarerosTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [camareros, setCamareros] = useState<Camarero[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<null | 'create' | { edit: Camarero } | { del: Camarero }>(null)
@@ -158,7 +159,7 @@ function CamarerosTab() {
   const [err, setErr] = useState('')
 
   const load = useCallback(async () => {
-    const r = await fetch('/api/owner/camareros')
+    const r = await fetch('/api/owner/camareros', { headers: sh() })
     const d = await r.json()
     setCamareros(d.camareros || [])
     setLoading(false)
@@ -182,7 +183,7 @@ function CamarerosTab() {
       : form
 
     const r = await fetch(url, { method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
     const d = await r.json()
     if (!r.ok) return setErr(d.error || 'Error')
     await load(); setModal(null)
@@ -191,13 +192,13 @@ function CamarerosTab() {
   const del = async () => {
     if (!modal || typeof modal !== 'object' || !('del' in modal)) return
     await fetch('/api/owner/camareros', { method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: (modal as { del: Camarero }).del.id }) })
+      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ id: (modal as { del: Camarero }).del.id }) })
     await load(); setModal(null)
   }
 
   const toggleActivo = async (c: Camarero) => {
     await fetch('/api/owner/camareros', { method: 'PUT',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, activo: !c.activo }) })
+      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ id: c.id, activo: !c.activo }) })
     await load()
   }
 
@@ -297,6 +298,7 @@ function CamarerosTab() {
 
 /* ─── Tab: Mesas ─── */
 function MesasTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [mesas, setMesas] = useState<Mesa[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<null | 'create' | { edit: Mesa } | { del: Mesa }>(null)
@@ -304,7 +306,7 @@ function MesasTab() {
   const [err, setErr] = useState('')
 
   const load = useCallback(async () => {
-    const r = await fetch('/api/owner/mesas')
+    const r = await fetch('/api/owner/mesas', { headers: sh() })
     const d = await r.json()
     setMesas(d.mesas || [])
     setLoading(false)
@@ -325,7 +327,7 @@ function MesasTab() {
       : { ...form, capacidad: parseInt(form.capacidad) || 4 }
 
     const r = await fetch('/api/owner/mesas', { method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
     const d = await r.json()
     if (!r.ok) return setErr(d.error || 'Error')
     await load(); setModal(null)
@@ -334,7 +336,7 @@ function MesasTab() {
   const del = async () => {
     if (!modal || typeof modal !== 'object' || !('del' in modal)) return
     await fetch('/api/owner/mesas', { method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: (modal as { del: Mesa }).del.id }) })
+      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ id: (modal as { del: Mesa }).del.id }) })
     await load(); setModal(null)
   }
 
@@ -420,6 +422,7 @@ function MesasTab() {
 
 /* ─── Tab: Turno ─── */
 function TurnoTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [activo, setActivo] = useState<Turno | null>(null)
   const [loading, setLoading] = useState(true)
   const [nombre, setNombre] = useState('')
@@ -427,7 +430,7 @@ function TurnoTab() {
   const [confirmClose, setConfirmClose] = useState(false)
 
   const load = useCallback(async () => {
-    const r = await fetch('/api/owner/turno')
+    const r = await fetch('/api/owner/turno', { headers: sh() })
     const d = await r.json()
     setActivo(d.activo)
     setLoading(false)
@@ -438,14 +441,14 @@ function TurnoTab() {
   const abrir = async () => {
     setActing(true)
     const r = await fetch('/api/owner/turno', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) })
+      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ nombre }) })
     if (r.ok) { setNombre(''); await load() }
     setActing(false)
   }
 
   const cerrar = async () => {
     setActing(true)
-    await fetch('/api/owner/turno', { method: 'DELETE' })
+    await fetch('/api/owner/turno', { method: 'DELETE', headers: sh() })
     setConfirmClose(false)
     await load()
     setActing(false)
@@ -540,11 +543,12 @@ function TurnoTab() {
 
 /* ─── Tab: Resumen ─── */
 function ResumenTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [data, setData] = useState<{ ultimo: Turno | null; stats: TurnoStats | null }>({ ultimo: null, stats: null })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/owner/turno').then(r => r.json()).then(d => {
+    fetch('/api/owner/turno', { headers: sh() }).then(r => r.json()).then(d => {
       setData({ ultimo: d.ultimo || null, stats: d.stats || null })
       setLoading(false)
     })
@@ -641,6 +645,7 @@ type ProductoDraft = Omit<Producto, 'id' | 'orden' | 'activo'> & { _key: string 
 type CartaView = 'lista' | 'escanear'
 
 function CartaTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [view, setView] = useState<CartaView>('lista')
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
@@ -658,7 +663,7 @@ function CartaTab() {
   const SECCIONES = ['entrantes', 'principales', 'postres', 'bebidas', 'cafes', 'copas', 'otras']
 
   const load = useCallback(async () => {
-    const r = await fetch('/api/owner/carta')
+    const r = await fetch('/api/owner/carta', { headers: sh() })
     const d = await r.json()
     setProductos(d.productos || [])
     setLoading(false)
@@ -693,7 +698,7 @@ function CartaTab() {
       categoria: form.seccion, // keep categoria in sync for compat
       nombre_alternativo: aliases,
     }
-    const r = await fetch('/api/owner/carta', { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const r = await fetch('/api/owner/carta', { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
     const d = await r.json()
     if (!r.ok) return setErr(d.error || 'Error')
     await load(); setModal(null)
@@ -701,12 +706,12 @@ function CartaTab() {
 
   const del = async () => {
     if (!modal || typeof modal !== 'object' || !('del' in modal)) return
-    await fetch('/api/owner/carta', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: (modal as { del: Producto }).del.id }) })
+    await fetch('/api/owner/carta', { method: 'DELETE', headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ id: (modal as { del: Producto }).del.id }) })
     await load(); setModal(null)
   }
 
   const toggleActivo = async (p: Producto) => {
-    await fetch('/api/owner/carta', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, activo: !p.activo }) })
+    await fetch('/api/owner/carta', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ id: p.id, activo: !p.activo }) })
     await load()
   }
 
@@ -732,7 +737,7 @@ function CartaTab() {
     try {
       const r = await fetch('/api/owner/carta?action=extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...sh() },
         body: JSON.stringify({ images: images.map(i => ({ data: i.data, mediaType: i.mediaType })) }),
       })
       const d = await r.json()
@@ -747,7 +752,7 @@ function CartaTab() {
     if (!extracted) return
     const r = await fetch('/api/owner/carta?action=bulk', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({ productos: extracted }),
     })
     if (r.ok) {
@@ -1048,6 +1053,7 @@ function fmtAgo(ts: string | null): string {
 
 /* ─── Tab: Impresoras ─── */
 function ImpresorasTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [impresoras, setImpresoras]     = useState<Impresora[]>([])
   const [jobs, setJobs]                 = useState<PrintJob[]>([])
   const [bridgeTokens, setBridgeTokens] = useState<BridgeToken[]>([])
@@ -1065,9 +1071,9 @@ function ImpresorasTab() {
 
   const loadAll = useCallback(async () => {
     const [rImp, rJobs, rBridge] = await Promise.all([
-      fetch('/api/owner/impresoras').then(r => r.json()),
-      fetch('/api/owner/print-jobs').then(r => r.json()).catch(() => ({ jobs: [] })),
-      fetch('/api/owner/bridge-tokens').then(r => r.json()).catch(() => ({ tokens: [] })),
+      fetch('/api/owner/impresoras', { headers: sh() }).then(r => r.json()),
+      fetch('/api/owner/print-jobs', { headers: sh() }).then(r => r.json()).catch(() => ({ jobs: [] })),
+      fetch('/api/owner/bridge-tokens', { headers: sh() }).then(r => r.json()).catch(() => ({ tokens: [] })),
     ])
     setImpresoras(rImp.impresoras || [])
     setJobs(rJobs.jobs || [])
@@ -1083,7 +1089,7 @@ function ImpresorasTab() {
 
   const toggleActiva = async (imp: Impresora) => {
     await fetch('/api/owner/impresoras', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({ id: imp.id, activa: !imp.activa })
     })
     await loadAll()
@@ -1093,7 +1099,7 @@ function ImpresorasTab() {
     if (!editando) return
     setSaving(true)
     await fetch('/api/owner/impresoras', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({
         id:             editando.id,
         nombre:         editando.nombre,
@@ -1117,7 +1123,7 @@ function ImpresorasTab() {
     if (form.connection_type === 'star_cloudprnt' && !form.cloud_device_id.trim()) return setErr('Device ID requerido')
     setSaving(true)
     const r = await fetch('/api/owner/impresoras', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({
         nombre:          form.nombre,
         seccion_id:      form.seccion_id,
@@ -1139,7 +1145,7 @@ function ImpresorasTab() {
   const del = async () => {
     if (!modal || typeof modal !== 'object' || !('del' in modal)) return
     await fetch('/api/owner/impresoras', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({ id: (modal as { del: Impresora }).del.id })
     })
     await loadAll()
@@ -1149,7 +1155,7 @@ function ImpresorasTab() {
   const testPrint = async (id: string) => {
     setTesting(id)
     await fetch('/api/print', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({ trigger: 'test', impresora_id: id })
     })
     setTimeout(() => setTesting(null), 2000)
@@ -1158,7 +1164,7 @@ function ImpresorasTab() {
 
   const createBridgeToken = async () => {
     await fetch('/api/owner/bridge-tokens', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({ nombre: 'Bridge local' })
     })
     await loadAll()
@@ -1166,7 +1172,7 @@ function ImpresorasTab() {
 
   const deleteBridgeToken = async (id: string) => {
     await fetch('/api/owner/bridge-tokens', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', ...sh() },
       body: JSON.stringify({ id })
     })
     await loadAll()
@@ -1468,6 +1474,7 @@ const TABS = [
 
 export default function OwnerPage() {
   const { session, checking } = useAuth('owner')
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [tab, setTab] = useState('camareros')
 
   const logout = () => {
