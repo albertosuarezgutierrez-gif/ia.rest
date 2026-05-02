@@ -17,27 +17,42 @@ export default function KDSPage(){
   const [comandas,setComandasState]=useState<Comanda[]>([])
   const [time,setTime]=useState(new Date())
 
-  const fetch=useCallback(async()=>{
+  const fetchData=useCallback(async()=>{
     const {data}=await supabase.from('comandas').select('*,mesa:mesas(codigo),camarero:camareros(nombre),items:comanda_items(*)').in('tipo',['comanda','marchar']).in('estado',['nueva','en_cocina']).order('created_at',{ascending:true})
     if(data) setComandasState(data)
   },[])
 
   useEffect(()=>{
-    fetch()
-    const ch=supabase.channel('kds').on('postgres_changes',{event:'*',schema:'public',table:'comandas'},fetch).on('postgres_changes',{event:'*',schema:'public',table:'comanda_items'},fetch).subscribe()
-    const t=setInterval(()=>{fetch();setTime(new Date())},5000)
+    fetchData()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ch=(supabase.channel('kds') as any).on('postgres_changes',{event:'*',schema:'public',table:'comandas'},fetch).on('postgres_changes',{event:'*',schema:'public',table:'comanda_items'},fetch).subscribe()
+    const t=setInterval(()=>{fetchData();setTime(new Date())},5000)
     const c=setInterval(()=>setTime(new Date()),1000)
     return()=>{supabase.removeChannel(ch);clearInterval(t);clearInterval(c)}
   },[fetch])
 
   const toggle=async(comandaId:string,itemId:string,estado:string)=>{
     await supabase.from('comanda_items').update({estado:estado==='listo'?'pendiente':'listo'}).eq('id',itemId)
-    fetch()
+    fetchData()
   }
-  const cerrar=async(id:string,mesaId:string)=>{
+  const cerrar=async(id:string,mesaId:string,camareroId?:string,mesaCodigo?:string)=>{
     await supabase.from('comandas').update({estado:'lista'}).eq('id',id)
     await supabase.from('mesas').update({estado:'activa'}).eq('id',mesaId)
-    fetch()
+    // Push notification al camarero
+    if(camareroId){
+      fetch('/api/push/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          title:'Comanda lista',
+          body:`${mesaCodigo||'Mesa'} — todo listo. Puedes servir.`,
+          mesa:mesaCodigo,
+          camarero_ids:[camareroId],
+          data:{url:'/edge'},
+        }),
+      }).catch(()=>{})
+    }
+    fetchData()
   }
 
   if (checking || !session) return <div style={{minHeight:'100dvh',background:K.bg}}/>
@@ -86,7 +101,7 @@ export default function KDSPage(){
               return(
                 <div key={c.id} style={{position:'relative',background:urgente?'rgba(217,68,43,.08)':col===K.amb?'rgba(232,163,59,.08)':'rgba(63,125,68,.06)',border:`1px solid ${urgente?'rgba(217,68,43,.35)':col===K.amb?'rgba(232,163,59,.3)':'rgba(63,125,68,.25)'}`,borderRadius:0,padding:14,animation:'slideIn .3s ease'}}>
                   {allDone&&(
-                    <div onClick={()=>cerrar(c.id,c.mesa_id)} style={{position:'absolute',inset:0,background:'rgba(13,11,8,.75)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',zIndex:2,borderRadius:0}}>
+                    <div onClick={()=>cerrar(c.id,c.mesa_id,c.camarero_id,c.mesa?.codigo)} style={{position:'absolute',inset:0,background:'rgba(13,11,8,.75)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',zIndex:2,borderRadius:0}}>
                       <span style={{fontFamily:SM,fontSize:14,fontWeight:700,letterSpacing:'.1em',color:K.gr}}>LISTO — TAP</span>
                     </div>
                   )}

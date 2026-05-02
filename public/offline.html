@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ia.rest · Sin conexión</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#14110E;color:#F6F1E7;font-family:'Inter Tight',system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+  .wrap{text-align:center;padding:40px 24px}
+  svg{margin-bottom:28px;opacity:.9}
+  .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8D8270;margin-bottom:16px;font-weight:600}
+  h1{font-family:'Newsreader',Georgia,serif;font-size:36px;font-weight:500;letter-spacing:-.02em;margin-bottom:12px}
+  p{font-size:14px;color:#C9BFAA;line-height:1.6;max-width:280px;margin:0 auto 32px}
+  button{background:#D9442B;color:#F6F1E7;border:none;padding:12px 24px;border-radius:4px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.01em}
+  button:active{background:#A8311E;transform:scale(.98)}
+  .hist{margin-top:40px;text-align:left;max-width:320px;margin-left:auto;margin-right:auto}
+  .hist-head{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#4A3F33;margin-bottom:12px;font-weight:700}
+  .item{border:1px solid #2F2820;border-radius:4px;padding:10px 12px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-size:12px}
+  .item .meta{color:#8D8270;font-size:10px;margin-bottom:2px}
+  .item .cmd{color:#F6F1E7}
+  .empty{color:#4A3F33;font-size:12px;font-family:'JetBrains Mono',monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <svg width="44" height="44" viewBox="0 0 56 56">
+    <rect width="56" height="56" rx="8" fill="#1F1A15"/>
+    <g transform="translate(11,14)">
+      <rect x="0"  y="11" width="3" height="6"  rx="1.5" fill="#F6F1E7" opacity=".4"/>
+      <rect x="6"  y="6"  width="3" height="16" rx="1.5" fill="#F6F1E7" opacity=".4"/>
+      <rect x="12" y="0"  width="3" height="28" rx="1.5" fill="#D9442B"/>
+      <rect x="18" y="3"  width="3" height="22" rx="1.5" fill="#F6F1E7" opacity=".4"/>
+      <rect x="24" y="9"  width="3" height="10" rx="1.5" fill="#F6F1E7" opacity=".4"/>
+      <rect x="30" y="12" width="3" height="4"  rx="1.5" fill="#F6F1E7" opacity=".4"/>
+    </g>
+  </svg>
+  <div class="lbl">ia.rest · Edge</div>
+  <h1>Sin conexión.</h1>
+  <p>Recuperando señal. Las comandas se encolarán en cuanto vuelva la red.</p>
+  <button onclick="window.location.reload()">Reintentar</button>
+
+  <div class="hist" id="hist">
+    <div class="hist-head">Historial local</div>
+    <div id="hist-items"><div class="empty">Sin historial local.</div></div>
+  </div>
+</div>
+<script>
+  // Mostrar historial de comandas guardado en localStorage
+  try {
+    const raw = localStorage.getItem('iarest_comandas_local')
+    const items = raw ? JSON.parse(raw) : []
+    const el = document.getElementById('hist-items')
+    if (items.length) {
+      el.innerHTML = items.slice(-5).reverse().map(c =>
+        `<div class="item"><div class="meta">${c.mesa || '?'} · ${new Date(c.ts).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</div><div class="cmd">${c.raw || ''}</div></div>`
+      ).join('')
+    }
+  } catch(e) {}
+</script>
+</body>
+</html>

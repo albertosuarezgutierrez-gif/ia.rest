@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useProductos86 } from '@/hooks/useRealtime'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 const C = {
   bg:'#14110E', e1:'#1F1A15', e2:'#2A241D',
@@ -74,6 +76,8 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   const [error, setError] = useState('')
   const [latencia, setLatencia] = useState<number|null>(null)
   const [alert86, setAlert86] = useState<string[]>([])
+  const { prompt: installPrompt, install } = useInstallPrompt()
+  const { subscribed, subscribe } = usePushNotifications(session.id)
 
   // Escucha 86 en realtime — muestra banner cuando hay nuevos agotados
   const productos86 = useProductos86(turnoId ?? undefined)
@@ -212,8 +216,22 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
               {screen==='recording'?'EAR · escuchando':screen==='processing'?'BRAIN · procesando...':'EAR · en espera'}
             </span>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
             <span style={{fontFamily:SM,fontSize:11,color:C.fg3}}>{session.nombre.split(' ')[0]}</span>
+            {!subscribed && (
+              <button onClick={subscribe} title="Activar notificaciones"
+                style={{fontFamily:SN,fontSize:9,fontWeight:700,color:'#E8A33B',background:'transparent',
+                  border:'1px solid #E8A33B',borderRadius:3,padding:'3px 7px',cursor:'pointer',letterSpacing:'.06em'}}>
+                NOTIF
+              </button>
+            )}
+            {installPrompt && (
+              <button onClick={install} title="Añadir a pantalla de inicio"
+                style={{fontFamily:SN,fontSize:9,fontWeight:700,color:C.red,background:'transparent',
+                  border:`1px solid ${C.red}`,borderRadius:3,padding:'3px 7px',cursor:'pointer',letterSpacing:'.06em'}}>
+                INSTALAR
+              </button>
+            )}
             <button onClick={logout}
               style={{fontFamily:SN,fontSize:10,fontWeight:600,color:C.fg3,background:'transparent',
                 border:`1px solid ${C.rS}`,borderRadius:3,padding:'3px 8px',cursor:'pointer'}}>
