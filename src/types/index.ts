@@ -54,6 +54,7 @@ export interface ComandaItem {
   notas: string | null
   estado: ItemEstado
   created_at: string
+  seccion_id: string | null
 }
 
 export interface Transcripcion {

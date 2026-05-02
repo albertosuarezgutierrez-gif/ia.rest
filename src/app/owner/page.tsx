@@ -750,9 +750,12 @@ function CartaTab() {
         headers: { 'Content-Type': 'application/json', ...sh() },
         body: JSON.stringify({ images: images.map(i => ({ data: i.data, mediaType: i.mediaType })) }),
       })
-      const d = await r.json()
-      if (!r.ok) { setExtractErr(d.error || 'Error'); return }
-      setExtracted((d.productos || []).map((p: Omit<ProductoDraft, '_key'>, i: number) => ({ ...p, _key: String(i) })))
+      let d: Record<string, unknown> = {}
+      try { d = await r.json() } catch { d = { error: `Error del servidor (${r.status})` } }
+      if (!r.ok) { setExtractErr((d.error as string) || `Error ${r.status}`); return }
+      setExtracted((d.productos as Omit<ProductoDraft, '_key'>[] || []).map((p, i) => ({ ...p, _key: String(i) })))
+    } catch (e: unknown) {
+      setExtractErr((e as Error).message || 'Error de red')
     } finally {
       setExtracting(false)
     }

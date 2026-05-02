@@ -45,7 +45,7 @@ function KDSInner() {
       .in('tipo', ['comanda', 'marchar'])
       .in('estado', ['nueva', 'en_cocina'])
       .order('created_at', { ascending: true })
-    if (data) setComandasState(data)
+    if (data) setComandasState(data as unknown as Comanda[])
   }, [session])
 
   useEffect(() => {

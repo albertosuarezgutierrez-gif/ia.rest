@@ -3,6 +3,8 @@ import { createServerClient } from '@/lib/supabase'
 import { getRestauranteId } from '@/lib/session'
 import Anthropic from '@anthropic-ai/sdk'
 
+export const maxDuration = 60
+
 export async function GET(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
@@ -71,22 +73,38 @@ export async function DELETE(req: NextRequest) {
 }
 
 async function handleExtract(req: NextRequest) {
-  const { images } = await req.json()
-  if (!images?.length) return NextResponse.json({ error: 'Sin imágenes' }, { status: 400 })
-  if (images.length > 10) return NextResponse.json({ error: 'Máximo 10 páginas' }, { status: 400 })
-  const anthropic = new Anthropic()
-  const imageBlocks = images.map((img: { data: string; mediaType: string }) => ({
-    type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.data },
-  }))
-  const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001', max_tokens: 4096,
-    messages: [{ role: 'user', content: [...imageBlocks, { type: 'text',
-      text: `Eres un asistente de restauración española. Extrae TODOS los platos, tapas, bebidas y postres de esta carta.\n\nDevuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional ni markdown:\n{"productos":[{"nombre":"Nombre tal como aparece","descripcion":"Descripción o null","precio":9.50,"categoria":"Entrantes"}]}\n\nReglas:\n- precio: número decimal o null si no aparece\n- categoria: infiere de la sección (Entrantes, Principales, Postres, Bebidas, Tapas, Bocadillos, Pizzas, Ensaladas, Carnes, Pescados, etc.)\n- Incluye TODOS los productos visibles\n- Si hay varias páginas, combina todo en un único array`,
-    }] }],
-  })
-  const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
   try {
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-    return NextResponse.json({ productos: parsed.productos || [] })
-  } catch { return NextResponse.json({ error: 'Error al parsear respuesta IA', raw }, { status: 500 }) }
+    const { images } = await req.json()
+    if (!images?.length) return NextResponse.json({ error: 'Sin imágenes' }, { status: 400 })
+    if (images.length > 10) return NextResponse.json({ error: 'Máximo 10 páginas' }, { status: 400 })
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    // Normalize media types — some browsers send 'image/jpg' which Anthropic rejects
+    const VALID_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
+    type ValidType = typeof VALID_TYPES[number]
+    const normalizeType = (t: string): ValidType => {
+      if (t === 'image/jpg') return 'image/jpeg'
+      if (VALID_TYPES.includes(t as ValidType)) return t as ValidType
+      return 'image/jpeg'
+    }
+    const imageBlocks = images.map((img: { data: string; mediaType: string }) => ({
+      type: 'image' as const,
+      source: { type: 'base64' as const, media_type: normalizeType(img.mediaType), data: img.data },
+    }))
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 4096,
+      messages: [{ role: 'user', content: [...imageBlocks, { type: 'text',
+        text: `Eres un asistente de restauración española. Extrae TODOS los platos, tapas, bebidas y postres de esta carta.\n\nDevuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional ni markdown:\n{"productos":[{"nombre":"Nombre tal como aparece","descripcion":"Descripción o null","precio":9.50,"categoria":"Entrantes"}]}\n\nReglas:\n- precio: número decimal o null si no aparece\n- categoria: infiere de la sección (Entrantes, Principales, Postres, Bebidas, Tapas, Bocadillos, Pizzas, Ensaladas, Carnes, Pescados, etc.)\n- Incluye TODOS los productos visibles\n- Si hay varias páginas, combina todo en un único array`,
+      }] }],
+    })
+    const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
+    try {
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+      return NextResponse.json({ productos: parsed.productos || [] })
+    } catch { return NextResponse.json({ error: 'Error al parsear respuesta IA', raw }, { status: 500 }) }
+  } catch (err: unknown) {
+    const e = err as { status?: number; message?: string; error?: unknown }
+    console.error('[carta/extract] Anthropic error:', e.status, e.message, JSON.stringify(e.error))
+    const msg = e.message || 'Error al extraer la carta'
+    return NextResponse.json({ error: msg, status: e.status }, { status: 500 })
+  }
 }

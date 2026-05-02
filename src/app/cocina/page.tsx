@@ -39,7 +39,7 @@ function CocinaInner() {
       .in('tipo', ['comanda', 'marchar'])
       .in('estado', ['nueva', 'en_cocina'])
       .order('created_at', { ascending: true })
-    if (data) setComandasState(data as Comanda[])
+    if (data) setComandasState(data as unknown as Comanda[])
   }, [session])
 
   useEffect(() => {
