@@ -28,7 +28,8 @@ export function usePushNotifications(camareroId: string | null) {
       const existing = await reg.pushManager.getSubscription()
       if (existing) await existing.unsubscribe()
 
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      || 'BJX86InXgcg1m2KFJbhkuiZ2LhDjFKSDJmkZOM_Y9xkuvCGtu0ZxDq0wIGXbGhNHfXnRARDne8U2cfcAGjcA8pI'
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),

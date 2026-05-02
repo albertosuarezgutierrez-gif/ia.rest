@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createServerClient } from '@/lib/supabase'
 
-webpush.setVapidDetails(
-  'mailto:hola@ia.rest',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
+// VAPID keys — override via Vercel env vars in production
+const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  || 'BJX86InXgcg1m2KFJbhkuiZ2LhDjFKSDJmkZOM_Y9xkuvCGtu0ZxDq0wIGXbGhNHfXnRARDne8U2cfcAGjcA8pI'
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY
+  || 'ze1PPTMYRUvnX8ifW-fjd5-5IbIcd8hEe1mDWPrH2IY'
+
+webpush.setVapidDetails('mailto:hola@ia.rest', VAPID_PUBLIC, VAPID_PRIVATE)
 
 export async function POST(req: NextRequest) {
   const supabase = createServerClient()
