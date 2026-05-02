@@ -23,6 +23,7 @@ type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: 
 type Mesa = { id: string; codigo: string; zona: string; capacidad: number; estado: string }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
 type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesas_activas: { codigo: string; count: number }[] }
+type Impresora = { id: string; nombre: string; seccion_id: string; cloud_device_id: string; modelo: string | null; activa: boolean; ultimo_ping: string | null; configurada: boolean }
 
 /* ─── Logo ─── */
 const Logo = () => (
@@ -61,6 +62,8 @@ const ICONS = {
   play: 'M5 3l14 9-14 9V3z',
   stop: 'M6 6h12v12H6z',
   book: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z',
+  printer: 'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z',
+  wifi: 'M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01',
   upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
   sparkle: 'M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM5 17l.75 2.25L8 20l-2.25.75L5 23l-.75-2.25L2 20l2.25-.75L5 17zM19 2l.5 1.5L21 4l-1.5.5L19 6l-.5-1.5L17 4l1.5-.5L19 2z',
 }
@@ -987,12 +990,176 @@ function CartaTab() {
 }
 
 /* ─── Main Page ─── */
+const SECCIONES_IMP = [
+  { value: 'calientes', label: 'Cocina caliente', color: '#F4D8CF', text: '#A8311E' },
+  { value: 'frios',     label: 'Cocina fría',     color: '#C9DDDD', text: '#0F6E56' },
+  { value: 'barra',     label: 'Barra',           color: '#F7E3B6', text: '#854F0B' },
+  { value: 'postres',   label: 'Postres',         color: '#E5DAC2', text: '#4B4036' },
+]
+const seccionStyle = (id: string) => SECCIONES_IMP.find(s => s.value === id) ?? SECCIONES_IMP[0]
+const fmtPing = (ts: string | null) => {
+  if (!ts) return 'Sin contacto'
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
+  if (diff < 10) return 'Ahora'
+  if (diff < 60) return `hace ${diff}s`
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)}min`
+  return `hace ${Math.floor(diff / 3600)}h`
+}
+
+function ImpresorasTab() {
+  const [impresoras, setImpresoras] = useState<Impresora[]>([])
+  const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState<null | 'create' | { del: Impresora }>(null)
+  const [form, setForm] = useState({ nombre: '', seccion_id: 'calientes', cloud_device_id: '', modelo: '' })
+  const [err, setErr] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    const r = await fetch('/api/owner/impresoras')
+    const d = await r.json()
+    setImpresoras(d.impresoras || [])
+    setLoading(false)
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const toggleActiva = async (imp: Impresora) => {
+    await fetch('/api/owner/impresoras', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: imp.id, activa: !imp.activa }) })
+    await load()
+  }
+
+  const save = async () => {
+    setErr('')
+    if (!form.nombre.trim()) return setErr('Nombre requerido')
+    if (!form.cloud_device_id.trim()) return setErr('Device ID requerido')
+    setSaving(true)
+    const r = await fetch('/api/owner/impresoras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    const d = await r.json()
+    setSaving(false)
+    if (!r.ok) return setErr(d.error || 'Error')
+    await load(); setModal(null)
+    setForm({ nombre: '', seccion_id: 'calientes', cloud_device_id: '', modelo: '' })
+  }
+
+  const del = async () => {
+    if (!modal || typeof modal !== 'object' || !('del' in modal)) return
+    await fetch('/api/owner/impresoras', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: (modal as { del: Impresora }).del.id }) })
+    await load(); setModal(null)
+  }
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
+
+  const onlineCount = impresoras.filter(i => i.ultimo_ping && Date.now() - new Date(i.ultimo_ping).getTime() < 30000).length
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase' }}>CloudPRNT · Auto-sync</div>
+          <div style={{ fontFamily: SE, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 2 }}>Impresoras</div>
+          {impresoras.length > 0 && (
+            <div style={{ fontFamily: SN, fontSize: 13, color: C.ink3, marginTop: 4 }}>
+              <span style={{ color: onlineCount > 0 ? C.green : C.ink4, fontWeight: 600 }}>{onlineCount} online</span>{' '}· {impresoras.length} total
+            </div>
+          )}
+        </div>
+        <Btn variant="primary" onClick={() => { setErr(''); setModal('create') }}><Icon d={ICONS.plus} size={15}/>Añadir impresora</Btn>
+      </div>
+
+      <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '14px 18px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <Icon d={ICONS.wifi} size={16}/>
+        <div>
+          <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, color: C.ink }}>Configuración zero-click</div>
+          <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, marginTop: 2, lineHeight: 1.5 }}>
+            Enchufa la impresora a la red. Mantén pulsado FEED al encender para imprimir el ticket con el Device ID. Pégalo aquí y elige sección.
+          </div>
+        </div>
+      </div>
+
+      {impresoras.length === 0 ? (
+        <div style={{ border: `1px dashed ${C.rule}`, borderRadius: 8, padding: '48px 24px', textAlign: 'center', color: C.ink4, fontFamily: SN, fontSize: 14 }}>
+          <div style={{ color: C.ink3, fontWeight: 600, marginBottom: 4 }}>Sin impresoras configuradas</div>
+          <div style={{ fontSize: 13 }}>Añade la primera para empezar a imprimir tickets automáticamente</div>
+        </div>
+      ) : (
+        <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 100px 80px 80px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
+            <span>Impresora</span><span>Sección</span><span>Último ping</span><span>Estado</span><span style={{ textAlign: 'right' }}></span>
+          </div>
+          {impresoras.map((imp, i) => {
+            const sec = seccionStyle(imp.seccion_id)
+            const isOnline = imp.ultimo_ping && Date.now() - new Date(imp.ultimo_ping).getTime() < 30000
+            return (
+              <div key={imp.id} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 100px 80px 80px', padding: '14px 20px', alignItems: 'center', borderBottom: i < impresoras.length - 1 ? `1px solid ${C.rule}` : 'none' }}>
+                <div>
+                  <div style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: imp.activa ? C.ink : C.ink4 }}>{imp.nombre}</div>
+                  <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, marginTop: 2, letterSpacing: '.04em' }}>{imp.cloud_device_id}</div>
+                </div>
+                <span><span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: sec.color, color: sec.text, padding: '3px 8px', borderRadius: 3 }}>{sec.label.toUpperCase()}</span></span>
+                <span style={{ fontFamily: SM, fontSize: 11, color: isOnline ? C.green : C.ink4 }}>{fmtPing(imp.ultimo_ping)}</span>
+                <span>
+                  <button onClick={() => toggleActiva(imp)} style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: imp.activa ? C.greenS : C.paper2, color: imp.activa ? C.green : C.ink3, border: `1px solid ${imp.activa ? '#A8C9AB' : C.rule}`, borderRadius: 999, padding: '3px 8px', cursor: 'pointer' }}>
+                    {imp.activa ? 'ACTIVA' : 'OFF'}
+                  </button>
+                </span>
+                <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Btn size="sm" variant="danger" onClick={() => setModal({ del: imp })}><Icon d={ICONS.trash} size={13}/></Btn>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {modal === 'create' && (
+        <Modal title="Nueva impresora" onClose={() => setModal(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder="Cocina caliente 01"/>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Device ID</label>
+              <input value={form.cloud_device_id} onChange={e => setForm(f => ({ ...f, cloud_device_id: e.target.value }))} placeholder="SL-T300-XXXXXXXX"
+                style={{ fontFamily: SM, fontSize: 13, letterSpacing: '.06em', background: C.bone, border: `1px solid ${err.includes('Device') ? C.red : C.rule}`, borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none', width: '100%', boxSizing: 'border-box' as const }}/>
+            </div>
+            <Select label="Sección de cocina" value={form.seccion_id} onChange={v => setForm(f => ({ ...f, seccion_id: v }))} options={SECCIONES_IMP.map(s => ({ value: s.value, label: s.label }))}/>
+            <Field label="Modelo (opcional)" value={form.modelo} onChange={v => setForm(f => ({ ...f, modelo: v }))} placeholder="Star TSP143IV"/>
+            <div style={{ background: C.paper2, borderRadius: 6, padding: '12px 14px' }}>
+              <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, color: C.ink3, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>Cómo obtener el Device ID</div>
+              {['Enchufa la impresora a la red (ethernet o WiFi)', 'Mantén pulsado FEED al encender la impresora', 'Se imprime el ticket de config · copia el Device ID', 'Pégalo arriba · la IA lo detecta en segundos'].map((s, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: C.red, fontWeight: 700, width: 14 }}>{idx + 1}</span>
+                  <span style={{ fontFamily: SN, fontSize: 12, color: C.ink2, lineHeight: 1.4 }}>{s}</span>
+                </div>
+              ))}
+            </div>
+            {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
+              <Btn variant="primary" onClick={save} disabled={saving}><Icon d={ICONS.check} size={14}/>{saving ? 'Guardando...' : 'Añadir impresora'}</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modal && typeof modal === 'object' && 'del' in modal && (
+        <Modal title="Eliminar impresora" onClose={() => setModal(null)}>
+          <p style={{ fontFamily: SN, fontSize: 14, color: C.ink2, marginTop: 0, lineHeight: 1.5 }}>
+            ¿Eliminar <strong>{(modal as { del: Impresora }).del.nombre}</strong>? Los tickets en cola se perderán.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
+            <Btn variant="danger" onClick={del}><Icon d={ICONS.trash} size={14}/>Eliminar</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
 const TABS = [
-  { id: 'camareros', label: 'Camareros', icon: ICONS.users },
-  { id: 'mesas',     label: 'Mesas',     icon: ICONS.grid  },
-  { id: 'turno',     label: 'Turno',     icon: ICONS.clock },
-  { id: 'resumen',   label: 'Resumen',   icon: ICONS.chart },
-  { id: 'carta',     label: 'Carta',     icon: ICONS.book  },
+  { id: 'camareros',  label: 'Camareros',  icon: ICONS.users   },
+  { id: 'mesas',      label: 'Mesas',      icon: ICONS.grid    },
+  { id: 'impresoras', label: 'Impresoras', icon: ICONS.printer },
+  { id: 'turno',      label: 'Turno',      icon: ICONS.clock   },
+  { id: 'resumen',    label: 'Resumen',    icon: ICONS.chart   },
+  { id: 'carta',      label: 'Carta',      icon: ICONS.book    },
 ]
 
 export default function OwnerPage() {
@@ -1060,11 +1227,12 @@ export default function OwnerPage() {
         </div>
 
         {/* Tab content */}
-        {tab === 'camareros' && <CamarerosTab/>}
-        {tab === 'mesas'     && <MesasTab/>}
-        {tab === 'turno'     && <TurnoTab/>}
-        {tab === 'resumen'   && <ResumenTab/>}
-        {tab === 'carta'     && <CartaTab/>}
+        {tab === 'camareros'  && <CamarerosTab/>}
+        {tab === 'mesas'      && <MesasTab/>}
+        {tab === 'impresoras' && <ImpresorasTab/>}
+        {tab === 'turno'      && <TurnoTab/>}
+        {tab === 'resumen'    && <ResumenTab/>}
+        {tab === 'carta'      && <CartaTab/>}
       </div>
     </div>
   )
