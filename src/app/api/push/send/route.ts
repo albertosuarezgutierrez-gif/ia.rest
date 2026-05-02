@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import webpush from 'web-push'
 import { createServerClient } from '@/lib/supabase'
 
-// VAPID keys — set via Vercel env vars in production
-// Fallback keys sólo para desarrollo local; en producción SIEMPRE usar env vars reales
-const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  || 'BKLVkE3Cz7RjzFoSqOdmdXQOaRyoh6lNLPEtMNsA-xATgG-6q6MqbwA2NQkcRk5EWQLbpdaagD_o918fWOwmUbc'
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY
-  || 'HiqNXomOefV33fzBdpZkzHtqCi-rjjnLTZ_PQFSbFJ4'
+// Forzar evaluación dinámica — evita que Next.js ejecute el módulo en build time
+export const dynamic = 'force-dynamic'
 
-// Lazy init — NO llamar setVapidDetails en top-level (falla en Next.js build time)
-function getWebPush() {
+// VAPID keys — set via Vercel env vars en producción
+const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  || 'BBFk-hGNnxaQ6rOO9c2qBNzkv5aAZscWijQ8RPT_DlnrepdpVPqj-JlZaKR13epEGDCnisgTPZ2KedtisVXD0AY'
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY
+  || 'g9A32b3wnr_c4Q0ZHtOAllFxwB4ez8TXiH1v1PdXH88'
+
+// Lazy init — importar y configurar web-push sólo cuando se llama al handler
+async function getWebPush() {
+  const webpush = (await import('web-push')).default
   webpush.setVapidDetails('mailto:hola@ia.rest', VAPID_PUBLIC, VAPID_PRIVATE)
   return webpush
 }
@@ -28,13 +30,14 @@ export async function POST(req: NextRequest) {
   if (!subs?.length) return NextResponse.json({ ok: true, sent: 0 })
 
   const payload = JSON.stringify({ title: title || 'ia.rest', body, mesa, data: data || {} })
+  const wp = await getWebPush()
   let sent = 0
 
   await Promise.all(
     subs.map(async (row) => {
       try {
         const sub = JSON.parse(row.subscription)
-        await getWebPush().sendNotification(sub, payload)
+        await wp.sendNotification(sub, payload)
         sent++
       } catch (err: unknown) {
         // Suscripción expirada — limpiar
