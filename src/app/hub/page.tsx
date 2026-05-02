@@ -52,6 +52,13 @@ export default function HubPage(){
   const txs=useTranscripciones()
   const productos86=useProductos86()
   const ahora=useReloj()
+  const logout = () => {
+    fetch('/api/auth', { method: 'DELETE' })
+    localStorage.removeItem('ia_rest_session')
+    document.cookie = 'ia_session=; Max-Age=0; path=/'
+    window.location.href = '/login'
+  }
+
 
   const NavIcon=({path}:{path:string})=>(
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -98,6 +105,7 @@ export default function HubPage(){
             ))}
           </div>
           <span style={{fontFamily:SM,fontSize:13,fontWeight:700,color:C.ink}}>{ahora.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span>
+          <button onClick={logout} style={{fontFamily:SN,fontSize:10,fontWeight:600,color:C.ink3,background:'transparent',border:`1px solid ${C.rule}`,borderRadius:3,padding:'3px 7px',cursor:'pointer'}}>Salir</button>
         </div>
       </div>
 

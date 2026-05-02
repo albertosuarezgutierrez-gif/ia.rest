@@ -46,6 +46,13 @@ export default function EdgePage() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [pin, setPin] = useState('')
   const [latencia, setLatencia] = useState<number | null>(null)
+  const logout = async () => {
+    await fetch('/api/auth', { method: 'DELETE' })
+    localStorage.removeItem('ia_rest_session')
+    document.cookie = 'ia_session=; Max-Age=0; path=/'
+    window.location.href = '/login'
+  }
+
 
   const mediaRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
