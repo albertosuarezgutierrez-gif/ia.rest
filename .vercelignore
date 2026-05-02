@@ -1,0 +1,4 @@
+# Old static design system files are in the public folder
+# but we don't want to confuse Vercel with them
+*.md
+SKILL.md
