@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface Session {
   id: string
@@ -11,27 +10,35 @@ interface Session {
 export function useAuth(requiredRole?: 'admin' | 'camarero') {
   const [session, setSession] = useState<Session | null>(null)
   const [checking, setChecking] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
     const raw = localStorage.getItem('ia_rest_session')
+
     if (!raw) {
-      router.replace('/login')
+      // No session — redirect to login
+      setChecking(false)
+      window.location.href = '/login'
       return
     }
+
     try {
       const s: Session = JSON.parse(raw)
-      // Camarero trying to access admin page
+
+      // Wrong role for this page
       if (requiredRole === 'admin' && s.rol !== 'admin') {
-        router.replace('/edge')
+        setChecking(false)
+        window.location.href = '/edge'
         return
       }
+
+      // Valid session
       setSession(s)
-    } catch {
-      localStorage.removeItem('ia_rest_session')
-      router.replace('/login')
-    } finally {
       setChecking(false)
+    } catch {
+      // Corrupt session data
+      localStorage.removeItem('ia_rest_session')
+      setChecking(false)
+      window.location.href = '/login'
     }
   }, [])
 
