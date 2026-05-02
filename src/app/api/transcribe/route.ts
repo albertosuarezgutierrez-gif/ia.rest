@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transcribir } from '@/lib/ear'
 import { parsearComanda } from '@/lib/brain'
+import { crearPrintJobs } from '@/lib/courier'
 import { createServerClient } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
@@ -64,7 +65,31 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // 6. Update table status
+      // 6. COURIER: crear print_jobs por sección
+      if (['comanda', 'marchar'].includes(brainResult.tipo) && brainResult.items.length > 0) {
+        const { data: camarero } = await supabase
+          .from('camareros')
+          .select('nombre')
+          .eq('id', camareroId)
+          .single()
+
+        crearPrintJobs(
+          {
+            id:              comanda.id,
+            tipo:            brainResult.tipo,
+            mesa_codigo:     brainResult.mesa,
+            camarero_nombre: camarero?.nombre ?? 'Sala',
+          },
+          brainResult.items.map(item => ({
+            nombre:     item.nombre,
+            cantidad:   item.cantidad,
+            notas:      item.notas ?? null,
+            seccion_id: (item as Record<string, unknown>).seccion_id as string ?? null,
+          }))
+        ).catch(err => console.error('[COURIER]', err))
+      }
+
+      // 7. Update table status
       const nuevoEstado = {
         comanda: 'activa',
         marchar: 'marchar',

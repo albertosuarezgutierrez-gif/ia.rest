@@ -23,7 +23,9 @@ type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: 
 type Mesa = { id: string; codigo: string; zona: string; capacidad: number; estado: string }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
 type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesas_activas: { codigo: string; count: number }[] }
-type Impresora = { id: string; nombre: string; seccion_id: string; cloud_device_id: string; modelo: string | null; activa: boolean; ultimo_ping: string | null; configurada: boolean }
+type Impresora = { id: string; nombre: string; seccion_id: string; cloud_device_id: string | null; modelo: string | null; activa: boolean; ultimo_ping: string | null; configurada: boolean; connection_type: string; ip_address: string | null; port: number | null }
+type BridgeToken = { id: string; token: string; nombre: string; activo: boolean; ultimo_ping: string | null }
+type PrintJob = { id: string; status: string; seccion_id: string; created_at: string; sent_at: string | null; acked_at: string | null; attempts: number; error_msg: string | null; impresoras?: { nombre: string } }
 
 /* ─── Logo ─── */
 const Logo = () => (
@@ -1018,143 +1020,432 @@ const fmtPing = (ts: string | null) => {
   return `hace ${Math.floor(diff / 3600)}h`
 }
 
-function ImpresorasTab() {
-  const [impresoras, setImpresoras] = useState<Impresora[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<null | 'create' | { del: Impresora }>(null)
-  const [form, setForm] = useState({ nombre: '', seccion_id: 'calientes', cloud_device_id: '', modelo: '' })
-  const [err, setErr] = useState('')
-  const [saving, setSaving] = useState(false)
 
-  const load = useCallback(async () => {
-    const r = await fetch('/api/owner/impresoras')
-    const d = await r.json()
-    setImpresoras(d.impresoras || [])
+/* ─── helpers para ImpresorasTab ─── */
+const CONN_TYPES = [
+  { value: 'ip_local',      label: 'IP local (WiFi/LAN)' },
+  { value: 'star_cloudprnt', label: 'Star CloudPRNT' },
+  { value: 'epson_epos',    label: 'Epson ePOS' },
+  { value: 'usb_bridge',    label: 'USB bridge' },
+]
+
+const JOB_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  pendiente: { bg: '#F7E3B6', text: '#8A6200' },
+  encolado:  { bg: '#F7E3B6', text: '#8A6200' },
+  enviado:   { bg: '#D4E4D2', text: '#2D5930' },
+  impreso:   { bg: '#D4E4D2', text: '#2D5930' },
+  error:     { bg: '#F4D8CF', text: '#A8311E' },
+}
+
+function fmtAgo(ts: string | null): string {
+  if (!ts) return '—'
+  const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
+  if (s < 60) return `${s}s`
+  if (s < 3600) return `${Math.floor(s / 60)}m`
+  return `${Math.floor(s / 3600)}h`
+}
+
+/* ─── Tab: Impresoras ─── */
+function ImpresorasTab() {
+  const [impresoras, setImpresoras]     = useState<Impresora[]>([])
+  const [jobs, setJobs]                 = useState<PrintJob[]>([])
+  const [bridgeTokens, setBridgeTokens] = useState<BridgeToken[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [editando, setEditando]         = useState<Impresora | null>(null)
+  const [modal, setModal]               = useState<null | 'create' | 'bridge' | { del: Impresora }>(null)
+  const [testing, setTesting]           = useState<string | null>(null)  // impresora_id en prueba
+  const [form, setForm]                 = useState({
+    nombre: '', seccion_id: 'calientes', connection_type: 'ip_local',
+    ip_address: '', port: '9100', cloud_device_id: '', modelo: ''
+  })
+  const [err, setErr]   = useState('')
+  const [saving, setSaving] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const loadAll = useCallback(async () => {
+    const [rImp, rJobs, rBridge] = await Promise.all([
+      fetch('/api/owner/impresoras').then(r => r.json()),
+      fetch('/api/owner/print-jobs').then(r => r.json()).catch(() => ({ jobs: [] })),
+      fetch('/api/owner/bridge-tokens').then(r => r.json()).catch(() => ({ tokens: [] })),
+    ])
+    setImpresoras(rImp.impresoras || [])
+    setJobs(rJobs.jobs || [])
+    setBridgeTokens(rBridge.tokens || [])
     setLoading(false)
   }, [])
-  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    loadAll()
+    pollRef.current = setInterval(loadAll, 5000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [loadAll])
 
   const toggleActiva = async (imp: Impresora) => {
-    await fetch('/api/owner/impresoras', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: imp.id, activa: !imp.activa }) })
-    await load()
+    await fetch('/api/owner/impresoras', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: imp.id, activa: !imp.activa })
+    })
+    await loadAll()
   }
 
-  const save = async () => {
+  const saveEdit = async () => {
+    if (!editando) return
+    setSaving(true)
+    await fetch('/api/owner/impresoras', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id:             editando.id,
+        nombre:         editando.nombre,
+        seccion_id:     editando.seccion_id,
+        connection_type: editando.connection_type,
+        ip_address:     editando.ip_address,
+        port:           editando.port,
+        cloud_device_id: editando.cloud_device_id,
+        modelo:         editando.modelo,
+      })
+    })
+    setSaving(false)
+    setEditando(null)
+    await loadAll()
+  }
+
+  const saveNew = async () => {
     setErr('')
     if (!form.nombre.trim()) return setErr('Nombre requerido')
-    if (!form.cloud_device_id.trim()) return setErr('Device ID requerido')
+    if (form.connection_type === 'ip_local' && !form.ip_address.trim()) return setErr('IP requerida para ip_local')
+    if (form.connection_type === 'star_cloudprnt' && !form.cloud_device_id.trim()) return setErr('Device ID requerido')
     setSaving(true)
-    const r = await fetch('/api/owner/impresoras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    const r = await fetch('/api/owner/impresoras', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre:          form.nombre,
+        seccion_id:      form.seccion_id,
+        cloud_device_id: form.cloud_device_id || null,
+        modelo:          form.modelo || null,
+        connection_type: form.connection_type,
+        ip_address:      form.ip_address || null,
+        port:            parseInt(form.port) || 9100,
+      })
+    })
     const d = await r.json()
     setSaving(false)
     if (!r.ok) return setErr(d.error || 'Error')
-    await load(); setModal(null)
-    setForm({ nombre: '', seccion_id: 'calientes', cloud_device_id: '', modelo: '' })
+    setModal(null)
+    setForm({ nombre: '', seccion_id: 'calientes', connection_type: 'ip_local', ip_address: '', port: '9100', cloud_device_id: '', modelo: '' })
+    await loadAll()
   }
 
   const del = async () => {
     if (!modal || typeof modal !== 'object' || !('del' in modal)) return
-    await fetch('/api/owner/impresoras', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: (modal as { del: Impresora }).del.id }) })
-    await load(); setModal(null)
+    await fetch('/api/owner/impresoras', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: (modal as { del: Impresora }).del.id })
+    })
+    await loadAll()
+    setModal(null)
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
+  const testPrint = async (id: string) => {
+    setTesting(id)
+    await fetch('/api/print', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger: 'test', impresora_id: id })
+    })
+    setTimeout(() => setTesting(null), 2000)
+    await loadAll()
+  }
 
-  const onlineCount = impresoras.filter(i => i.ultimo_ping && Date.now() - new Date(i.ultimo_ping).getTime() < 30000).length
+  const createBridgeToken = async () => {
+    await fetch('/api/owner/bridge-tokens', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: 'Bridge local' })
+    })
+    await loadAll()
+  }
+
+  const deleteBridgeToken = async (id: string) => {
+    await fetch('/api/owner/bridge-tokens', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    })
+    await loadAll()
+  }
+
+  if (loading) return (
+    <div style={{ padding: 40, textAlign: 'center', color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
+  )
+
+  const pendingJobs  = jobs.filter(j => ['pendiente','encolado'].includes(j.status)).length
+  const errorJobs    = jobs.filter(j => j.status === 'error').length
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase' }}>CloudPRNT · Auto-sync</div>
+          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase' }}>COURIER · Impresión</div>
           <div style={{ fontFamily: SE, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 2 }}>Impresoras</div>
-          {impresoras.length > 0 && (
-            <div style={{ fontFamily: SN, fontSize: 13, color: C.ink3, marginTop: 4 }}>
-              <span style={{ color: onlineCount > 0 ? C.green : C.ink4, fontWeight: 600 }}>{onlineCount} online</span>{' '}· {impresoras.length} total
-            </div>
-          )}
-        </div>
-        <Btn variant="primary" onClick={() => { setErr(''); setModal('create') }}><Icon d={ICONS.plus} size={15}/>Añadir impresora</Btn>
-      </div>
-
-      <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '14px 18px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <Icon d={ICONS.wifi} size={16}/>
-        <div>
-          <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, color: C.ink }}>Configuración zero-click</div>
-          <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, marginTop: 2, lineHeight: 1.5 }}>
-            Enchufa la impresora a la red. Mantén pulsado FEED al encender para imprimir el ticket con el Device ID. Pégalo aquí y elige sección.
+          <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
+            {pendingJobs > 0 && (
+              <div style={{ fontFamily: SM, fontSize: 11, color: C.amber, fontWeight: 700 }}>{pendingJobs} en cola</div>
+            )}
+            {errorJobs > 0 && (
+              <div style={{ fontFamily: SM, fontSize: 11, color: C.red, fontWeight: 700 }}>{errorJobs} error{errorJobs !== 1 ? 'es' : ''}</div>
+            )}
+            {pendingJobs === 0 && errorJobs === 0 && jobs.length > 0 && (
+              <div style={{ fontFamily: SM, fontSize: 11, color: C.green }}>Todo impreso</div>
+            )}
           </div>
         </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn onClick={() => setModal('bridge')}><Icon d={ICONS.wifi} size={14}/>Bridge local</Btn>
+          <Btn variant="primary" onClick={() => { setErr(''); setModal('create') }}>
+            <Icon d={ICONS.plus} size={15}/>Añadir impresora
+          </Btn>
+        </div>
       </div>
 
+      {/* Lista impresoras */}
       {impresoras.length === 0 ? (
-        <div style={{ border: `1px dashed ${C.rule}`, borderRadius: 8, padding: '48px 24px', textAlign: 'center', color: C.ink4, fontFamily: SN, fontSize: 14 }}>
+        <div style={{ border: `1px dashed ${C.rule}`, borderRadius: 8, padding: '48px 24px', textAlign: 'center', color: C.ink4, fontFamily: SN, fontSize: 14, marginBottom: 32 }}>
           <div style={{ color: C.ink3, fontWeight: 600, marginBottom: 4 }}>Sin impresoras configuradas</div>
           <div style={{ fontSize: 13 }}>Añade la primera para empezar a imprimir tickets automáticamente</div>
         </div>
       ) : (
-        <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 100px 80px 80px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
-            <span>Impresora</span><span>Sección</span><span>Último ping</span><span>Estado</span><span style={{ textAlign: 'right' }}></span>
+        <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone, marginBottom: 32 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 80px 120px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
+            <span>Impresora</span><span>Sección</span><span>Conexión</span><span>Ping</span><span style={{ textAlign: 'right' }}>Acciones</span>
           </div>
           {impresoras.map((imp, i) => {
-            const sec = seccionStyle(imp.seccion_id)
-            const isOnline = imp.ultimo_ping && Date.now() - new Date(imp.ultimo_ping).getTime() < 30000
+            const sec     = seccionStyle(imp.seccion_id)
+            const isOnline = imp.ultimo_ping && Date.now() - new Date(imp.ultimo_ping).getTime() < 35000
+            const isTest   = testing === imp.id
+            const connInfo = imp.connection_type === 'ip_local'
+              ? (imp.ip_address ? `${imp.ip_address}:${imp.port ?? 9100}` : 'Sin IP')
+              : imp.connection_type === 'star_cloudprnt'
+              ? (imp.cloud_device_id ?? 'Sin Device ID')
+              : imp.connection_type
+
             return (
-              <div key={imp.id} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 100px 80px 80px', padding: '14px 20px', alignItems: 'center', borderBottom: i < impresoras.length - 1 ? `1px solid ${C.rule}` : 'none' }}>
-                <div>
-                  <div style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: imp.activa ? C.ink : C.ink4 }}>{imp.nombre}</div>
-                  <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, marginTop: 2, letterSpacing: '.04em' }}>{imp.cloud_device_id}</div>
-                </div>
-                <span><span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: sec.color, color: sec.text, padding: '3px 8px', borderRadius: 3 }}>{sec.label.toUpperCase()}</span></span>
-                <span style={{ fontFamily: SM, fontSize: 11, color: isOnline ? C.green : C.ink4 }}>{fmtPing(imp.ultimo_ping)}</span>
-                <span>
-                  <button onClick={() => toggleActiva(imp)} style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: imp.activa ? C.greenS : C.paper2, color: imp.activa ? C.green : C.ink3, border: `1px solid ${imp.activa ? '#A8C9AB' : C.rule}`, borderRadius: 999, padding: '3px 8px', cursor: 'pointer' }}>
-                    {imp.activa ? 'ACTIVA' : 'OFF'}
-                  </button>
-                </span>
-                <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Btn size="sm" variant="danger" onClick={() => setModal({ del: imp })}><Icon d={ICONS.trash} size={13}/></Btn>
-                </span>
+              <div key={imp.id} style={{ borderBottom: i < impresoras.length - 1 ? `1px solid ${C.rule}` : 'none' }}>
+                {editando?.id === imp.id ? (
+                  /* ─ Fila en edición inline ─ */
+                  <div style={{ padding: '16px 20px', background: C.paper2 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <Field label="Nombre" value={editando.nombre} onChange={v => setEditando(e => e ? {...e, nombre: v} : null)}/>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Tipo conexión</label>
+                        <select value={editando.connection_type}
+                          onChange={e => setEditando(ed => ed ? {...ed, connection_type: e.target.value} : null)}
+                          style={{ fontFamily: SN, fontSize: 13, background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none' }}>
+                          {CONN_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Sección</label>
+                        <select value={editando.seccion_id}
+                          onChange={e => setEditando(ed => ed ? {...ed, seccion_id: e.target.value} : null)}
+                          style={{ fontFamily: SN, fontSize: 13, background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none' }}>
+                          {SECCIONES_IMP.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    {(editando.connection_type === 'ip_local' || editando.connection_type === 'usb_bridge') && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, marginBottom: 12 }}>
+                        <Field label="IP address" value={editando.ip_address ?? ''} onChange={v => setEditando(e => e ? {...e, ip_address: v} : null)} placeholder="192.168.1.50"/>
+                        <Field label="Puerto" value={String(editando.port ?? 9100)} onChange={v => setEditando(e => e ? {...e, port: parseInt(v)||9100} : null)} placeholder="9100"/>
+                      </div>
+                    )}
+                    {editando.connection_type === 'star_cloudprnt' && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Field label="Device ID" value={editando.cloud_device_id ?? ''} onChange={v => setEditando(e => e ? {...e, cloud_device_id: v} : null)} placeholder="SL-T300-XXXXXXXX"/>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <Btn variant="ghost" onClick={() => setEditando(null)}>Cancelar</Btn>
+                      <Btn variant="primary" onClick={saveEdit} disabled={saving}><Icon d={ICONS.check} size={14}/>{saving ? 'Guardando...' : 'Guardar'}</Btn>
+                    </div>
+                  </div>
+                ) : (
+                  /* ─ Fila normal ─ */
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 80px 120px', padding: '14px 20px', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: imp.activa ? C.ink : C.ink4 }}>{imp.nombre}</div>
+                      <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, marginTop: 2, letterSpacing: '.04em' }}>{connInfo}</div>
+                    </div>
+                    <span>
+                      <span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: sec.color, color: sec.text, padding: '3px 8px', borderRadius: 3 }}>
+                        {sec.label.toUpperCase()}
+                      </span>
+                    </span>
+                    <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>
+                      {CONN_TYPES.find(ct => ct.value === imp.connection_type)?.label ?? imp.connection_type}
+                    </span>
+                    <span style={{ fontFamily: SM, fontSize: 11, color: isOnline ? C.green : C.ink4, fontWeight: isOnline ? 700 : 400 }}>
+                      {isOnline ? 'ONLINE' : fmtPing(imp.ultimo_ping)}
+                    </span>
+                    <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => testPrint(imp.id)}
+                        disabled={!!isTest}
+                        title="Test de impresión"
+                        style={{ background: isTest ? C.greenS : C.paper2, color: isTest ? C.green : C.ink3, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '5px 8px', cursor: 'pointer', fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.06em' }}>
+                        {isTest ? 'ENVIADO' : 'TEST'}
+                      </button>
+                      <Btn size="sm" onClick={() => setEditando({...imp})}><Icon d={ICONS.edit} size={13}/></Btn>
+                      <Btn size="sm" variant="danger" onClick={() => setModal({ del: imp })}><Icon d={ICONS.trash} size={13}/></Btn>
+                    </span>
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
+      {/* Print Jobs recientes */}
+      {jobs.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase', marginBottom: 12 }}>Últimos jobs · polling 5s</div>
+          <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 90px 60px 60px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
+              <span>Impresora · Sección</span><span>Estado</span><span>Creado</span><span>Enviado</span><span>Intentos</span>
+            </div>
+            {jobs.slice(0, 12).map((job, i) => {
+              const sc = JOB_STATUS_COLORS[job.status] ?? { bg: C.paper2, text: C.ink3 }
+              return (
+                <div key={job.id} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 90px 60px 60px', padding: '11px 20px', alignItems: 'center', borderBottom: i < Math.min(jobs.length, 12) - 1 ? `1px solid ${C.rule}` : 'none' }}>
+                  <div>
+                    <div style={{ fontFamily: SN, fontSize: 13, color: C.ink, fontWeight: 500 }}>
+                      {job.impresoras?.nombre ?? '—'}
+                    </div>
+                    <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, letterSpacing: '.04em' }}>{job.seccion_id}</div>
+                    {job.error_msg && <div style={{ fontFamily: SM, fontSize: 10, color: C.red, marginTop: 2 }}>{job.error_msg}</div>}
+                  </div>
+                  <span>
+                    <span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: sc.bg, color: sc.text, padding: '3px 8px', borderRadius: 3 }}>
+                      {job.status.toUpperCase()}
+                    </span>
+                  </span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{fmtAgo(job.created_at)}</span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{job.sent_at ? fmtAgo(job.sent_at) : '—'}</span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: job.attempts > 1 ? C.amber : C.ink4 }}>{job.attempts}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: nueva impresora */}
       {modal === 'create' && (
         <Modal title="Nueva impresora" onClose={() => setModal(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder="Cocina caliente 01"/>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({...f, nombre: v}))} placeholder="Cocina caliente 01"/>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Device ID</label>
-              <input value={form.cloud_device_id} onChange={e => setForm(f => ({ ...f, cloud_device_id: e.target.value }))} placeholder="SL-T300-XXXXXXXX"
-                style={{ fontFamily: SM, fontSize: 13, letterSpacing: '.06em', background: C.bone, border: `1px solid ${err.includes('Device') ? C.red : C.rule}`, borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none', width: '100%', boxSizing: 'border-box' as const }}/>
+              <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Tipo conexión</label>
+              <select value={form.connection_type} onChange={e => setForm(f => ({...f, connection_type: e.target.value}))}
+                style={{ fontFamily: SN, fontSize: 13, background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none' }}>
+                {CONN_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
+              </select>
             </div>
-            <Select label="Sección de cocina" value={form.seccion_id} onChange={v => setForm(f => ({ ...f, seccion_id: v }))} options={SECCIONES_IMP.map(s => ({ value: s.value, label: s.label }))}/>
-            <Field label="Modelo (opcional)" value={form.modelo} onChange={v => setForm(f => ({ ...f, modelo: v }))} placeholder="Star TSP143IV"/>
-            <div style={{ background: C.paper2, borderRadius: 6, padding: '12px 14px' }}>
-              <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, color: C.ink3, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>Cómo obtener el Device ID</div>
-              {['Enchufa la impresora a la red (ethernet o WiFi)', 'Mantén pulsado FEED al encender la impresora', 'Se imprime el ticket de config · copia el Device ID', 'Pégalo arriba · la IA lo detecta en segundos'].map((s, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontFamily: SM, fontSize: 11, color: C.red, fontWeight: 700, width: 14 }}>{idx + 1}</span>
-                  <span style={{ fontFamily: SN, fontSize: 12, color: C.ink2, lineHeight: 1.4 }}>{s}</span>
-                </div>
-              ))}
-            </div>
+            <Select label="Sección" value={form.seccion_id} onChange={v => setForm(f => ({...f, seccion_id: v}))} options={SECCIONES_IMP.map(s => ({ value: s.value, label: s.label }))}/>
+            {(form.connection_type === 'ip_local' || form.connection_type === 'usb_bridge') && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+                <Field label="IP address" value={form.ip_address} onChange={v => setForm(f => ({...f, ip_address: v}))} placeholder="192.168.1.50"/>
+                <Field label="Puerto" value={form.port} onChange={v => setForm(f => ({...f, port: v}))} placeholder="9100"/>
+              </div>
+            )}
+            {form.connection_type === 'star_cloudprnt' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Device ID</label>
+                <input value={form.cloud_device_id} onChange={e => setForm(f => ({...f, cloud_device_id: e.target.value}))} placeholder="SL-T300-XXXXXXXX"
+                  style={{ fontFamily: SM, fontSize: 13, letterSpacing: '.06em', background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none', width: '100%', boxSizing: 'border-box' as const }}/>
+              </div>
+            )}
+            <Field label="Modelo (opcional)" value={form.modelo} onChange={v => setForm(f => ({...f, modelo: v}))} placeholder="ESC/POS genérica · Star TSP143 · Epson TM-T20"/>
+            {form.connection_type === 'ip_local' && (
+              <div style={{ background: C.paper2, borderRadius: 6, padding: '10px 12px', fontFamily: SM, fontSize: 11, color: C.ink3, lineHeight: 1.5 }}>
+                Necesitas el bridge local corriendo en la red del restaurante.<br/>
+                Genera el token en <strong>Bridge local</strong> y arranca el script.
+              </div>
+            )}
             {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
-              <Btn variant="primary" onClick={save} disabled={saving}><Icon d={ICONS.check} size={14}/>{saving ? 'Guardando...' : 'Añadir impresora'}</Btn>
+              <Btn variant="primary" onClick={saveNew} disabled={saving}><Icon d={ICONS.check} size={14}/>{saving ? 'Guardando...' : 'Añadir'}</Btn>
             </div>
           </div>
         </Modal>
       )}
 
+      {/* Modal: bridge local */}
+      {modal === 'bridge' && (
+        <Modal title="Bridge local · ip_local" onClose={() => setModal(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ fontFamily: SN, fontSize: 14, color: C.ink2, lineHeight: 1.6 }}>
+              El bridge es un proceso Node.js que corre en la red del restaurante, hace polling cada 3s y manda ESC/POS directamente a la impresora por TCP (puerto 9100).
+            </div>
+            <div style={{ background: C.dark, borderRadius: 6, padding: '14px 16px' }}>
+              <div style={{ fontFamily: SM, fontSize: 10, color: C.darkFg3, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>Instalación</div>
+              {[
+                'git clone https://github.com/albertosuarezgutierrez-gif/ia.rest.git',
+                'cd ia.rest/scripts',
+                'export IAREST_API=https://ia-rest.vercel.app',
+                'export BRIDGE_TOKEN=<token de abajo>',
+                'node bridge-local.js',
+              ].map((cmd, idx) => (
+                <div key={idx} style={{ fontFamily: SM, fontSize: 12, color: idx === 3 ? C.amber : '#C9BFAA', marginBottom: 4, letterSpacing: '.02em' }}>{cmd}</div>
+              ))}
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', color: C.ink3, textTransform: 'uppercase' }}>Tokens activos</div>
+                <Btn size="sm" variant="primary" onClick={createBridgeToken}><Icon d={ICONS.plus} size={13}/>Nuevo token</Btn>
+              </div>
+              {bridgeTokens.length === 0 ? (
+                <div style={{ border: `1px dashed ${C.rule}`, borderRadius: 6, padding: '20px 16px', textAlign: 'center', fontFamily: SN, fontSize: 13, color: C.ink4 }}>
+                  Sin tokens. Crea uno para activar el bridge.
+                </div>
+              ) : (
+                <div style={{ border: `1px solid ${C.rule}`, borderRadius: 6, overflow: 'hidden' }}>
+                  {bridgeTokens.map((bt, idx) => {
+                    const bridgeOnline = bt.ultimo_ping && Date.now() - new Date(bt.ultimo_ping).getTime() < 15000
+                    return (
+                      <div key={bt.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: idx < bridgeTokens.length - 1 ? `1px solid ${C.rule}` : 'none', background: C.bone }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, color: C.ink }}>{bt.nombre}</div>
+                          <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, letterSpacing: '.04em', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bt.token}</div>
+                        </div>
+                        <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: bridgeOnline ? C.green : C.ink4, whiteSpace: 'nowrap' }}>
+                          {bridgeOnline ? 'ONLINE' : bt.ultimo_ping ? fmtAgo(bt.ultimo_ping) : 'NUNCA'}
+                        </div>
+                        <button
+                          title="Copiar token"
+                          onClick={() => navigator.clipboard.writeText(bt.token)}
+                          style={{ background: C.paper2, color: C.ink3, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontFamily: SM, fontSize: 10, fontWeight: 700 }}>
+                          COPIAR
+                        </button>
+                        <Btn size="sm" variant="danger" onClick={() => deleteBridgeToken(bt.id)}><Icon d={ICONS.trash} size={13}/></Btn>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Btn variant="ghost" onClick={() => setModal(null)}>Cerrar</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: eliminar */}
       {modal && typeof modal === 'object' && 'del' in modal && (
         <Modal title="Eliminar impresora" onClose={() => setModal(null)}>
           <p style={{ fontFamily: SN, fontSize: 14, color: C.ink2, marginTop: 0, lineHeight: 1.5 }}>
-            ¿Eliminar <strong>{(modal as { del: Impresora }).del.nombre}</strong>? Los tickets en cola se perderán.
+            Eliminar <strong>{(modal as { del: Impresora }).del.nombre}</strong>. Los jobs en cola se perderán.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { id, ...fields } = await req.json()
   if (!id) return NextResponse.json({ error: 'Falta id' }, { status: 400 })
-  const allowed = ['nombre', 'seccion_id', 'cloud_device_id', 'activa', 'modelo']
+  const allowed = ['nombre', 'seccion_id', 'cloud_device_id', 'activa', 'modelo', 'ip_address', 'port', 'connection_type']
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)))
   const { data, error } = await sb().from('impresoras').update(update).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
