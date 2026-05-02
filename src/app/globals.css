@@ -1,26 +1,49 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #F6F1E7;
+  --paper-2: #EFE7D6;
+  --paper-3: #E5DAC2;
+  --bone: #FBF8F1;
+  --ink: #1A1714;
+  --ink-2: #3A332C;
+  --ink-3: #6B5F52;
+  --ink-4: #9A8D7C;
+  --rule: #D8CDB6;
+  --rule-strong: #B8A98B;
+  --vermilion: #D9442B;
+  --vermilion-d: #A8311E;
+  --vermilion-s: #F4D8CF;
+  --amber: #E8A33B;
+  --amber-s: #F7E3B6;
+  --teal: #2B6A6E;
+  --green: #3F7D44;
+  --green-s: #D4E4D2;
+  --dark-bg: #14110E;
+  --dark-elev: #1F1A15;
+  --dark-elev2: #2A241D;
+  --dark-fg: #F6F1E7;
+  --dark-fg2: #C9BFAA;
+  --dark-fg3: #8D8270;
+  --dark-rule: #2F2820;
+  --dark-rule-s: #4A3F33;
+  --font-sans: 'Inter Tight', system-ui, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: var(--font-sans); background: var(--paper); color: var(--ink); -webkit-font-smoothing: antialiased; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes waveBar { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+@keyframes slideIn { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes toastUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+.slide-in { animation: slideIn 0.3s ease; }
+.toast-up { animation: toastUp 0.32s cubic-bezier(0.22,1,0.36,1); }
