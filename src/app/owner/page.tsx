@@ -20,7 +20,7 @@ const SE = "'Newsreader',Georgia,serif"
 const SM = "'JetBrains Mono',ui-monospace,monospace"
 
 /* ─── Types ─── */
-type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean }
+type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean; seccion_id?: string | null }
 type Mesa = { id: string; codigo: string; zona: string; capacidad: number; estado: string }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
 type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesas_activas: { codigo: string; count: number }[] }
@@ -72,7 +72,7 @@ const ICONS = {
 }
 
 const ZONA_LABEL: Record<string, string> = { salon: 'Salón', terraza: 'Terraza', barra: 'Barra' }
-const ROL_LABEL: Record<string, string> = { camarero: 'Camarero', admin: 'Admin' }
+const ROL_LABEL: Record<string, string> = { camarero: 'Camarero', admin: 'Admin', cocina: 'Cocina' }
 
 /* ─── Components ─── */
 const Badge = ({ children, color = C.paper2 }: { children: React.ReactNode; color?: string }) => (
@@ -149,12 +149,14 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
 )
 
 /* ─── Tab: Camareros ─── */
+type Seccion = { id: string; nombre: string }
 function CamarerosTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [camareros, setCamareros] = useState<Camarero[]>([])
+  const [secciones, setSecciones] = useState<Seccion[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<null | 'create' | { edit: Camarero } | { del: Camarero }>(null)
-  const [form, setForm] = useState({ nombre: '', pin: '', rol: 'camarero', activo: true })
+  const [form, setForm] = useState({ nombre: '', pin: '', rol: 'camarero', activo: true, seccion_id: '' })
   const [showPins, setShowPins] = useState<Record<string, boolean>>({})
   const [err, setErr] = useState('')
 
@@ -162,13 +164,15 @@ function CamarerosTab() {
     const r = await fetch('/api/owner/camareros', { headers: sh() })
     const d = await r.json()
     setCamareros(d.camareros || [])
+    const rs = await fetch('/api/owner/secciones', { headers: sh() })
+    if (rs.ok) { const ds = await rs.json(); setSecciones(ds.secciones || []) }
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const openCreate = () => { setForm({ nombre: '', pin: '', rol: 'camarero', activo: true }); setErr(''); setModal('create') }
-  const openEdit = (c: Camarero) => { setForm({ nombre: c.nombre, pin: c.pin, rol: c.rol, activo: c.activo }); setErr(''); setModal({ edit: c }) }
+  const openCreate = () => { setForm({ nombre: '', pin: '', rol: 'camarero', activo: true, seccion_id: '' }); setErr(''); setModal('create') }
+  const openEdit = (c: Camarero) => { setForm({ nombre: c.nombre, pin: c.pin, rol: c.rol, activo: c.activo, seccion_id: c.seccion_id || '' }); setErr(''); setModal({ edit: c }) }
   const openDel = (c: Camarero) => { setModal({ del: c }) }
 
   const save = async () => {
@@ -178,9 +182,10 @@ function CamarerosTab() {
 
     const isEdit = modal && typeof modal === 'object' && 'edit' in modal
     const url = '/api/owner/camareros'
+    const bodyData = { ...form, seccion_id: form.rol === 'cocina' && form.seccion_id ? form.seccion_id : null }
     const body = isEdit
-      ? { id: (modal as { edit: Camarero }).edit.id, ...form }
-      : form
+      ? { id: (modal as { edit: Camarero }).edit.id, ...bodyData }
+      : bodyData
 
     const r = await fetch(url, { method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
@@ -219,7 +224,7 @@ function CamarerosTab() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px 80px 100px',
           padding: '10px 20px', borderBottom: `1px solid ${C.rule}`,
           fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
-          <span>Nombre</span><span>Rol</span><span>PIN</span><span>Estado</span><span style={{ textAlign: 'right' }}>Acciones</span>
+          <span>Nombre</span><span>Rol</span><span>Sección</span><span>PIN</span><span>Estado</span><span style={{ textAlign: 'right' }}>Acciones</span>
         </div>
 
         {camareros.length === 0 && (
@@ -229,12 +234,13 @@ function CamarerosTab() {
         )}
 
         {camareros.map((c, i) => (
-          <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px 80px 100px',
+          <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 80px 80px 100px',
             padding: '14px 20px', alignItems: 'center',
             borderBottom: i < camareros.length - 1 ? `1px solid ${C.rule}` : 'none',
             background: !c.activo ? C.paper : 'transparent' }}>
             <span style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: c.activo ? C.ink : C.ink4 }}>{c.nombre}</span>
-            <span><Badge color={c.rol === 'admin' ? C.redS : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge></span>
+            <span><Badge color={c.rol === 'admin' ? C.redS : c.rol === 'cocina' ? C.paper2 : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge></span>
+            <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{c.seccion_id ? secciones.find(s => s.id === c.seccion_id)?.nombre || c.seccion_id : '—'}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontFamily: SM, fontSize: 13, color: C.ink2 }}>
                 {showPins[c.id] ? c.pin : '••••'}
@@ -267,8 +273,12 @@ function CamarerosTab() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder="Marta"/>
             <Field label="PIN (4 dígitos)" value={form.pin} onChange={v => setForm(f => ({ ...f, pin: v }))} placeholder="1234" type="text" error={err.includes('PIN') ? err : undefined}/>
-            <Select label="Rol" value={form.rol} onChange={v => setForm(f => ({ ...f, rol: v }))}
-              options={[{ value: 'camarero', label: 'Camarero' }, { value: 'admin', label: 'Admin' }]}/>
+            <Select label="Rol" value={form.rol} onChange={v => setForm(f => ({ ...f, rol: v, seccion_id: '' }))}
+              options={[{ value: 'camarero', label: 'Camarero' }, { value: 'admin', label: 'Admin' }, { value: 'cocina', label: 'Cocina' }]}/>
+            {form.rol === 'cocina' && (
+              <Select label="Sección" value={form.seccion_id} onChange={v => setForm(f => ({ ...f, seccion_id: v }))}
+                options={[{ value: '', label: 'Todas las secciones' }, ...secciones.map(s => ({ value: s.id, label: s.nombre }))]}/>
+            )}
             {err && !err.includes('PIN') && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
               <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>

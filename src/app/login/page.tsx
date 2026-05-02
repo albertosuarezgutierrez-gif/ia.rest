@@ -71,9 +71,11 @@ export default function LoginPage() {
       if (d.camarero) {
         localStorage.setItem('ia_rest_session', JSON.stringify(d.camarero))
         const rol = d.camarero.rol
+        const seccion = d.camarero.seccion_id
         const dest: Record<string, string> = {
           super_admin: '/super', owner: '/owner',
-          admin: '/hub', camarero: '/edge', cocina: '/kds'
+          admin: '/hub', camarero: '/edge',
+          cocina: seccion ? `/kds?seccion=${seccion}` : '/kds'
         }
         window.location.href = dest[rol] ?? '/edge'
       } else {

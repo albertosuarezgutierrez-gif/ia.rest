@@ -9,6 +9,7 @@ export interface Session {
   rol: Rol
   restaurante_id: string
   restaurante_nombre: string
+  seccion_id?: string | null
 }
 
 const REDIRECT: Record<Rol, string> = {

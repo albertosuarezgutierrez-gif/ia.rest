@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       rol: cam.rol,
       restaurante_id: cam.restaurante_id,
       restaurante_nombre: cam.restaurante_nombre ?? restaurante_nombre,
+      seccion_id: cam.seccion_id ?? null,
     }
   })
 }

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const rid = getRestauranteId(req)
   const { data, error } = await supabase
     .from('camareros')
-    .select('id, nombre, pin, rol, activo, created_at')
+    .select('id, nombre, pin, rol, activo, seccion_id, created_at')
     .eq('restaurante_id', rid)
     .neq('rol', 'owner').neq('rol', 'super_admin')
     .order('created_at', { ascending: true })
@@ -18,14 +18,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
-  const { nombre, pin, rol } = await req.json()
+  const { nombre, pin, rol, seccion_id } = await req.json()
   if (!nombre || !pin || pin.length !== 4 || !/^\d{4}$/.test(pin))
     return NextResponse.json({ error: 'Nombre y PIN de 4 dígitos requeridos' }, { status: 400 })
   const { data: existing } = await supabase
     .from('camareros').select('id').eq('pin', pin).eq('restaurante_id', rid).single()
   if (existing) return NextResponse.json({ error: 'PIN ya en uso' }, { status: 409 })
   const { data, error } = await supabase.from('camareros')
-    .insert({ nombre, pin, rol: rol || 'camarero', activo: true, restaurante_id: rid })
+    .insert({ nombre, pin, rol: rol || 'camarero', activo: true, restaurante_id: rid, seccion_id: seccion_id || null })
     .select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ camarero: data })
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
-  const { id, nombre, pin, rol, activo } = await req.json()
+  const { id, nombre, pin, rol, activo, seccion_id } = await req.json()
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
   if (pin) {
     if (!/^\d{4}$/.test(pin))
@@ -48,6 +48,7 @@ export async function PUT(req: NextRequest) {
   if (pin !== undefined) updates.pin = pin
   if (rol !== undefined) updates.rol = rol
   if (activo !== undefined) updates.activo = activo
+  if (seccion_id !== undefined) updates.seccion_id = seccion_id
   const { data, error } = await supabase.from('camareros')
     .update(updates).eq('id', id).eq('restaurante_id', rid).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
