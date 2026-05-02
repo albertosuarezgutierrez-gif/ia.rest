@@ -310,24 +310,44 @@ function CamarerosTab() {
 }
 
 /* ─── Tab: Mesas ─── */
+type Zona = { id: string; nombre: string; tipo: string; prefijo: string; descripcion?: string; orden: number; activa: boolean }
+
 function MesasTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [mesas, setMesas] = useState<Mesa[]>([])
+  const [zonas, setZonas] = useState<Zona[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<null | 'create' | { edit: Mesa } | { del: Mesa }>(null)
-  const [form, setForm] = useState({ codigo: '', zona: 'salon', capacidad: '4' })
+  const [modal, setModal] = useState<null | 'create' | 'zona-create' | { edit: Mesa } | { del: Mesa } | { editZona: Zona }>(null)
+  const [form, setForm] = useState({ codigo: '', zona: '', capacidad: '4' })
+  const [zonaForm, setZonaForm] = useState({ nombre: '', prefijo: '', descripcion: '' })
   const [err, setErr] = useState('')
 
+  const loadZonas = useCallback(async () => {
+    const r = await fetch('/api/owner/zonas', { headers: sh() })
+    const d = await r.json()
+    const zs: Zona[] = Array.isArray(d) ? d : []
+    setZonas(zs)
+    return zs
+  }, [])
+
   const load = useCallback(async () => {
-    const r = await fetch('/api/owner/mesas', { headers: sh() })
+    const [r, zs] = await Promise.all([
+      fetch('/api/owner/mesas', { headers: sh() }),
+      loadZonas(),
+    ])
     const d = await r.json()
     setMesas(d.mesas || [])
+    // Set default zona for form
+    if (zs.length > 0) setForm(f => ({ ...f, zona: zs[0].tipo }))
     setLoading(false)
-  }, [])
+  }, [loadZonas])
 
   useEffect(() => { load() }, [load])
 
-  const openCreate = () => { setForm({ codigo: '', zona: 'salon', capacidad: '4' }); setErr(''); setModal('create') }
+  const openCreate = () => {
+    setForm({ codigo: '', zona: zonas[0]?.tipo || 'salon', capacidad: '4' })
+    setErr(''); setModal('create')
+  }
   const openEdit = (m: Mesa) => { setForm({ codigo: m.codigo, zona: m.zona, capacidad: String(m.capacidad) }); setErr(''); setModal({ edit: m }) }
   const openDel = (m: Mesa) => setModal({ del: m })
 
@@ -353,11 +373,35 @@ function MesasTab() {
     await load(); setModal(null)
   }
 
-  const byZona = (zona: string) => mesas.filter(m => m.zona === zona)
-  const ZONAS = ['salon', 'barra', 'terraza']
+  const saveZona = async () => {
+    setErr('')
+    if (!zonaForm.nombre.trim() || !zonaForm.prefijo.trim()) return setErr('Nombre y prefijo requeridos')
+    const isEdit = modal && typeof modal === 'object' && 'editZona' in modal
+    const body = isEdit
+      ? { id: (modal as { editZona: Zona }).editZona.id, ...zonaForm }
+      : zonaForm
+    const r = await fetch('/api/owner/zonas', {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify(body),
+    })
+    const d = await r.json()
+    if (!r.ok) return setErr(d.error || 'Error')
+    await load(); setModal(null); setZonaForm({ nombre: '', prefijo: '', descripcion: '' })
+  }
+
+  const delZona = async (z: Zona) => {
+    if (!confirm(`Eliminar zona "${z.nombre}"?`)) return
+    await fetch('/api/owner/zonas', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({ id: z.id }),
+    })
+    await load()
+  }
+
+  const byZona = (tipo: string) => mesas.filter(m => m.zona === tipo)
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -365,18 +409,32 @@ function MesasTab() {
           <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase' }}>Espacio</div>
           <div style={{ fontFamily: SE, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 2 }}>Mesas</div>
         </div>
-        <Btn variant="primary" onClick={openCreate}><Icon d={ICONS.plus} size={15}/>Añadir mesa</Btn>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn variant="ghost" onClick={() => { setZonaForm({ nombre: '', prefijo: '', descripcion: '' }); setErr(''); setModal('zona-create') }}>
+            <Icon d={ICONS.grid} size={14}/>Zonas
+          </Btn>
+          <Btn variant="primary" onClick={openCreate}><Icon d={ICONS.plus} size={15}/>Añadir mesa</Btn>
+        </div>
       </div>
 
-      {ZONAS.map(zona => {
-        const ms = byZona(zona)
-        if (ms.length === 0 && zona !== 'salon') return null
+      {zonas.filter(z => z.activa).map(zona => {
+        const ms = byZona(zona.tipo)
+        if (ms.length === 0 && zonas.indexOf(zona) > 0) return null
         return (
-          <div key={zona} style={{ marginBottom: 28 }}>
+          <div key={zona.id} style={{ marginBottom: 28 }}>
             <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.red,
               textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {ZONA_LABEL[zona]}
+              <span style={{ background: C.paper2, color: C.ink, fontFamily: SM, fontSize: 10, padding: '2px 6px', borderRadius: 3, border: `1px solid ${C.rule}` }}>{zona.prefijo}</span>
+              {zona.nombre}
               <span style={{ color: C.ink4 }}>· {ms.length} mesas</span>
+              <button onClick={() => { setZonaForm({ nombre: zona.nombre, prefijo: zona.prefijo, descripcion: zona.descripcion || '' }); setErr(''); setModal({ editZona: zona }) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4, opacity: 0.5 }}>
+                <Icon d={ICONS.edit} size={11}/>
+              </button>
+              <button onClick={() => delZona(zona)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, opacity: 0.4 }}>
+                <Icon d={ICONS.trash} size={11}/>
+              </button>
             </div>
             {ms.length === 0 ? (
               <div style={{ fontFamily: SN, fontSize: 13, color: C.ink4, padding: '12px 0' }}>Sin mesas en esta zona.</div>
@@ -402,12 +460,31 @@ function MesasTab() {
         )
       })}
 
+      {/* Modal nueva/editar zona */}
+      {modal && (modal === 'zona-create' || (typeof modal === 'object' && 'editZona' in modal)) && (
+        <Modal title={modal === 'zona-create' ? 'Nueva zona' : 'Editar zona'} onClose={() => setModal(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Field label="Nombre (ej. Terraza VIP)" value={zonaForm.nombre} onChange={v => setZonaForm(f => ({ ...f, nombre: v }))} placeholder="Terraza VIP"/>
+            <Field label="Prefijo de mesa (1-2 letras, ej. V)" value={zonaForm.prefijo} onChange={v => setZonaForm(f => ({ ...f, prefijo: v.toUpperCase().slice(0,2) }))} placeholder="V"/>
+            <Field label="Descripción (opcional)" value={zonaForm.descripcion} onChange={v => setZonaForm(f => ({ ...f, descripcion: v }))} placeholder="Zona exterior cubierta"/>
+            <div style={{ background: C.paper2, borderRadius: 4, padding: '8px 12px', fontFamily: SM, fontSize: 11, color: C.ink3 }}>
+              El prefijo define el código de mesa: prefijo <strong>{zonaForm.prefijo || 'V'}</strong> → mesas <strong>{zonaForm.prefijo || 'V'}01, {zonaForm.prefijo || 'V'}02…</strong>
+            </div>
+            {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+              <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
+              <Btn variant="primary" onClick={saveZona}><Icon d={ICONS.check} size={14}/>{modal === 'zona-create' ? 'Crear' : 'Guardar'}</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {modal && (modal === 'create' || (typeof modal === 'object' && 'edit' in modal)) && (
         <Modal title={modal === 'create' ? 'Nueva mesa' : 'Editar mesa'} onClose={() => setModal(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label="Código (ej. T05, B02)" value={form.codigo} onChange={v => setForm(f => ({ ...f, codigo: v.toUpperCase() }))} placeholder="T05"/>
             <Select label="Zona" value={form.zona} onChange={v => setForm(f => ({ ...f, zona: v }))}
-              options={ZONAS.map(z => ({ value: z, label: ZONA_LABEL[z] }))}/>
+              options={zonas.filter(z => z.activa).map(z => ({ value: z.tipo, label: `${z.nombre} (${z.prefijo})` }))}/>
             <Field label="Capacidad" value={form.capacidad} onChange={v => setForm(f => ({ ...f, capacidad: v }))} placeholder="4" type="number"/>
             {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
@@ -428,6 +505,182 @@ function MesasTab() {
             <Btn variant="danger" onClick={del}><Icon d={ICONS.trash} size={14}/>Borrar</Btn>
           </div>
         </Modal>
+      )}
+    </div>
+  )
+}
+
+/* ─── Tab: Restaurante / Configuración ─── */
+type RestauranteConfig = {
+  id: string; nombre: string; slug: string
+  nif: string | null; razon_social: string | null
+  direccion: string | null; ciudad: string | null; telefono: string | null
+  plan: string; activo: boolean
+}
+type HealthCheck = {
+  ok: boolean
+  checks: Record<string, boolean | string>
+  missing: string[]
+  hint: string
+}
+
+function RestauranteTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
+  const [rest, setRest] = useState<RestauranteConfig | null>(null)
+  const [health, setHealth] = useState<HealthCheck | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [form, setForm] = useState({ nombre: '', nif: '', razon_social: '', direccion: '', ciudad: '', telefono: '' })
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/owner/restaurante', { headers: sh() }).then(r => r.json()),
+      fetch('/api/health').then(r => r.json()),
+    ]).then(([rd, hd]) => {
+      if (rd.restaurante) {
+        setRest(rd.restaurante)
+        setForm({
+          nombre:       rd.restaurante.nombre       ?? '',
+          nif:          rd.restaurante.nif           ?? '',
+          razon_social: rd.restaurante.razon_social  ?? '',
+          direccion:    rd.restaurante.direccion     ?? '',
+          ciudad:       rd.restaurante.ciudad        ?? '',
+          telefono:     rd.restaurante.telefono      ?? '',
+        })
+      }
+      setHealth(hd)
+    }).finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const save = async () => {
+    setSaving(true); setMsg('')
+    const r = await fetch('/api/owner/restaurante', {
+      method: 'PATCH',
+      headers: { ...sh(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    const d = await r.json()
+    if (r.ok) { setRest(d.restaurante); setMsg('Guardado correctamente.') }
+    else { setMsg(d.error ?? 'Error al guardar') }
+    setSaving(false)
+    setTimeout(() => setMsg(''), 3000)
+  }
+
+  const inp = (label: string, key: keyof typeof form, placeholder = '') => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: C.ink3, textTransform: 'uppercase' }}>{label}</label>
+      <input
+        value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        placeholder={placeholder}
+        style={{ fontFamily: SN, fontSize: 14, border: `1px solid ${C.rule}`, borderRadius: 4,
+          padding: '8px 10px', background: C.bone, color: C.ink, outline: 'none' }}
+      />
+    </div>
+  )
+
+  if (loading) return <div style={{ fontFamily: SM, fontSize: 12, color: C.ink3, padding: 24 }}>Cargando...</div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* Datos del restaurante */}
+      <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, padding: 24, background: C.bone }}>
+        <div style={{ fontFamily: SM, fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase', marginBottom: 18 }}>
+          DATOS DEL RESTAURANTE
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {inp('Nombre comercial', 'nombre', 'Restaurante El Ejemplo')}
+          {inp('Teléfono', 'telefono', '+34 91 000 00 00')}
+          {inp('Dirección', 'direccion', 'Calle Mayor 1, Madrid')}
+          {inp('Ciudad', 'ciudad', 'Madrid')}
+        </div>
+      </div>
+
+      {/* Datos fiscales Verifactu */}
+      <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, padding: 24, background: C.bone }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+          <div style={{ fontFamily: SM, fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
+            DATOS FISCALES · VERIFACTU
+          </div>
+          <div style={{ fontFamily: SM, fontSize: 10, color: C.red, letterSpacing: '.06em' }}>RD 1007/2023</div>
+        </div>
+        <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, marginBottom: 16, lineHeight: 1.5 }}>
+          Estos datos aparecen en el encabezado de las facturas simplificadas y en el hash SHA-256 Verifactu.
+          Sin NIF configurado, las facturas usan el NIF demo (B00000000).
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {inp('NIF / CIF', 'nif', 'B12345678')}
+          {inp('Razón social', 'razon_social', 'Mi Restaurante SL')}
+        </div>
+        {rest?.nif && (
+          <div style={{ marginTop: 12, background: C.greenS, border: `1px solid #B8D4BA`, borderRadius: 4, padding: '8px 12px', fontFamily: SM, fontSize: 11, color: C.green }}>
+            NIF configurado: {rest.nif} · {rest.razon_social}
+          </div>
+        )}
+        {!rest?.nif && (
+          <div style={{ marginTop: 12, background: C.amberS, border: `1px solid #E8A33B44`, borderRadius: 4, padding: '8px 12px', fontFamily: SM, fontSize: 11, color: '#7A5A1A' }}>
+            Sin NIF — las facturas Verifactu usaran B00000000 hasta que configures uno.
+          </div>
+        )}
+      </div>
+
+      {/* Botón guardar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Btn variant="primary" onClick={save} disabled={saving}>
+          {saving ? 'Guardando...' : 'Guardar cambios'}
+        </Btn>
+        {msg && (
+          <span style={{ fontFamily: SM, fontSize: 12, color: msg.includes('Error') ? C.red : C.green }}>
+            {msg}
+          </span>
+        )}
+      </div>
+
+      {/* Panel diagnóstico env vars */}
+      {health && (
+        <div style={{ border: `1px solid ${health.ok ? C.rule : '#E8A33B'}`, borderRadius: 8, padding: 20, background: health.ok ? C.bone : C.amberS }}>
+          <div style={{ fontFamily: SM, fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase', marginBottom: 14 }}>
+            DIAGNOSTICO · ENV VARS
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+            {Object.entries(health.checks).map(([key, val]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: 999, background: val === true ? C.green : val === false ? C.red : C.amber, flexShrink: 0 }}/>
+                <span style={{ fontFamily: SM, fontSize: 11, color: C.ink2 }}>{key}</span>
+                {typeof val === 'string' && <span style={{ fontFamily: SM, fontSize: 10, color: C.ink3 }}>{val}</span>}
+              </div>
+            ))}
+          </div>
+          {health.missing.length > 0 && (
+            <div style={{ marginTop: 14, fontFamily: SM, fontSize: 11, color: '#7A5A1A', lineHeight: 1.6 }}>
+              {health.hint}
+            </div>
+          )}
+          {health.ok && (
+            <div style={{ marginTop: 8, fontFamily: SM, fontSize: 11, color: C.green }}>Todas las variables de entorno configuradas.</div>
+          )}
+        </div>
+      )}
+
+      {/* Info del plan */}
+      {rest && (
+        <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, padding: 16, background: C.paper2, display: 'flex', gap: 16 }}>
+          <div>
+            <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, letterSpacing: '.08em', textTransform: 'uppercase' }}>PLAN</div>
+            <div style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: C.ink }}>{rest.plan}</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, letterSpacing: '.08em', textTransform: 'uppercase' }}>SLUG</div>
+            <div style={{ fontFamily: SM, fontSize: 12, color: C.ink2 }}>{rest.slug}</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, letterSpacing: '.08em', textTransform: 'uppercase' }}>ESTADO</div>
+            <Badge color={rest.activo ? C.greenS : C.redS}>{rest.activo ? 'ACTIVO' : 'PAUSADO'}</Badge>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1795,13 +2048,14 @@ function FacturasTab() {
 }
 
 const TABS = [
-  { id: 'camareros',  label: 'Camareros',  icon: ICONS.users   },
-  { id: 'mesas',      label: 'Mesas',      icon: ICONS.grid    },
-  { id: 'impresoras', label: 'Impresoras', icon: ICONS.printer },
-  { id: 'turno',      label: 'Turno',      icon: ICONS.clock   },
-  { id: 'analytics',  label: 'Analytics',  icon: ICONS.chart   },
-  { id: 'carta',      label: 'Carta',      icon: ICONS.book    },
-  { id: 'facturas',   label: 'Facturas',   icon: ICONS.receipt },
+  { id: 'camareros',   label: 'Camareros',   icon: ICONS.users   },
+  { id: 'mesas',       label: 'Mesas',       icon: ICONS.grid    },
+  { id: 'impresoras',  label: 'Impresoras',  icon: ICONS.printer },
+  { id: 'turno',       label: 'Turno',       icon: ICONS.clock   },
+  { id: 'analytics',   label: 'Analytics',   icon: ICONS.chart   },
+  { id: 'carta',       label: 'Carta',       icon: ICONS.book    },
+  { id: 'facturas',    label: 'Facturas',    icon: ICONS.receipt },
+  { id: 'restaurante', label: 'Restaurante', icon: ICONS.shield  },
 ]
 
 export default function OwnerPage() {
@@ -1875,8 +2129,9 @@ export default function OwnerPage() {
         {tab === 'impresoras' && <ImpresorasTab/>}
         {tab === 'turno'      && <TurnoTab/>}
         {tab === 'analytics'  && <Analytics compact />}
-        {tab === 'carta'      && <CartaTab/>}
-        {tab === 'facturas'   && <FacturasTab/>}
+        {tab === 'carta'       && <CartaTab/>}
+        {tab === 'facturas'    && <FacturasTab/>}
+        {tab === 'restaurante' && <RestauranteTab/>}
       </div>
     </div>
   )

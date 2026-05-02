@@ -58,25 +58,51 @@ async function buildMenuContext(): Promise<string> {
   }
 }
 
+/** Construye el bloque de zonas dinámicas para el prompt. */
+async function buildZonasContext(restaurante_id?: string): Promise<string> {
+  try {
+    const supabase = createServerClient()
+    const { data: zonas } = await supabase
+      .from('zonas')
+      .select('nombre, tipo, prefijo')
+      .eq('activa', true)
+      .eq('restaurante_id', restaurante_id ?? '00000000-0000-0000-0000-000000000001')
+      .order('orden')
+
+    if (!zonas?.length) return ''
+
+    const lines = zonas
+      .filter(z => z.prefijo)
+      .map(z => `  ${z.prefijo}XX = ${z.nombre} (ej: ${z.prefijo}01, ${z.prefijo}12)`)
+      .join('\n')
+    return `\nZONAS DEL LOCAL (prefijos de mesa):\n${lines}\n`
+  } catch {
+    return ''
+  }
+}
+
 const BASE_PROMPT = `Eres BRAIN, el agente de ia.rest. Conviertes transcripciones de voz de camareros españoles en comandas JSON estructuradas.
 
 REGLAS ESTRICTAS:
 - Responde SOLO con JSON valido, sin texto adicional ni markdown
 - Entiende jerga: "manchado"=Cortado, "marchar"=enviar a cocina, "86"=agotado/sin stock
-- Codigos de mesa: T01-T20 (salon), B01-B05 (barra), P01-P10 (terraza)
+- Códigos de mesa según ZONAS DEL LOCAL (ver abajo). Fallback: T=salon, B=barra, P=terraza
 - "mesa cuatro"=T04, "la doce"=T12, "barra dos"=B02
 - Usa la CARTA ACTIVA para mapear alias al nombre canónico exacto
 - Para tipo "86": los items son los productos agotados
 - FORMATOS: si un producto tiene formatos (tapa/media/racion), extrae el formato mencionado en "formato" (null si no se menciona)
 - Ejemplos formato: "una tapa de bravas"→formato:"tapa", "media de croquetas"→formato:"media", "una ración"→formato:"racion"
+- COMENSALES: si el camarero menciona número de personas/comensales/cubiertos, extráelo en "num_comensales" (null si no se menciona)
+- Ejemplos comensales: "mesa cuatro para tres"→num_comensales:3, "somos cuatro"→num_comensales:4, "dos cubiertos"→num_comensales:2
 
 SCHEMA:
-{"mesa":"T04","tipo":"comanda|marchar|86|cuenta|aviso","items":[{"nombre":"Nombre canónico de la carta","cantidad":2,"notas":"","formato":null}],"confianza":0.95,"raw":"texto original"}`
+{"mesa":"T04","tipo":"comanda|marchar|86|cuenta|aviso","items":[{"nombre":"Nombre canónico de la carta","cantidad":2,"notas":"","formato":null}],"num_comensales":null,"confianza":0.95,"raw":"texto original"}`
 
-export async function parsearComanda(texto: string): Promise<BrainResult> {
-  const [Anthropic, menuContext] = await Promise.all([
+export async function parsearComanda(texto: string, restaurante_id?: string): Promise<BrainResult> {
+  const [Anthropic, menuContext, zonasContext] = await Promise.all([
     import('@anthropic-ai/sdk').then(m => m.default),
     buildMenuContext(),
+    buildZonasContext(restaurante_id),
   ])
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -84,7 +110,7 @@ export async function parsearComanda(texto: string): Promise<BrainResult> {
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
-    system: BASE_PROMPT + menuContext,
+    system: BASE_PROMPT + zonasContext + menuContext,
     messages: [{ role: 'user', content: texto }],
   })
 

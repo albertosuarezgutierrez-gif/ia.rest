@@ -172,6 +172,13 @@ function KDSInner() {
                     <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                       <span style={{ fontFamily: SE, fontSize: 36, fontWeight: 500, color: K.fg, lineHeight: 1 }}>{c.mesa?.codigo}</span>
                       <span style={{ fontFamily: SM, fontSize: 10, color: K.fg3 }}>#{c.numero_ticket}</span>
+                      {(c as unknown as { num_comensales?: number }).num_comensales && (
+                        <span style={{ fontFamily: SM, fontSize: 9, fontWeight: 700, color: K.amb, letterSpacing: '.08em',
+                          background: 'rgba(232,163,59,.12)', border: '1px solid rgba(232,163,59,.3)',
+                          borderRadius: 999, padding: '2px 7px' }}>
+                          {(c as unknown as { num_comensales: number }).num_comensales} pax
+                        </span>
+                      )}
                     </div>
                     <span style={{ fontFamily: SM, fontSize: 22, fontWeight: 700, color: col, animation: urgente ? 'pulse 1.5s ease-in-out infinite' : 'none' }}>{edadStr(c.created_at)}</span>
                   </div>

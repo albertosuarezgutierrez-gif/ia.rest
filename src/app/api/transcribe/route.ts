@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const rid = getRestauranteId(req)
 
     const { texto, latencia_ms: latenciaEar } = await transcribir(audio)
-    const brainResult = await parsearComanda(texto)
+    const brainResult = await parsearComanda(texto, rid)
 
     const { data: mesa } = await supabase.from('mesas')
       .select('id, codigo, estado').eq('codigo', brainResult.mesa).eq('restaurante_id', rid).single()
@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
       const { data: comanda, error: comandaError } = await supabase.from('comandas')
         .insert({ mesa_id: mesa.id, camarero_id: camareroId, turno_id: turnoId,
           tipo: brainResult.tipo, estado: brainResult.tipo === 'cuenta' ? 'nueva' : 'en_cocina',
-          restaurante_id: rid })
+          restaurante_id: rid,
+          ...(brainResult.num_comensales ? { num_comensales: brainResult.num_comensales } : {}) })
         .select().single()
       if (comandaError) throw comandaError
       comandaId = comanda.id
@@ -98,7 +99,23 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId })
   } catch (err) {
+    // Identificar qué servicio devuelve el 401
+    const msg = err instanceof Error ? err.message : String(err)
+    const is401 = msg.includes('401') || (err as { status?: number })?.status === 401
+    
+    if (is401) {
+      const missingGroq = !process.env.GROQ_API_KEY
+      const missingAnthropic = !process.env.ANTHROPIC_API_KEY
+      const hint = missingGroq
+        ? 'GROQ_API_KEY no configurada en Vercel env vars'
+        : missingAnthropic
+          ? 'ANTHROPIC_API_KEY no configurada en Vercel env vars'
+          : 'API key inválida o expirada (Groq/Anthropic) — revisar Vercel env vars'
+      console.error('[TRANSCRIBE] 401 —', hint, err)
+      return NextResponse.json({ error: hint, code: 'API_KEY_INVALID' }, { status: 500 })
+    }
+    
     console.error('[TRANSCRIBE]', err)
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: msg || 'Error interno' }, { status: 500 })
   }
 }

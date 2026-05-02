@@ -156,7 +156,9 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
         setScreen('confirm')
         if (navigator.vibrate) navigator.vibrate([30,50,30])
       } else {
-        setError(d.error || 'Error procesando voz')
+        setError(d.code === 'API_KEY_INVALID'
+          ? 'API key no configurada — contacta al administrador'
+          : d.error || 'Error procesando voz')
         setScreen('error')
       }
     } catch {
