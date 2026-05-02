@@ -65,9 +65,9 @@ function buildStarTicket(job: {
 // ── GET — La impresora pregunta: "¿hay trabajo?" ─────────────
 export async function GET(
   req: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
-  const { deviceId } = params;
+  const { deviceId } = await params;
   const token = req.nextUrl.searchParams.get('token');
 
   // Si viene con token → la impresora pide el contenido del job
@@ -149,7 +149,7 @@ export async function GET(
 // ── POST — La impresora confirma que ha impreso ──────────────
 export async function POST(
   req: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
   const body = await req.json().catch(() => ({}));
   const token = body.jobToken ?? req.nextUrl.searchParams.get('token');

@@ -18,20 +18,11 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerClient()
 
-    // 0. Load active carta so BRAIN knows the real menu
-    const { data: cartaData } = await supabase
-      .from('productos')
-      .select('id, nombre, precio, categoria')
-      .eq('activo', true)
-      .order('categoria')
-      .order('nombre')
-    const carta = cartaData ?? []
-
     // 1. EAR: Whisper transcribes audio
     const { texto, latencia_ms: latenciaEar } = await transcribir(audio)
 
-    // 2. BRAIN: Claude Haiku parses with real menu context
-    const brainResult = await parsearComanda(texto, carta)
+    // 2. BRAIN: Claude Haiku parses with real menu context (fetched inside brain.ts)
+    const brainResult = await parsearComanda(texto)
 
     // 3. COURIER: Find the table by code
     const { data: mesa } = await supabase
