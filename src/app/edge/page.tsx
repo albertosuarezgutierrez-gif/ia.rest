@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import ManualComanda from '@/components/ManualComanda'
 import { useProductos86 } from '@/hooks/useRealtime'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
@@ -46,7 +47,14 @@ function WaveBars({ active }: { active: boolean }) {
 
 export default function EdgePage() {
   const { session, checking } = useAuth()
+  const [modoManual, setModoManual] = useState(false)
   const [screen, setScreen] = useState<Screen>('idle')
+  // Auto-switch to manual mode on tablet/desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setModoManual(true)
+    }
+  }, [])
   const [transcript, setTranscript] = useState('')
   const [brain, setBrain] = useState<BrainResult|null>(null)
   const [error, setError] = useState('')
@@ -70,7 +78,14 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   turnoId: string|null
   setTurnoId: (id:string|null) => void
 }) {
+  const [modoManual, setModoManual] = useState(false)
   const [screen, setScreen] = useState<Screen>('idle')
+  // Auto-switch to manual mode on tablet/desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setModoManual(true)
+    }
+  }, [])
   const [transcript, setTranscript] = useState('')
   const [brain, setBrain] = useState<BrainResult|null>(null)
   const [error, setError] = useState('')
@@ -204,6 +219,16 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
     }
   }
 
+  if (modoManual && session) {
+    return (
+      <ManualComanda
+        session={session}
+        onSent={() => {}}
+        onVoiceMode={() => setModoManual(false)}
+      />
+    )
+  }
+
   return (
     <div style={{height:'100dvh',background:C.bg,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:SN}}>
       <style>{`
@@ -257,7 +282,13 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
                 INSTALAR
               </button>
             )}
-            <button onClick={logout}
+            <button
+            onPointerDown={() => setModoManual(m => !m)}
+            style={{fontFamily:"'Inter Tight',system-ui,sans-serif",fontSize:10,fontWeight:600,letterSpacing:'.04em',color:modoManual?'#D9442B':'#8D8270',background:'transparent',border:`1px solid ${modoManual?'#D9442B':'#2F2820'}`,borderRadius:3,padding:'3px 8px',cursor:'pointer'}}
+          >
+            {modoManual ? 'VOZ' : 'MANUAL'}
+          </button>
+          <button onClick={logout}
               style={{fontFamily:SN,fontSize:10,fontWeight:600,color:C.fg3,background:'transparent',
                 border:`1px solid ${C.rS}`,borderRadius:3,padding:'3px 8px',cursor:'pointer'}}>
               Salir
