@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ia.rest · Manual Completo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap"/>
+<style>
+/* ============================================================
+   ia.rest · Manual Completo · Todos los perfiles
+   ============================================================ */
+
+:root {
+  --paper:        #F6F1E7;
+  --paper-2:      #EFE7D6;
+  --paper-3:      #E5DAC2;
+  --bone:         #FBF8F1;
+  --ink:          #1A1714;
+  --ink-2:        #3A332C;
+  --ink-3:        #6B5F52;
+  --ink-4:        #9A8D7C;
+  --rule:         #D8CDB6;
+  --rule-strong:  #B8A98B;
+  --vermilion:    #D9442B;
+  --vermilion-deep: #A8311E;
+  --vermilion-soft: #F4D8CF;
+  --amber:        #E8A33B;
+  --amber-soft:   #F7E3B6;
+  --signal:       #2B6A6E;
+  --signal-soft:  #C9DDDD;
+  --green:        #3F7D44;
+  --green-soft:   #D4E4D2;
+  --dark-bg:      #14110E;
+  --dark-bg-elev: #1F1A15;
+  --dark-fg:      #F6F1E7;
+  --dark-fg-2:    #C9BFAA;
+  --dark-fg-3:    #8D8270;
+  --dark-rule:    #2F2820;
+
+  --font-sans:  "Inter Tight", system-ui, sans-serif;
+  --font-serif: "Newsreader", Georgia, serif;
+  --font-mono:  "JetBrains Mono", monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ─── SIDEBAR ────────────────────────────────────────────── */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 260px;
+  background: var(--ink);
+  color: var(--dark-fg);
+  overflow-y: auto;
+  z-index: 100;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--dark-rule);
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--dark-rule); border-radius: 2px; }
+
+.sidebar-brand {
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--dark-rule);
+  display: flex; align-items: center; gap: 12px;
+}
+.sidebar-brand svg { flex: 0 0 auto; }
+.sidebar-brand .name { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+.sidebar-brand .name .dot { color: var(--vermilion); }
+.sidebar-brand .tag { font-family: var(--font-mono); font-size: 9px; color: var(--dark-fg-3); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-top: 2px; }
+
+.nav-group { padding: 20px 0 4px; }
+.nav-group-label {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--dark-fg-3); padding: 0 24px 8px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 24px; font-size: 13px; color: var(--dark-fg-2);
+  text-decoration: none; transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover { background: var(--dark-bg-elev); color: var(--dark-fg); border-left-color: var(--dark-rule); }
+.nav-item.active { background: rgba(217,68,43,0.12); color: var(--dark-fg); border-left-color: var(--vermilion); }
+.nav-item .badge {
+  margin-left: auto; font-family: var(--font-mono); font-size: 8px;
+  padding: 2px 6px; border-radius: 3px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.badge-red   { background: rgba(217,68,43,0.2); color: var(--vermilion); }
+.badge-amber { background: rgba(232,163,59,0.2); color: var(--amber); }
+.badge-teal  { background: rgba(43,106,110,0.2); color: #5BAAAF; }
+.badge-green { background: rgba(63,125,68,0.2); color: #5BA363; }
+
+.sidebar-footer {
+  margin-top: auto; padding: 16px 24px;
+  border-top: 1px solid var(--dark-rule);
+  font-family: var(--font-mono); font-size: 9px; color: var(--dark-fg-3);
+  letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.6;
+}
+
+/* ─── MAIN ───────────────────────────────────────────────── */
+.main {
+  margin-left: 260px;
+  min-height: 100vh;
+}
+
+/* ─── HERO COVER ─────────────────────────────────────────── */
+.cover {
+  background: var(--ink);
+  color: var(--dark-fg);
+  padding: 80px 72px 88px;
+  position: relative;
+  overflow: hidden;
+}
+.cover::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle at 70% 50%, rgba(217,68,43,0.08) 0%, transparent 60%),
+                    radial-gradient(circle at 30% 80%, rgba(43,106,110,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.cover-eyebrow {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--vermilion);
+  display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+}
+.cover-eyebrow .pulse {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--vermilion);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+.cover h1 {
+  font-family: var(--font-serif); font-size: 72px; line-height: 1.0;
+  letter-spacing: -0.025em; font-weight: 500; color: var(--dark-fg);
+  margin-bottom: 20px; max-width: 800px;
+}
+.cover h1 em { color: var(--vermilion); font-style: italic; }
+.cover .sub {
+  font-family: var(--font-serif); font-size: 20px; line-height: 1.5;
+  color: var(--dark-fg-2); max-width: 640px; margin-bottom: 48px;
+}
+
+.cover-roles {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.cover-role {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 4px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--dark-rule);
+  background: var(--dark-bg-elev); color: var(--dark-fg-2);
+}
+.cover-role .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ─── SECTIONS ───────────────────────────────────────────── */
+.section {
+  padding: 72px 72px;
+  border-bottom: 1px solid var(--rule);
+  scroll-margin-top: 52px;
+}
+.section:last-child { border-bottom: none; }
+
+/* fix anchor scroll offset for cover and any div with id */
+.cover, [id] { scroll-margin-top: 52px; }
+
+.section-eyebrow {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--vermilion);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.section-eyebrow .num {
+  background: var(--vermilion); color: var(--bone);
+  width: 18px; height: 18px; border-radius: 3px;
+  font-size: 9px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+}
+
+.section h2 {
+  font-family: var(--font-serif); font-size: 48px; font-weight: 500;
+  letter-spacing: -0.022em; line-height: 1.05; color: var(--ink);
+  margin-bottom: 14px; max-width: 780px;
+}
+.section h2 em { color: var(--vermilion); font-style: italic; }
+
+.section-lead {
+  font-family: var(--font-serif); font-size: 19px; line-height: 1.5;
+  color: var(--ink-3); max-width: 700px; margin-bottom: 48px;
+}
+
+/* role header */
+.role-header {
+  display: flex; align-items: flex-start; gap: 24px;
+  padding: 28px 32px; border-radius: 8px; margin-bottom: 40px;
+  border: 1px solid var(--rule);
+}
+.role-header.dark-theme {
+  background: var(--ink); border-color: var(--dark-rule);
+}
+.role-icon {
+  width: 52px; height: 52px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; flex: 0 0 auto;
+}
+.role-header .info .role-name {
+  font-family: var(--font-sans); font-size: 20px; font-weight: 700;
+  letter-spacing: -0.01em; margin-bottom: 4px;
+}
+.role-header .info .role-desc {
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.5;
+  max-width: 560px;
+}
+.role-header.dark-theme .role-name { color: var(--dark-fg); }
+.role-header.dark-theme .role-desc { color: var(--dark-fg-2); }
+
+/* two column */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* cards */
+.card {
+  background: var(--bone); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 24px;
+}
+.card.dark {
+  background: var(--dark-bg-elev); border-color: var(--dark-rule);
+  color: var(--dark-fg);
+}
+.card.accent {
+  background: var(--vermilion); border-color: var(--vermilion-deep); color: var(--bone);
+}
+.card.soft-green { background: var(--green-soft); border-color: rgba(63,125,68,0.25); }
+.card.soft-amber { background: var(--amber-soft); border-color: rgba(232,163,59,0.25); }
+.card.soft-red   { background: var(--vermilion-soft); border-color: rgba(217,68,43,0.25); }
+
+.card .card-tag {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 12px;
+}
+.card .card-title {
+  font-family: var(--font-sans); font-size: 17px; font-weight: 700;
+  letter-spacing: -0.01em; line-height: 1.2; margin-bottom: 8px;
+}
+.card .card-body { font-size: 13px; line-height: 1.55; color: var(--ink-3); }
+.card.dark .card-body { color: var(--dark-fg-2); }
+.card.accent .card-tag { color: rgba(255,255,255,0.7); }
+.card.accent .card-title { color: var(--bone); }
+.card.accent .card-body { color: rgba(255,255,255,0.85); }
+
+/* step list */
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step {
+  display: flex; gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.step:last-child { border-bottom: none; }
+.step-num {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--ink); color: var(--bone);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
+}
+.step-body .step-title {
+  font-family: var(--font-sans); font-size: 15px; font-weight: 700;
+  color: var(--ink); margin-bottom: 4px; letter-spacing: -0.005em;
+}
+.step-body .step-desc {
+  font-size: 13px; line-height: 1.55; color: var(--ink-3);
+}
+.step-body .step-desc .mono-tag {
+  font-family: var(--font-mono); font-size: 11px; background: var(--paper-2);
+  border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px;
+  color: var(--ink-2); white-space: nowrap;
+}
+
+/* terminal / code block */
+.terminal {
+  background: var(--dark-bg); border: 1px solid var(--dark-rule);
+  border-radius: 8px; padding: 20px 24px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
+  color: var(--dark-fg-2);
+}
+.terminal .t-line { display: flex; gap: 12px; }
+.terminal .t-time { color: var(--dark-fg-3); font-size: 11px; flex: 0 0 60px; }
+.terminal .t-agent { color: var(--vermilion); font-weight: 700; flex: 0 0 72px; font-size: 11px; letter-spacing: 0.06em; }
+.terminal .t-val { color: var(--dark-fg); flex: 1; }
+.terminal .t-ok { color: #5BA363; font-size: 10px; letter-spacing: 0.08em; }
+.terminal .t-arrow { color: var(--vermilion); font-size: 11px; padding-left: 72px; letter-spacing: 0.06em; }
+.terminal .t-comment { color: var(--dark-fg-3); font-size: 11px; }
+
+/* table */
+.table-wrap { overflow-x: auto; margin-top: 24px; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px; line-height: 1.45;
+}
+thead { background: var(--paper-2); }
+th {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+  padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--rule-strong);
+}
+td {
+  padding: 11px 16px; border-bottom: 1px solid var(--rule);
+  color: var(--ink-2); vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--paper-2); }
+td .code-tag {
+  font-family: var(--font-mono); font-size: 11px; background: var(--paper-2);
+  border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; color: var(--ink-2);
+}
+td .pill {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.pill-red    { background: var(--vermilion-soft); color: var(--vermilion-deep); }
+.pill-amber  { background: var(--amber-soft); color: #9A6B10; }
+.pill-green  { background: var(--green-soft); color: #2A5530; }
+.pill-teal   { background: var(--signal-soft); color: var(--signal); }
+.pill-ink    { background: var(--paper-2); color: var(--ink-3); }
+
+/* alert / callout */
+.callout {
+  display: flex; gap: 16px; padding: 16px 20px;
+  border-radius: 6px; border: 1px solid; margin: 24px 0;
+}
+.callout-icon { flex: 0 0 auto; font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; padding-top: 2px; }
+.callout-body { font-size: 13px; line-height: 1.55; }
+.callout-body strong { font-weight: 700; display: block; margin-bottom: 2px; }
+.callout.info   { background: var(--signal-soft); border-color: rgba(43,106,110,0.3); color: #1A4044; }
+.callout.warn   { background: var(--amber-soft); border-color: rgba(232,163,59,0.3); color: #6B4A10; }
+.callout.danger { background: var(--vermilion-soft); border-color: rgba(217,68,43,0.3); color: #6B1F12; }
+.callout.tip    { background: var(--green-soft); border-color: rgba(63,125,68,0.3); color: #1F4024; }
+
+/* kds card */
+.kds-demo {
+  background: #0A0806; border: 1px solid #2A2018;
+  border-radius: 6px; overflow: hidden;
+}
+.kds-header {
+  background: #14110E; padding: 10px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--dark-fg-3);
+  border-bottom: 1px solid #2A2018;
+}
+.kds-tickets { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 10px; }
+.kds-ticket {
+  border-radius: 4px; overflow: hidden;
+  font-family: var(--font-mono); font-size: 12px;
+}
+.kds-ticket-header {
+  padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;
+}
+.kds-ticket-items { padding: 8px 10px; }
+.kds-ticket-item { padding: 3px 0; display: flex; justify-content: space-between; color: #C9BFAA; font-size: 12px; }
+.kds-ticket-item .qty { color: var(--dark-fg); font-weight: 700; }
+.kds-ticket.verde .kds-ticket-header { background: #1A2E1C; color: #5BA363; }
+.kds-ticket.verde { background: #111A12; }
+.kds-ticket.amber-t .kds-ticket-header { background: #2E2210; color: #E8A33B; }
+.kds-ticket.amber-t { background: #1A1408; }
+.kds-ticket.rojo .kds-ticket-header { background: #2E1210; color: #E85B3B; }
+.kds-ticket.rojo { background: #1A0A08; }
+
+/* horizontal flow */
+.flow {
+  display: flex; align-items: center; gap: 0; margin: 32px 0;
+  overflow-x: auto;
+}
+.flow-step {
+  flex: 1; text-align: center; padding: 16px 12px;
+  background: var(--bone); border: 1px solid var(--rule);
+}
+.flow-step:first-child { border-radius: 8px 0 0 8px; }
+.flow-step:last-child  { border-radius: 0 8px 8px 0; }
+.flow-arrow {
+  flex: 0 0 auto; color: var(--vermilion);
+  font-family: var(--font-mono); font-size: 16px; padding: 0 4px;
+  position: relative; z-index: 1;
+}
+.flow-step .fs-agent {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--vermilion);
+  margin-bottom: 4px;
+}
+.flow-step .fs-label {
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600; color: var(--ink);
+}
+.flow-step .fs-time {
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-4); margin-top: 3px;
+}
+
+/* dividers */
+.h3 {
+  font-family: var(--font-sans); font-size: 18px; font-weight: 700;
+  letter-spacing: -0.01em; color: var(--ink); margin: 36px 0 16px;
+}
+.rule-line { border: none; border-top: 1px solid var(--rule); margin: 32px 0; }
+
+/* jerga table */
+.jerga-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 20px;
+}
+.jerga-item {
+  background: var(--dark-bg-elev); border: 1px solid var(--dark-rule);
+  border-radius: 6px; padding: 14px 16px;
+}
+.jerga-item .j-dicho {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  color: var(--dark-fg); margin-bottom: 6px; letter-spacing: -0.01em;
+}
+.jerga-item .j-map {
+  font-size: 11px; color: var(--dark-fg-3); display: flex; align-items: center; gap: 6px;
+}
+.jerga-item .j-map .arr { color: var(--vermilion); font-family: var(--font-mono); }
+
+/* pricetable */
+.price-grid {
+  display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-top: 24px;
+}
+.price-card {
+  border: 1px solid var(--rule); border-radius: 8px; padding: 20px 16px;
+  background: var(--bone); display: flex; flex-direction: column; gap: 10px;
+}
+.price-card.featured {
+  background: var(--ink); border-color: var(--ink); color: var(--dark-fg);
+}
+.price-card .pc-plan {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+}
+.price-card.featured .pc-plan { color: var(--dark-fg-3); }
+.price-card .pc-price {
+  font-family: var(--font-serif); font-size: 36px; font-weight: 500;
+  letter-spacing: -0.02em; line-height: 1; color: var(--ink);
+}
+.price-card.featured .pc-price { color: var(--dark-fg); }
+.price-card .pc-price sup { font-size: 16px; }
+.price-card .pc-price small { font-size: 13px; color: var(--ink-3); font-family: var(--font-sans); font-weight: 400; }
+.price-card.featured .pc-price small { color: var(--dark-fg-3); }
+.price-card .pc-tagline { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+.price-card.featured .pc-tagline { color: var(--dark-fg-2); }
+.price-card .pc-features { font-size: 11px; color: var(--ink-3); line-height: 1.6; list-style: none; padding: 0; border-top: 1px solid var(--rule); padding-top: 10px; }
+.price-card.featured .pc-features { color: var(--dark-fg-2); border-top-color: var(--dark-rule); }
+
+/* pin list */
+.pin-table {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 16px;
+}
+.pin-item {
+  background: var(--dark-bg-elev); border: 1px solid var(--dark-rule);
+  border-radius: 6px; padding: 12px 14px;
+}
+.pin-item .p-pin {
+  font-family: var(--font-mono); font-size: 20px; font-weight: 700;
+  color: var(--dark-fg); letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.pin-item .p-role { font-size: 11px; color: var(--dark-fg-3); }
+.pin-item .p-user { font-size: 12px; color: var(--dark-fg-2); font-weight: 600; }
+
+/* ─── TOP BAR ─────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(246,241,231,0.95); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+  padding: 14px 72px; display: flex; align-items: center; gap: 16px;
+}
+.topbar .breadcrumb {
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-3);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.topbar .breadcrumb .sep { color: var(--rule-strong); }
+.topbar .doc-version {
+  margin-left: auto; font-family: var(--font-mono); font-size: 10px;
+  color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.topbar .doc-status {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--green-soft); color: var(--green); border-radius: 3px;
+  padding: 2px 7px;
+}
+
+/* responsive note */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .cover { padding: 40px 24px 48px; }
+  .cover h1 { font-size: 40px; }
+  .section { padding: 48px 24px; }
+  .section h2 { font-size: 32px; }
+  .two-col, .three-col, .jerga-grid, .price-grid, .pin-table, .kds-tickets { grid-template-columns: 1fr; }
+  .topbar { padding: 12px 24px; }
+  .cover-roles { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ──────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <svg width="36" height="36" viewBox="0 0 56 56">
+      <rect width="56" height="56" rx="8" fill="#1F1A15"/>
+      <g transform="translate(11,14)">
+        <rect x="0"  y="11" width="3" height="6"  rx="1.5" fill="#F6F1E7"/>
+        <rect x="6"  y="6"  width="3" height="16" rx="1.5" fill="#F6F1E7"/>
+        <rect x="12" y="0"  width="3" height="28" rx="1.5" fill="#D9442B"/>
+        <rect x="18" y="3"  width="3" height="22" rx="1.5" fill="#F6F1E7"/>
+        <rect x="24" y="9"  width="3" height="10" rx="1.5" fill="#F6F1E7"/>
+        <rect x="30" y="12" width="3" height="4"  rx="1.5" fill="#F6F1E7"/>
+      </g>
+    </svg>
+    <div>
+      <div class="name">ia<span class="dot">.</span>rest</div>
+      <span class="tag">Manual completo · 2026</span>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Introducción</div>
+    <a class="nav-item active" href="#intro">Qué es ia.rest</a>
+    <a class="nav-item" href="#pipeline">Cómo funciona</a>
+    <a class="nav-item" href="#agentes">Los cinco agentes</a>
+    <a class="nav-item" href="#acceso">Acceso y PINs</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Por perfil</div>
+    <a class="nav-item" href="#camarero">
+      Camarero
+      <span class="badge badge-red">EDGE</span>
+    </a>
+    <a class="nav-item" href="#cocina">
+      Cocina
+      <span class="badge badge-amber">KDS</span>
+    </a>
+    <a class="nav-item" href="#admin">
+      Admin / Barra
+      <span class="badge badge-teal">HUB</span>
+    </a>
+    <a class="nav-item" href="#owner">
+      Dueño
+      <span class="badge badge-green">OWNER</span>
+    </a>
+    <a class="nav-item" href="#super">
+      Super admin
+      <span class="badge badge-ink" style="background:rgba(255,255,255,0.07);color:#8D8270">SUPER</span>
+    </a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Operativa</div>
+    <a class="nav-item" href="#jerga">Diccionario de jerga</a>
+    <a class="nav-item" href="#alergenos">Alérgenos (EU 1169)</a>
+    <a class="nav-item" href="#86">86 · Producto agotado</a>
+    <a class="nav-item" href="#impresoras">Impresoras y Courier</a>
+    <a class="nav-item" href="#turnos">Turnos y apertura</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Negocio</div>
+    <a class="nav-item" href="#analytics">Analytics y métricas</a>
+    <a class="nav-item" href="#facturacion">Facturación Verifactu</a>
+    <a class="nav-item" href="#precios">Planes y precios</a>
+    <a class="nav-item" href="#alertas">Alertas de ritmo</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Referencia</div>
+    <a class="nav-item" href="#faq">Preguntas frecuentes</a>
+    <a class="nav-item" href="#errores">Errores comunes</a>
+  </div>
+
+  <div class="sidebar-footer">
+    v2.0 · Mayo 2026<br/>
+    ia.rest · Madrid<br/>
+    La capa invisible
+  </div>
+</aside>
+
+<!-- ─── MAIN ─────────────────────────────────────────────── -->
+<main class="main">
+
+  <div class="topbar">
+    <div class="breadcrumb">
+      <span>ia.rest</span><span class="sep">·</span><span>Manual del sistema</span>
+    </div>
+    <div class="doc-status">Vigente</div>
+    <div class="doc-version">Mayo 2026 · Rev 2.0</div>
+  </div>
+
+  <!-- ══ PORTADA ══════════════════════════════════════════ -->
+  <div class="cover" id="intro">
+    <div class="cover-eyebrow">
+      <span class="pulse"></span>
+      Manual del sistema · Todos los perfiles
+    </div>
+    <h1>La <em>capa invisible</em><br/>que mueve la sala.</h1>
+    <p class="sub">Este documento es la guía definitiva de ia.rest: cómo funciona, quién hace qué, y cómo sacarle el máximo partido desde cualquier rol del restaurante.</p>
+    <div class="cover-roles">
+      <div class="cover-role"><span class="dot" style="background:#D9442B"></span>Camarero</div>
+      <div class="cover-role"><span class="dot" style="background:#E8A33B"></span>Cocina</div>
+      <div class="cover-role"><span class="dot" style="background:#2B6A6E"></span>Admin / Barra</div>
+      <div class="cover-role"><span class="dot" style="background:#3F7D44"></span>Dueño</div>
+      <div class="cover-role"><span class="dot" style="background:#9A8D7C"></span>Super admin</div>
+    </div>
+  </div>
+
+  <!-- ══ PIPELINE ═════════════════════════════════════════ -->
+  <section class="section" id="pipeline">
+    <div class="section-eyebrow"><span class="num">01</span>Cómo funciona</div>
+    <h2>Voz → datos → <em>ticket</em> en 0,42 segundos.</h2>
+    <p class="section-lead">ia.rest no es un POS con micrófono. Es una arquitectura de cuatro capas que convierte aire en comandas estructuradas sin que el camarero toque nada.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="fs-agent">EAR</div>
+        <div class="fs-label">Camarero habla</div>
+        <div class="fs-time">PTT · 0ms</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fs-agent">EAR</div>
+        <div class="fs-label">Groq Whisper</div>
+        <div class="fs-time">Transcripción · ~120ms</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="background:var(--vermilion);border-color:var(--vermilion-deep);">
+        <div class="fs-agent" style="color:rgba(255,255,255,0.7)">BRAIN</div>
+        <div class="fs-label" style="color:#fff">Claude Haiku</div>
+        <div class="fs-time" style="color:rgba(255,255,255,0.7)">Mapeo · ~180ms</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fs-agent">COURIER</div>
+        <div class="fs-label">Supabase → KDS</div>
+        <div class="fs-time">Entrega · ~80ms</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="fs-agent">VOX</div>
+        <div class="fs-label">Confirmación voz</div>
+        <div class="fs-time">ACK · ~40ms</div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-icon">INFO</div>
+      <div class="callout-body"><strong>Latencia total objetivo: &lt;0,5 segundos</strong> Medido desde que el camarero suelta el botón PTT hasta que el ticket aparece en pantalla de cocina y se dispara la impresora térmica.</div>
+    </div>
+
+    <div class="h3">Las cuatro capas</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag" style="color:var(--vermilion)">Capa 01 · Edge (móvil)</div>
+        <div class="card-title">El bolsillo del camarero</div>
+        <div class="card-body">App PWA en el móvil Android del camarero. Un botón PTT, una onda de voz, nada más. Sin menús, sin tecleo, sin mirar la pantalla durante el servicio.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--vermilion)">Capa 02 · Inteligencia (cloud)</div>
+        <div class="card-title">BRAIN: jerga real, datos limpios</div>
+        <div class="card-body">Groq Whisper transcribe. Claude Haiku mapea: "manchado", "marchar segundos", "86 las croquetas" → comandas estructuradas con sección, formato, mesa y cantidad.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--signal)">Capa 03 · Gestión (tablet)</div>
+        <div class="card-title">Control Hub de barra</div>
+        <div class="card-body">Tablet o PC del responsable. Planta en vivo, cola de comandas, stream de transcripciones, analytics de ritmo. Densidad alta — para operadores entrenados.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--amber)">Capa 04 · Ejecución (IoT)</div>
+        <div class="card-title">COURIER: tickets físicos</div>
+        <div class="card-body">Impresoras ESC/POS en cocina, barra y sala. MQTT/TCP 9100. El ticket físico es la prueba. Sin conexión, se encola y reintenta automáticamente.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ AGENTES ═══════════════════════════════════════════ -->
+  <section class="section" id="agentes">
+    <div class="section-eyebrow"><span class="num">02</span>Los cinco agentes</div>
+    <h2>Cinco <em>nombres</em> que hay que conocer.</h2>
+    <p class="section-lead">Cada agente tiene un rol único. Se habla de ellos por nombre en producto, en logs y en documentación. Siempre en mayúsculas.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Agente</th><th>Función principal</th><th>Tecnología</th><th>Dónde se ve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>EAR</strong></td>
+            <td>Captura de voz · PTT · Transcripción</td>
+            <td><span class="code-tag">Groq Whisper large-v3-turbo</span></td>
+            <td>App camarero (Edge)</td>
+          </tr>
+          <tr>
+            <td><strong>BRAIN</strong></td>
+            <td>Mapeo de jerga → productos. Enrutamiento por sección.</td>
+            <td><span class="code-tag">Claude Haiku · LLM</span></td>
+            <td>Cloud — invisible al usuario</td>
+          </tr>
+          <tr>
+            <td><strong>VOX</strong></td>
+            <td>Confirmación de voz al camarero. TTS del ACK.</td>
+            <td><span class="code-tag">TTS synthesis</span></td>
+            <td>Auricular / altavoz móvil</td>
+          </tr>
+          <tr>
+            <td><strong>COURIER</strong></td>
+            <td>Entrega a KDS, impresoras ESC/POS y displays</td>
+            <td><span class="code-tag">Supabase Realtime · TCP 9100</span></td>
+            <td>KDS cocina · impresoras</td>
+          </tr>
+          <tr>
+            <td><strong>ANALYST</strong></td>
+            <td>Métricas de ritmo, analytics, alertas</td>
+            <td><span class="code-tag">Supabase · cron */2min</span></td>
+            <td>Hub admin · Vista owner</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ ACCESO Y PINES ════════════════════════════════════ -->
+  <section class="section" id="acceso">
+    <div class="section-eyebrow"><span class="num">03</span>Acceso y PINs</div>
+    <h2>Cada rol, su <em>PIN</em>.</h2>
+    <p class="section-lead">El acceso es por PIN de 4 dígitos ligado al restaurante. No hay usuario/contraseña para el personal de sala — se entra en segundos.</p>
+
+    <div class="callout warn">
+      <div class="callout-icon">OJO</div>
+      <div class="callout-body"><strong>Entorno Demo (restaurante 00000000-0001)</strong> Usa estos PINs para formacion y pruebas. Los PINs de produccion se asignan por el dueno desde /owner.</div>
+    </div>
+
+    <div class="h3">PINs del entorno Demo</div>
+    <div class="pin-table">
+      <div class="pin-item">
+        <div class="p-pin">0000</div>
+        <div class="p-role">Admin / Hub</div>
+        <div class="p-user">Acceso administrador</div>
+      </div>
+      <div class="pin-item">
+        <div class="p-pin">2026</div>
+        <div class="p-role">Owner</div>
+        <div class="p-user">Alberto (propietario)</div>
+      </div>
+      <div class="pin-item">
+        <div class="p-pin">1111</div>
+        <div class="p-role">Owner-admin</div>
+        <div class="p-user">Acceso dual</div>
+      </div>
+      <div class="pin-item">
+        <div class="p-pin">1234</div>
+        <div class="p-role">Camarero</div>
+        <div class="p-user">Perfil camarero</div>
+      </div>
+      <div class="pin-item">
+        <div class="p-pin">5678</div>
+        <div class="p-role">Camarero</div>
+        <div class="p-user">Ana</div>
+      </div>
+      <div class="pin-item">
+        <div class="p-pin">9999</div>
+        <div class="p-role">Super admin</div>
+        <div class="p-user">Alberto</div>
+      </div>
+    </div>
+
+    <div class="h3">Rutas del sistema</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Ruta</th><th>Perfil</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td><span class="code-tag">/login</span></td><td>Todos</td><td>Pantalla de PIN. Redirige automáticamente según rol.</td></tr>
+          <tr><td><span class="code-tag">/edge</span></td><td>Camarero</td><td>App PTT. Push-to-talk, confirmacion voz, cola de mesas.</td></tr>
+          <tr><td><span class="code-tag">/kds?seccion=X</span></td><td>Cocina</td><td>Kitchen Display System. Un KDS por sección.</td></tr>
+          <tr><td><span class="code-tag">/cocina</span></td><td>Cocinero simple</td><td>Vista simplificada de comandas sin gestión.</td></tr>
+          <tr><td><span class="code-tag">/hub</span></td><td>Admin / Barra</td><td>Control Hub completo: planta, cola, métricas.</td></tr>
+          <tr><td><span class="code-tag">/owner</span></td><td>Dueño</td><td>Analytics, facturación Verifactu, configuración.</td></tr>
+          <tr><td><span class="code-tag">/super</span></td><td>Super admin</td><td>Gestión multi-tenant. Solo para ia.rest team.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ CAMARERO ══════════════════════════════════════════ -->
+  <section class="section" id="camarero">
+    <div class="section-eyebrow"><span class="num">04</span>Perfil · Camarero</div>
+    <h2>Hablar es <em>suficiente</em>.</h2>
+    <p class="section-lead">El camarero nunca toca una pantalla durante el servicio. Solo el botón PTT, la voz, y el auricular que confirma.</p>
+
+    <div class="role-header dark-theme">
+      <div class="role-icon" style="background:rgba(217,68,43,0.15);color:var(--vermilion)">EAR</div>
+      <div class="info">
+        <div class="role-name">Camarero · App Edge (móvil)</div>
+        <div class="role-desc">Accede por PIN desde el móvil a /edge. Trabaja con el móvil en el bolsillo o en la mano. La confirmación de comanda llega por voz al auricular — sin mirar la pantalla.</div>
+      </div>
+    </div>
+
+    <div class="h3">Flujo de turno completo</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Fichar entrada al turno</div>
+          <div class="step-desc">Abrir la app, introducir PIN de 4 dígitos en <span class="mono-tag">/login</span>. El sistema asigna el turno activo automáticamente y muestra las mesas asignadas.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Tomar comanda — PTT</div>
+          <div class="step-desc">Mantener pulsado el botón rojo (PTT). Hablar la comanda en lenguaje natural: <span class="mono-tag">"mesa cuatro, dos cañas y una de bravas"</span>. Soltar el botón al terminar.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Confirmación automática por voz</div>
+          <div class="step-desc">VOX dice el resumen en el auricular: <span class="mono-tag">"T04 — 2 cañas, 1 bravas — enviado"</span>. Si algo es incorrecto, se puede anular con un nuevo PTT: <span class="mono-tag">"anular última comanda"</span>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Marchar platos</div>
+          <div class="step-desc">Cuando hay que sacar los segundos: <span class="mono-tag">"marchar segundos mesa cuatro"</span>. COURIER envía la orden al KDS y a la impresora de cocina.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Pedir la cuenta</div>
+          <div class="step-desc">Decir <span class="mono-tag">"cuenta mesa cuatro"</span>. El sistema genera el ticket de cierre, lo manda a impresora de sala y notifica al KDS con estado CUENTA.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">Liberar mesa</div>
+          <div class="step-desc">Tras cobrar: <span class="mono-tag">"mesa cuatro libre"</span>. La mesa pasa a estado LIBRE en el plano del Control Hub y queda disponible para la siguiente ocupación.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">TIP</div>
+      <div class="callout-body"><strong>El PTT no necesita silencio total.</strong> Whisper está entrenado para funcionar en entornos ruidosos de hostelería. Habla con normalidad, no hace falta acercarse al micrófono.</div>
+    </div>
+
+    <div class="h3">Comandas especiales</div>
+    <div class="three-col">
+      <div class="card soft-red">
+        <div class="card-tag" style="color:var(--vermilion-deep)">86 · Agotado</div>
+        <div class="card-title">Avisar que un producto se acabó</div>
+        <div class="card-body">Di <strong>"86 las croquetas"</strong> o <strong>"sin croquetas"</strong>. BRAIN marca el producto como agotado en la carta y avisa al Control Hub en tiempo real.</div>
+      </div>
+      <div class="card soft-amber">
+        <div class="card-tag" style="color:#9A6B10">Alérgenos</div>
+        <div class="card-title">Informar alérgenos al BRAIN</div>
+        <div class="card-body">Di <strong>"mesa ocho, alergia al gluten"</strong>. El sistema registra la alerta, la asocia a la mesa y avisa a cocina al imprimir el ticket.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--ink-3)">Notas</div>
+        <div class="card-title">Modificadores y notas</div>
+        <div class="card-body">Di <strong>"un filete muy hecho, sin sal"</strong>. BRAIN extrae el modificador y lo añade al item de la comanda como nota de cocina.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ COCINA ════════════════════════════════════════════ -->
+  <section class="section" id="cocina">
+    <div class="section-eyebrow"><span class="num">05</span>Perfil · Cocina</div>
+    <h2>Ver, hacer, <em>marcar</em>.</h2>
+    <p class="section-lead">La cocina no habla con ia.rest: lo recibe. El KDS muestra los tickets en tiempo real ordenados por sección y edad. Cero papel, cero llamadas de sala.</p>
+
+    <div class="role-header dark-theme">
+      <div class="role-icon" style="background:rgba(232,163,59,0.15);color:var(--amber)">KDS</div>
+      <div class="info">
+        <div class="role-name">Cocina · Kitchen Display System</div>
+        <div class="role-desc">Pantalla de 24"+ montada en la pared. Acceso por PIN en /kds?seccion=calientes (o la sección correspondiente). Legible a 3 metros. Sin teclado, sin ratón — solo tocar.</div>
+      </div>
+    </div>
+
+    <div class="h3">Aspecto del KDS</div>
+    <div class="kds-demo">
+      <div class="kds-header">
+        <span>KDS · CALIENTES</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span style="color:#5BA363;font-size:9px">● VIVO</span>
+          <span>19:42:18</span>
+        </span>
+      </div>
+      <div class="kds-tickets">
+        <div class="kds-ticket verde">
+          <div class="kds-ticket-header">
+            <span style="font-weight:700">T04</span>
+            <span style="font-size:11px">2 min</span>
+          </div>
+          <div class="kds-ticket-items">
+            <div class="kds-ticket-item"><span class="qty">2×</span><span>Croquetas</span></div>
+            <div class="kds-ticket-item"><span class="qty">1×</span><span>Patatas bravas</span></div>
+          </div>
+        </div>
+        <div class="kds-ticket amber-t">
+          <div class="kds-ticket-header">
+            <span style="font-weight:700">M08</span>
+            <span style="font-size:11px">7 min</span>
+          </div>
+          <div class="kds-ticket-items">
+            <div class="kds-ticket-item"><span class="qty">1×</span><span>Solomillo MH</span></div>
+            <div class="kds-ticket-item"><span class="qty">2×</span><span>Gambas plancha</span></div>
+          </div>
+        </div>
+        <div class="kds-ticket rojo">
+          <div class="kds-ticket-header">
+            <span style="font-weight:700">B12</span>
+            <span style="font-size:11px;font-weight:700">12 min !</span>
+          </div>
+          <div class="kds-ticket-items">
+            <div class="kds-ticket-item"><span class="qty">3×</span><span>Huevos estrellados</span></div>
+            <div class="kds-ticket-item"><span class="qty">1×</span><span>Secreto ibérico</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h3">Código de colores KDS</div>
+    <div class="three-col" style="margin-top:16px">
+      <div class="card soft-green">
+        <div class="card-tag" style="color:#2A5530">Verde · Ticket nuevo</div>
+        <div class="card-title">0 — 5 minutos</div>
+        <div class="card-body">Ticket recién llegado. Tiempo dentro del objetivo. Cocinar en orden de llegada.</div>
+      </div>
+      <div class="card soft-amber">
+        <div class="card-tag" style="color:#9A6B10">Ámbar · Atención</div>
+        <div class="card-title">5 — 10 minutos</div>
+        <div class="card-body">Ticket con tiempo elevado. Prioritizar. ANALYST puede lanzar alerta al responsable.</div>
+      </div>
+      <div class="card soft-red">
+        <div class="card-tag" style="color:var(--vermilion-deep)">Rojo · Urgente</div>
+        <div class="card-title">+10 minutos</div>
+        <div class="card-body">Mesa en riesgo. El responsable recibe notificación push si hay regla de alerta activa para este umbral.</div>
+      </div>
+    </div>
+
+    <div class="h3">Acciones en el KDS (táctil)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Gesto / acción</th><th>Efecto</th></tr></thead>
+        <tbody>
+          <tr><td>Toque en ticket</td><td>Marcar como <span class="pill pill-green">listo</span> — desaparece del KDS y notifica a sala</td></tr>
+          <tr><td>Toque largo en ticket</td><td>Abrir opciones: bump parcial, añadir nota, reportar incidencia</td></tr>
+          <tr><td>Deslizar a la derecha</td><td>Mover ticket a sección adyacente (ej. calientes → postres)</td></tr>
+          <tr><td>Botón "PASE"</td><td>Expediting: coordinar salida simultánea de varios tickets</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-icon">INFO</div>
+      <div class="callout-body"><strong>Secciones KDS disponibles:</strong> calientes · fríos · barra · postres · sala. Cada sección tiene su propio KDS y su propia impresora. BRAIN enruta automáticamente por la <span style="font-family:var(--font-mono);font-size:11px">seccion_id</span> del producto.</div>
+    </div>
+  </section>
+
+  <!-- ══ ADMIN / BARRA ══════════════════════════════════════ -->
+  <section class="section" id="admin">
+    <div class="section-eyebrow"><span class="num">06</span>Perfil · Admin / Barra</div>
+    <h2>El <em>mando</em> del servicio.</h2>
+    <p class="section-lead">El responsable de barra tiene visión completa en tiempo real: qué mesa pide, qué cocina hace y cuánto tardan. El Control Hub es su herramienta.</p>
+
+    <div class="role-header">
+      <div class="role-icon" style="background:var(--signal-soft);color:var(--signal)">HUB</div>
+      <div class="info">
+        <div class="role-name">Admin / Responsable de turno · Control Hub</div>
+        <div class="role-desc">Accede con PIN admin a /hub. Tablet de barra o PC fijo. Vista de planta, cola de comandas, transcripciones en vivo y métricas del servicio actual.</div>
+      </div>
+    </div>
+
+    <div class="h3">Pestañas del Control Hub</div>
+    <div class="three-col">
+      <div class="card">
+        <div class="card-tag" style="color:var(--signal)">Pestaña 1</div>
+        <div class="card-title">Tiempo real</div>
+        <div class="card-body">Plano de sala con estado de cada mesa (libre, ocupada, pendiente, cuenta). Stream de transcripciones en vivo. Alertas de ritmo. Notificaciones push si las reglas saltan.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--signal)">Pestaña 2</div>
+        <div class="card-title">Comandar manual</div>
+        <div class="card-body">Entrada de comanda por teclado si la voz falla o hay incidencia. Misma estructura que una comanda de voz: mesa, producto, cantidad, sección. Se enruta igual.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--signal)">Pestaña 3</div>
+        <div class="card-title">Gestión completa</div>
+        <div class="card-body">Cola de todas las comandas abiertas. Historial del turno. Editar o anular cualquier item. Ver la transcripción original de cada comanda para auditoría.</div>
+      </div>
+    </div>
+
+    <div class="h3">Estado de las mesas en el plano</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Estado</th><th>Color</th><th>Significado</th><th>Acción recomendada</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="pill pill-ink">LIBRE</span></td>
+            <td>Crema / sin relleno</td>
+            <td>Mesa disponible para sentar</td>
+            <td>Asignar mesa al siguiente grupo</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-teal">OCUPADA</span></td>
+            <td>Teal suave</td>
+            <td>Mesa con comensales, sin pedido abierto</td>
+            <td>Esperar primera comanda</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-amber">PENDIENTE</span></td>
+            <td>Ámbar</td>
+            <td>Comanda enviada, cocina en proceso</td>
+            <td>Monitorizar tiempo en KDS</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-green">SERVIDA</span></td>
+            <td>Verde</td>
+            <td>Todo entregado en mesa</td>
+            <td>Ofrecer postre / segunda ronda</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-red">CUENTA</span></td>
+            <td>Rojo suave</td>
+            <td>Mesa pidió la cuenta</td>
+            <td>Cobrar y liberar la mesa</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">TIP</div>
+      <div class="callout-body"><strong>Expediting — Pestaña PASE</strong> El responsable puede coordinar la salida simultánea de varios tickets desde la pestaña PASE del KDS. Útil en servicios de menú cerrado donde varios grupos comen al mismo tiempo.</div>
+    </div>
+  </section>
+
+  <!-- ══ DUEÑO ═════════════════════════════════════════════ -->
+  <section class="section" id="owner">
+    <div class="section-eyebrow"><span class="num">07</span>Perfil · Dueño</div>
+    <h2>Los <em>números</em> del negocio.</h2>
+    <p class="section-lead">El dueño accede a /owner con su PIN. Ve las métricas consolidadas, configura el restaurante, gestiona el personal y descarga facturas con QR Verifactu.</p>
+
+    <div class="role-header">
+      <div class="role-icon" style="background:var(--green-soft);color:var(--green)">OWN</div>
+      <div class="info">
+        <div class="role-name">Dueño / Propietario · Vista Owner</div>
+        <div class="role-desc">Accede con PIN owner a /owner. Puede delegar acceso admin creando PINs. Ve toda la actividad del restaurante, descarga informes, configura carta y alertas.</div>
+      </div>
+    </div>
+
+    <div class="h3">Qué puede hacer el dueño</div>
+    <div class="two-col">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">A</div>
+          <div class="step-body">
+            <div class="step-title">Analytics del negocio</div>
+            <div class="step-desc">Top-10 productos más comandados. Histograma de comandas por hora. Tiempo medio por mesa. Rotación diaria/semanal/mensual. Exportar como CSV.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">B</div>
+          <div class="step-body">
+            <div class="step-title">Gestión del personal</div>
+            <div class="step-desc">Crear, editar o revocar PINs del equipo. Asignar roles (camarero, cocina, admin). Ver historial de comandas por empleado.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">C</div>
+          <div class="step-body">
+            <div class="step-title">Configurar la carta</div>
+            <div class="step-desc">Añadir, editar o eliminar productos. Asignar sección, precio y formatos. Configurar aliases de jerga para BRAIN (ej. "manchado" → café cortado caliente).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">D</div>
+          <div class="step-body">
+            <div class="step-title">Facturación Verifactu</div>
+            <div class="step-desc">Descarga facturas con hash SHA-256 y QR AEAT desde la pestaña Facturas de /owner. El envío automático a AEAT estará activo en 2027 conforme a normativa.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-tag" style="color:var(--ink-3)">Métricas clave</div>
+          <div class="card-title">KPIs del servicio en tiempo real</div>
+          <div class="card-body" style="margin-bottom:16px">El panel de owner muestra siempre los indicadores más relevantes del turno actual y la comparativa con la semana anterior.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="padding:12px;background:var(--paper-2);border-radius:6px;text-align:center">
+              <div style="font-family:var(--font-serif);font-size:32px;font-weight:500;color:var(--vermilion);letter-spacing:-0.02em">+22%</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:4px">Rotación de mesas</div>
+            </div>
+            <div style="padding:12px;background:var(--paper-2);border-radius:6px;text-align:center">
+              <div style="font-family:var(--font-serif);font-size:32px;font-weight:500;color:var(--ink);letter-spacing:-0.02em">0,42s</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:4px">Voz → ticket</div>
+            </div>
+            <div style="padding:12px;background:var(--paper-2);border-radius:6px;text-align:center">
+              <div style="font-family:var(--font-serif);font-size:32px;font-weight:500;color:var(--green);letter-spacing:-0.02em">−4h</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:4px">Cierre por noche</div>
+            </div>
+            <div style="padding:12px;background:var(--paper-2);border-radius:6px;text-align:center">
+              <div style="font-family:var(--font-serif);font-size:32px;font-weight:500;color:var(--ink);letter-spacing:-0.02em">0</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:4px">Pantallas del camarero</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SUPER ADMIN ════════════════════════════════════════ -->
+  <section class="section" id="super">
+    <div class="section-eyebrow"><span class="num">08</span>Perfil · Super admin</div>
+    <h2>La vista <em>global</em>.</h2>
+    <p class="section-lead">El super admin es el equipo de ia.rest. Gestiona todos los restaurantes del sistema desde /super. No relevante para el operador de un restaurante individual.</p>
+
+    <div class="callout warn">
+      <div class="callout-icon">OJO</div>
+      <div class="callout-body"><strong>Acceso restringido al equipo ia.rest.</strong> /super es multi-tenant y tiene acceso a todos los datos de todos los clientes. Solo para uso interno del equipo de producto y soporte.</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Función</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>Gestión de restaurantes</td><td>Crear, activar o suspender tenants. Asignar plan de precios.</td></tr>
+          <tr><td>Monitorización global</td><td>Ver estado de todos los restaurantes. Latencias, errores, uptime.</td></tr>
+          <tr><td>Gestión de BRAIN</td><td>Actualizar modelos de mapeo de jerga global que heredan todos los clientes.</td></tr>
+          <tr><td>Soporte</td><td>Impersonar cualquier usuario para diagnóstico (con log de auditoría).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ JERGA ══════════════════════════════════════════════ -->
+  <section class="section" id="jerga">
+    <div class="section-eyebrow"><span class="num">09</span>Operativa · Diccionario de jerga</div>
+    <h2>BRAIN habla <em>hostelería</em>.</h2>
+    <p class="section-lead">El agente BRAIN está entrenado con jerga de hostelería española real. Estos son los términos más comunes y cómo se mapean a productos.</p>
+
+    <div class="terminal" style="margin-bottom:24px">
+      <div class="t-line"><span class="t-time">ENTRADA</span><span class="t-agent">CAMARERO</span><span class="t-val">"marchar segundos mesa cuatro y un manchado para la doce"</span></div>
+      <div class="t-arrow">↓ BRAIN procesa</div>
+      <div class="t-line"><span class="t-time">SALIDA</span><span class="t-agent">COURIER</span><span class="t-val">T04 · marchar_segundos | M12 · 1× café_cortado_caliente</span></div>
+      <div class="t-line" style="margin-top:4px"><span class="t-time"></span><span class="t-agent"></span><span class="t-ok">✓ PROCESADO · 0.42s · 2 items · 2 destinos</span></div>
+    </div>
+
+    <div class="jerga-grid">
+      <div class="jerga-item">
+        <div class="j-dicho">"Manchado"</div>
+        <div class="j-map"><span class="arr">→</span> Café cortado caliente</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Marchar segundos"</div>
+        <div class="j-map"><span class="arr">→</span> Orden de sacar platos principales</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"86 las croquetas"</div>
+        <div class="j-map"><span class="arr">→</span> Producto agotado / baja del menú</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Una de bravas"</div>
+        <div class="j-map"><span class="arr">→</span> 1× patatas bravas (porción)</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Caña"</div>
+        <div class="j-map"><span class="arr">→</span> Cerveza de barril pequeña</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Muy hecho"</div>
+        <div class="j-map"><span class="arr">→</span> Modificador: punto_cocción=bien_hecho</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Cuenta"</div>
+        <div class="j-map"><span class="arr">→</span> Generar factura + imprimir ticket</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Libre"</div>
+        <div class="j-map"><span class="arr">→</span> Marcar mesa como disponible</div>
+      </div>
+      <div class="jerga-item">
+        <div class="j-dicho">"Sin sal"</div>
+        <div class="j-map"><span class="arr">→</span> Nota de cocina en el item anterior</div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">TIP</div>
+      <div class="callout-body"><strong>Añadir jerga propia desde /owner.</strong> El dueño puede configurar aliases personalizados en la ficha de cada producto. BRAIN los aprende y los aplica desde el turno siguiente.</div>
+    </div>
+  </section>
+
+  <!-- ══ ALÉRGENOS ══════════════════════════════════════════ -->
+  <section class="section" id="alergenos">
+    <div class="section-eyebrow"><span class="num">10</span>Operativa · Alérgenos</div>
+    <h2>Cumplimiento EU <em>1169/2011</em>.</h2>
+    <p class="section-lead">ia.rest gestiona los 14 alérgenos obligatorios de la normativa europea. El camarero los declara por voz; el sistema los registra, avisa a cocina y guarda el log de confirmación.</p>
+
+    <div class="three-col">
+      <div class="card soft-red">
+        <div class="card-tag" style="color:var(--vermilion-deep)">Declaración</div>
+        <div class="card-title">Camarero informa por voz</div>
+        <div class="card-body">Di: <strong>"mesa ocho, alergia al gluten y a los frutos secos"</strong>. BRAIN identifica los alérgenos y los asocia a la mesa en Supabase.</div>
+      </div>
+      <div class="card soft-amber">
+        <div class="card-tag" style="color:#9A6B10">Alerta cocina</div>
+        <div class="card-title">El ticket incluye el aviso</div>
+        <div class="card-body">Cada ticket de esa mesa imprime en rojo los alérgenos declarados. El KDS muestra una etiqueta de aviso en el ticket de la sección correspondiente.</div>
+      </div>
+      <div class="card soft-green">
+        <div class="card-tag" style="color:#2A5530">Log de auditoría</div>
+        <div class="card-title">Confirmación firmada</div>
+        <div class="card-body">El sistema registra timestamp, camarero, mesa y alérgenos en la tabla <span style="font-family:var(--font-mono);font-size:11px">alergeno_confirmaciones</span>. Disponible para inspección sanitaria.</div>
+      </div>
+    </div>
+
+    <div class="h3">Los 14 alérgenos gestionados</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Alérgeno</th><th>Jerga reconocida</th></tr></thead>
+        <tbody>
+          <tr><td>01</td><td>Gluten (cereales)</td><td>"gluten", "trigo", "harina"</td></tr>
+          <tr><td>02</td><td>Crustáceos</td><td>"mariscos", "gambas", "langostinos", "cangrejo"</td></tr>
+          <tr><td>03</td><td>Huevos</td><td>"huevo", "huevos"</td></tr>
+          <tr><td>04</td><td>Pescado</td><td>"pescado", "atún", "merluza", "bacalao"</td></tr>
+          <tr><td>05</td><td>Cacahuetes</td><td>"cacahuete", "maní"</td></tr>
+          <tr><td>06</td><td>Soja</td><td>"soja", "tofu"</td></tr>
+          <tr><td>07</td><td>Leche</td><td>"lactosa", "lácteo", "leche", "queso"</td></tr>
+          <tr><td>08</td><td>Frutos de cáscara</td><td>"frutos secos", "nuez", "almendra", "avellana"</td></tr>
+          <tr><td>09</td><td>Apio</td><td>"apio"</td></tr>
+          <tr><td>10</td><td>Mostaza</td><td>"mostaza"</td></tr>
+          <tr><td>11</td><td>Sésamo</td><td>"sésamo", "tahini"</td></tr>
+          <tr><td>12</td><td>Dióxido de azufre / Sulfitos</td><td>"sulfitos", "sulfuroso"</td></tr>
+          <tr><td>13</td><td>Altramuces</td><td>"altramuces", "lupino"</td></tr>
+          <tr><td>14</td><td>Moluscos</td><td>"moluscos", "calamar", "sepia", "pulpo"</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 86 ═════════════════════════════════════════════════ -->
+  <section class="section" id="86">
+    <div class="section-eyebrow"><span class="num">11</span>Operativa · 86 · Producto agotado</div>
+    <h2>86 · El código que <em>para la cocina</em>.</h2>
+    <p class="section-lead">El camarero o cocina puede marcar un producto como agotado con la expresión "86". El sistema lo retira de las opciones disponibles inmediatamente en tiempo real.</p>
+
+    <div class="two-col">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Camarero detecta el agotado</div>
+            <div class="step-desc">Di por PTT: <span class="mono-tag">"86 las croquetas"</span> o <span class="mono-tag">"sin croquetas, se acabaron"</span>. BRAIN reconoce la intención de 86.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Sistema actualiza en tiempo real</div>
+            <div class="step-desc">El producto se marca como agotado en Supabase (<span class="mono-tag">productos_86</span>). Visible en el Control Hub como alerta ámbar inmediatamente.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">VOX confirma a todos</div>
+            <div class="step-desc">El sistema lanza una notificación push a todos los camareros conectados: <span class="mono-tag">"Croquetas agotadas"</span>. Ya no aparecen en los sugeridos de BRAIN.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Reactivar al día siguiente</div>
+            <div class="step-desc">El admin o dueño puede reactivar el producto desde el Hub o desde /owner. Los 86 se limpian automáticamente al abrir el turno del día siguiente.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card dark">
+        <div class="card-tag" style="color:var(--dark-fg-3)">TERMINAL · 86 LOG</div>
+        <div style="font-family:var(--font-mono);font-size:12px;line-height:1.7;margin-top:12px">
+          <div style="color:var(--dark-fg-3);font-size:10px;margin-bottom:8px">── productos_86 · turno actual ──</div>
+          <div style="color:var(--amber)">19:34 · croquetas_jamón · ANA</div>
+          <div style="color:var(--dark-fg-3);font-size:11px;padding-left:12px">estado: agotado · aviso_enviado: ✓</div>
+          <div style="color:var(--amber);margin-top:6px">20:12 · tarta_queso · ADMIN</div>
+          <div style="color:var(--dark-fg-3);font-size:11px;padding-left:12px">estado: agotado · aviso_enviado: ✓</div>
+          <div style="color:var(--dark-fg-2);margin-top:12px;font-size:11px">2 productos fuera de carta · turno activo</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ IMPRESORAS ═════════════════════════════════════════ -->
+  <section class="section" id="impresoras">
+    <div class="section-eyebrow"><span class="num">12</span>Operativa · Impresoras y COURIER</div>
+    <h2>El ticket físico es <em>la prueba</em>.</h2>
+    <p class="section-lead">COURIER gestiona todas las impresoras térmicas ESC/POS de la instalación. La conexión es TCP por el puerto 9100. Sin cloud para la impresión — todo local, máxima fiabilidad.</p>
+
+    <div class="callout info">
+      <div class="callout-icon">INFO</div>
+      <div class="callout-body"><strong>Protocolo ESC/POS · Puerto TCP 9100.</strong> Compatible con impresoras Epson TM, Star Micronics, Citizen y la mayoría de marcas del mercado. El agente COURIER incluye bridge TCP local para entornos sin red directa.</div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-tag" style="color:var(--ink-3)">Impresora cocina</div>
+        <div class="card-title">Ticket de comanda</div>
+        <div class="card-body">Imprime cada comanda nueva. Incluye: número de mesa, nombre del camarero, timestamp, lista de items con modificadores y alérgenos si aplica. Fuente grande, legible.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--ink-3)">Impresora sala / barra</div>
+        <div class="card-title">Ticket de cuenta</div>
+        <div class="card-body">Imprime el resumen de la mesa al pedir la cuenta. Incluye QR Verifactu con hash SHA-256 conforme a normativa AEAT cuando el plan lo incluye.</div>
+      </div>
+    </div>
+
+    <div class="h3">Qué hacer si la impresora no responde</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">COURIER encola automáticamente</div>
+          <div class="step-desc">Si la impresora no responde, COURIER encola el ticket internamente y reintenta cada 30 segundos. No se pierde ninguna comanda.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Alerta en el Hub</div>
+          <div class="step-desc">El Control Hub muestra una alerta roja <span class="mono-tag">IMPRESORA OFFLINE</span> con la IP y nombre del dispositivo. El responsable puede actuar.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Reenvío manual</div>
+          <div class="step-desc">El admin puede forzar el reenvío de cualquier ticket desde la pestaña "Gestión completa" del Hub, o redirigir a otra impresora disponible.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ TURNOS ═════════════════════════════════════════════ -->
+  <section class="section" id="turnos">
+    <div class="section-eyebrow"><span class="num">13</span>Operativa · Turnos y apertura</div>
+    <h2>Abrir y cerrar <em>el servicio</em>.</h2>
+
+    <div class="two-col">
+      <div>
+        <div class="h3" style="margin-top:0">Apertura de turno</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">Admin inicia el turno</div>
+              <div class="step-desc">Desde el Hub o /owner, pulsar "Abrir turno". El sistema crea un turno activo, limpia los 86 del día anterior y activa el KDS.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">Camareros fichan</div>
+              <div class="step-desc">Cada camarero entra con su PIN. El sistema los asocia al turno activo y activa sus notificaciones push.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Cocina activa el KDS</div>
+              <div class="step-desc">El cocinero de cada sección abre /kds?seccion=calientes (o su sección) con su PIN. El KDS está listo para recibir.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="h3" style="margin-top:0">Cierre de turno</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">Cerrar todas las mesas abiertas</div>
+              <div class="step-desc">Asegurar que todas las mesas tienen estado LIBRE antes de cerrar el turno. El Hub marca en rojo las mesas con cuentas pendientes.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">Cuadre de caja</div>
+              <div class="step-desc">El resumen del turno está disponible en /owner → Resumen del día. Muestra totales por camarero, por sección, y el desglose de métodos de pago.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Admin cierra el turno</div>
+              <div class="step-desc">Pulsar "Cerrar turno" en el Hub. Los datos se consolidan en analytics, los 86 se guardan en el log histórico y el sistema entra en estado CERRADO.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ ANALYTICS ══════════════════════════════════════════ -->
+  <section class="section" id="analytics">
+    <div class="section-eyebrow"><span class="num">14</span>Negocio · Analytics</div>
+    <h2>ANALYST: <em>números</em> del turno.</h2>
+    <p class="section-lead">El agente ANALYST corre cada 2 minutos y consolida las métricas del servicio. Disponible para el dueño y el admin en tiempo real.</p>
+
+    <div class="three-col">
+      <div class="card">
+        <div class="card-tag" style="color:var(--ink-3)">Vista compacta</div>
+        <div class="card-title">Métricas del turno actual</div>
+        <div class="card-body">Comandas por hora, tiempo medio de cocina por sección, rotación de mesas, facturación del turno. Actualización cada 2 minutos.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--ink-3)">Top 10</div>
+        <div class="card-title">Productos más pedidos</div>
+        <div class="card-body">Ranking de los 10 productos más comandados del turno y del mes. Útil para ajustar carta, stock y precios.</div>
+      </div>
+      <div class="card">
+        <div class="card-tag" style="color:var(--ink-3)">Histograma</div>
+        <div class="card-title">Comandas por franja horaria</div>
+        <div class="card-body">Barras de intensidad de servicio hora a hora. Identifica picos para optimizar staffing y preparación de mise en place.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ ALERTAS ════════════════════════════════════════════ -->
+  <section class="section" id="alertas">
+    <div class="section-eyebrow"><span class="num">15</span>Negocio · Alertas de ritmo</div>
+    <h2>El sistema avisa antes de <em>que el cliente lo note</em>.</h2>
+
+    <div class="callout info">
+      <div class="callout-icon">INFO</div>
+      <div class="callout-body"><strong>Anti-spam de 30 minutos.</strong> Cada regla de alerta tiene un cooldown de 30 minutos para no saturar al responsable. Si la condición persiste, renotifica pasado ese tiempo.</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Regla</th><th>Condición</th><th>Acción</th><th>Destinatario</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Ticket sin marcar</td>
+            <td>KDS ticket &gt; 10 min sin bump</td>
+            <td>Notificación push + alerta roja KDS</td>
+            <td>Admin / responsable turno</td>
+          </tr>
+          <tr>
+            <td>Mesa sin bebida</td>
+            <td>Mesa ocupada &gt; 8 min sin item bebida</td>
+            <td>Notificación push al camarero asignado</td>
+            <td>Camarero de la mesa</td>
+          </tr>
+          <tr>
+            <td>Ritmo bajo</td>
+            <td>Comandas/hora &lt; 50% de la media histórica</td>
+            <td>Alerta en panel del dueño (ANALYST)</td>
+            <td>Dueño / admin</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ PRECIOS ════════════════════════════════════════════ -->
+  <section class="section" id="precios">
+    <div class="section-eyebrow"><span class="num">16</span>Negocio · Planes y precios</div>
+    <h2>Freemium hasta que <em>decides crecer</em>.</h2>
+    <p class="section-lead">14 días de prueba en plan Pro sin tarjeta de crédito. Coste variable de €0,0003 por comanda procesada. Margen del 97%.</p>
+
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="pc-plan">Barra</div>
+        <div class="pc-price"><sup>€</sup>0<small>/mes</small></div>
+        <div class="pc-tagline">Para empezar. Solo barra y impresora.</div>
+        <ul class="pc-features">
+          <li>1 camarero</li>
+          <li>1 impresora</li>
+          <li>KDS básico</li>
+          <li>Sin analytics</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <div class="pc-plan">Solo</div>
+        <div class="pc-price"><sup>€</sup>29<small>/mes</small></div>
+        <div class="pc-tagline">Restaurante pequeño, carta sencilla.</div>
+        <ul class="pc-features">
+          <li>3 camareros</li>
+          <li>2 impresoras</li>
+          <li>KDS con secciones</li>
+          <li>Analytics básico</li>
+        </ul>
+      </div>
+      <div class="price-card featured">
+        <div class="pc-plan">Pro ★</div>
+        <div class="pc-price"><sup>€</sup>59<small>/mes</small></div>
+        <div class="pc-tagline">El más popular. Sala completa y analítica.</div>
+        <ul class="pc-features">
+          <li>10 camareros</li>
+          <li>4 impresoras</li>
+          <li>KDS multi-sección</li>
+          <li>Analytics completo</li>
+          <li>Alertas de ritmo</li>
+          <li>Alérgenos EU 1169</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <div class="pc-plan">Sala</div>
+        <div class="pc-price"><sup>€</sup>99<small>/mes</small></div>
+        <div class="pc-tagline">Grandes espacios, varios turnos.</div>
+        <ul class="pc-features">
+          <li>Camareros ilimitados</li>
+          <li>8 impresoras</li>
+          <li>Verifactu (QR AEAT)</li>
+          <li>TheFork webhook</li>
+          <li>Soporte prioritario</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <div class="pc-plan">Enterprise</div>
+        <div class="pc-price" style="font-size:24px;padding-top:6px">A medida</div>
+        <div class="pc-tagline">Cadenas, grupos, franquicias.</div>
+        <ul class="pc-features">
+          <li>Multi-local</li>
+          <li>SLA personalizado</li>
+          <li>Integración API</li>
+          <li>Onboarding presencial</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FACTURACIÓN ════════════════════════════════════════ -->
+  <section class="section" id="facturacion">
+    <div class="section-eyebrow"><span class="num">17</span>Negocio · Facturación Verifactu</div>
+    <h2>Facturas con <em>QR AEAT</em>.</h2>
+
+    <div class="two-col">
+      <div>
+        <p style="font-size:15px;line-height:1.6;color:var(--ink-2);margin-bottom:20px">ia.rest genera facturas con hash SHA-256 y código QR conforme al reglamento Verifactu. Disponible en planes Sala y Enterprise. El envío automático a AEAT estará activo en 2027.</p>
+        <div class="callout warn">
+          <div class="callout-icon">OJO</div>
+          <div class="callout-body"><strong>Envío AEAT pendiente hasta 2027.</strong> El QR y el hash SHA-256 ya se generan y se imprimen en el ticket. La transmisión electrónica a la Agencia Tributaria se activará cuando la normativa entre en vigor.</div>
+        </div>
+      </div>
+      <div class="card dark">
+        <div class="card-tag" style="color:var(--dark-fg-3)">FACTURA EJEMPLO</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--dark-fg-2);line-height:1.8;margin-top:12px">
+          <div style="color:var(--dark-fg);font-size:13px;font-weight:700;margin-bottom:8px">BODEGA LA PLAZA</div>
+          <div>Factura nº: 2026-0842</div>
+          <div>Mesa: T04 · 2026-05-03 21:14</div>
+          <div style="margin:8px 0;border-top:1px dashed var(--dark-rule);padding-top:8px">
+            2× Caña · · · · · · 5,00€<br/>
+            1× Patatas bravas · · 5,50€<br/>
+            1× Solomillo · · · · 18,00€
+          </div>
+          <div style="border-top:1px dashed var(--dark-rule);padding-top:8px;margin-top:4px">
+            <div>Subtotal: 28,50€</div>
+            <div>IVA (10%): 2,85€</div>
+            <div style="color:var(--dark-fg);font-weight:700">TOTAL: 31,35€</div>
+          </div>
+          <div style="margin-top:10px;font-size:9px;color:var(--dark-fg-3)">
+            SHA-256: a3f8c2b1...<br/>
+            [QR AEAT] · Verifactu
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FAQ ═══════════════════════════════════════════════ -->
+  <section class="section" id="faq">
+    <div class="section-eyebrow"><span class="num">18</span>Referencia · Preguntas frecuentes</div>
+    <h2>Las dudas más <em>comunes</em>.</h2>
+
+    <div class="two-col">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">¿Funciona sin internet?</div>
+            <div class="step-desc">La transcripción requiere conexión. Las comandas se encolan offline en el móvil y se sincronizan cuando vuelve la conexión. Las impresoras locales siguen funcionando si tienen comandas en cola.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">¿Qué pasa si BRAIN no entiende la comanda?</div>
+            <div class="step-desc">VOX avisa al camarero con el TTS: <span class="mono-tag">"No entendido — repite"</span>. El camarero puede repetir la comanda o entrarla manualmente desde el Hub.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">¿Puedo usar ia.rest con mi POS actual?</div>
+            <div class="step-desc">ia.rest es la capa POS. No se integra sobre otro POS, sino que lo reemplaza. Para una integración puntual (ej. Numier), contactar con el equipo de Enterprise.</div>
+          </div>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">¿Qué móvil necesita el camarero?</div>
+            <div class="step-desc">Cualquier Android moderno. La app Edge es una PWA instalable desde el navegador, sin pasar por la Play Store. También funciona en iPhone (Safari).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">¿Es seguro el PIN de 4 dígitos?</div>
+            <div class="step-desc">El PIN va ligado al <span class="mono-tag">restaurante_id</span>. Un PIN de otro restaurante no da acceso. Se puede ampliar a PIN de 6 dígitos desde /owner para mayor seguridad.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">¿Dónde se guardan los datos?</div>
+            <div class="step-desc">Supabase PostgreSQL en eu-west-1 (Irlanda). Todos los datos en servidores europeos bajo RGPD. El dueño puede solicitar exportación o borrado en cualquier momento.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ ERRORES ════════════════════════════════════════════ -->
+  <section class="section" id="errores">
+    <div class="section-eyebrow"><span class="num">19</span>Referencia · Errores comunes</div>
+    <h2>Cuando algo <em>no va bien</em>.</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Error / síntoma</th><th>Causa probable</th><th>Solución</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>"No entendido — repite" (VOX)</td>
+            <td>Ruido excesivo o producto no en carta</td>
+            <td>Repetir más despacio o añadir el producto a la carta desde /owner</td>
+          </tr>
+          <tr>
+            <td>KDS no actualiza</td>
+            <td>Pérdida de conexión Supabase Realtime</td>
+            <td>Refrescar la página del KDS (F5). Si persiste, revisar red del tablet.</td>
+          </tr>
+          <tr>
+            <td>Impresora no imprime</td>
+            <td>COURIER sin acceso TCP:9100 o impresora apagada</td>
+            <td>Verificar que la impresora esté encendida y en la misma red. Revisar IP en ajustes de Courier.</td>
+          </tr>
+          <tr>
+            <td>PIN incorrecto</td>
+            <td>PIN mal introducido o rol equivocado</td>
+            <td>Verificar con el admin/dueño el PIN correcto para ese perfil.</td>
+          </tr>
+          <tr>
+            <td>Latencia alta (&gt;1s)</td>
+            <td>Conectividad WiFi débil en el punto de venta</td>
+            <td>Acercar el móvil al router o usar datos móviles. EDGE puede funcionar con 4G.</td>
+          </tr>
+          <tr>
+            <td>Comanda duplicada</td>
+            <td>PTT pulsado dos veces sin querer</td>
+            <td>Anular desde el Hub: pestaña "Gestión" → buscar por timestamp → cancelar item.</td>
+          </tr>
+          <tr>
+            <td>Alérgeno no detectado</td>
+            <td>Término no incluido en el diccionario de BRAIN</td>
+            <td>Añadir el alias en la ficha del producto desde /owner. Funciona desde el turno siguiente.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip" style="margin-top:32px">
+      <div class="callout-icon">TIP</div>
+      <div class="callout-body"><strong>Soporte en tiempo real.</strong> El equipo de ia.rest monitoriza todos los tenants desde /super. Ante cualquier incidencia grave, contactar a soporte@ia.rest con el <span style="font-family:var(--font-mono);font-size:11px">restaurante_id</span> y el timestamp del error.</div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--ink-4);letter-spacing:0.1em;text-transform:uppercase">
+        ia.rest · Madrid · 2026
+      </div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--ink-4);letter-spacing:0.1em;text-transform:uppercase">
+        Manual v2.0 · La capa invisible
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--ink-4);letter-spacing:0.1em;text-transform:uppercase">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--vermilion);display:inline-block"></span>
+        Voz → datos → tickets
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// Active nav state on scroll
+const sections = document.querySelectorAll('section[id], div[id]');
+const navItems = document.querySelectorAll('.nav-item');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navItems.forEach(item => item.classList.remove('active'));
+      const active = document.querySelector(`.nav-item[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+document.querySelectorAll('[id]').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
