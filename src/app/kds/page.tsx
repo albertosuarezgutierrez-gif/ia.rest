@@ -217,6 +217,7 @@ function KDSInner() {
   const [comandas, setComandasState] = useState<Comanda[]>([])
   const [secciones, setSecciones] = useState<Seccion[]>([])
   const [time, setTime] = useState(new Date())
+  const [vistaPase, setVistaPase] = useState(false)
 
   const fetchSecciones = useCallback(async () => {
     if (!session) return
@@ -320,15 +321,20 @@ function KDSInner() {
         {esAdmin && secciones.length > 0 && (
           <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
             <a href="/kds" className="sec-tab"
-              style={{ background:!seccionFiltro ? '#2F2820' : 'transparent', color:!seccionFiltro ? K.fg : K.fg3 }}>
+              style={{ background:!seccionFiltro&&!vistaPase ? '#2F2820' : 'transparent', color:!seccionFiltro&&!vistaPase ? K.fg : K.fg3 }}>
               TODAS
             </a>
             {secciones.map(s => (
-              <a key={s.id} href={`/kds?seccion=${s.id}`} className="sec-tab"
-                style={{ background:seccionFiltro===s.id ? '#2F2820' : 'transparent', color:seccionFiltro===s.id ? s.color_kds : K.fg3 }}>
+              <a key={s.id} href={`/kds?seccion=${s.id}`} onClick={()=>setVistaPase(false)} className="sec-tab"
+                style={{ background:seccionFiltro===s.id&&!vistaPase ? '#2F2820' : 'transparent', color:seccionFiltro===s.id&&!vistaPase ? s.color_kds : K.fg3 }}>
                 {s.nombre.toUpperCase()}
               </a>
             ))}
+            <button onClick={()=>setVistaPase(v=>!v)}
+              style={{ cursor:'pointer', padding:'4px 10px', borderRadius:3, fontFamily:SM, fontSize:9, fontWeight:700, letterSpacing:'.1em', border:'none',
+                background:vistaPase?K.gr:'transparent', color:vistaPase?'#fff':K.fg3, transition:'background .15s,color .15s' }}>
+              PASE
+            </button>
           </div>
         )}
 
@@ -352,7 +358,76 @@ function KDSInner() {
       </div>
 
       <div style={{ flex:1, padding:10, overflowY:'auto' }}>
-        {comandasFiltradas.length === 0 ? (
+        {vistaPase ? (
+          /* ══════ VISTA PASE — Expediting Screen ══════ */
+          comandas.length === 0 ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:10 }}>
+              <span style={{ fontFamily:SE, fontSize:28, color:K.fg3, fontStyle:'italic' }}>Cocina libre.</span>
+              <span style={{ fontFamily:SM, fontSize:10, color:K.fg3, letterSpacing:'.1em' }}>PASE · SIN MESAS ACTIVAS</span>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              <div style={{ fontFamily:SM, fontSize:9, color:K.fg3, letterSpacing:'.12em', padding:'4px 2px 10px', borderBottom:'1px solid '+K.rule, marginBottom:4 }}>
+                PASE · {comandas.length} MESA{comandas.length!==1?'S':''} ACTIVA{comandas.length!==1?'S':''}
+              </div>
+              <div className="kds-grid" style={{ display:'grid', gridTemplateColumns:'1fr', gap:8 }}>
+                {comandas.map(c=>{
+                  const items = c.items||[]
+                  const total = items.length
+                  const listos = items.filter(it=>it.estado==='listo').length
+                  const allDone = total>0 && listos===total
+                  const col = edadColor(c.created_at)
+                  const urgente = col===K.red
+                  const pct = total>0?Math.round((listos/total)*100):0
+                  return (
+                    <div key={c.id} style={{ background:allDone?'rgba(63,125,68,.12)':urgente?'rgba(217,68,43,.06)':K.c1, border:'1px solid '+(allDone?K.gr:urgente?'rgba(217,68,43,.35)':K.rule), borderRadius:0, padding:14 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+                        <span style={{ fontFamily:SE, fontSize:44, fontWeight:500, color:allDone?K.gr:K.fg, lineHeight:1, minWidth:90 }}>
+                          {c.mesa?.codigo}
+                        </span>
+                        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:4 }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', fontFamily:SM, fontSize:10, color:K.fg3 }}>
+                            <span>{listos}/{total} listos</span>
+                            <span style={{ color:col, animation:urgente?'pulse 1.5s ease-in-out infinite':'none' }}>{edadStr(c.created_at)}</span>
+                          </div>
+                          <div style={{ height:5, background:K.rule, borderRadius:2, overflow:'hidden' }}>
+                            <div style={{ height:'100%', width:pct+'%', background:allDone?K.gr:col, borderRadius:2, transition:'width .3s ease' }}/>
+                          </div>
+                          <div style={{ fontFamily:SN, fontSize:10, color:K.fg3 }}>{c.camarero?.nombre} · {new Date(c.created_at).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</div>
+                        </div>
+                        {allDone ? (
+                          <button onClick={()=>cerrar(c.id,c.mesa_id,c.camarero_id,c.mesa?.codigo)}
+                            style={{ background:K.gr, border:'none', color:'#fff', padding:'14px 20px', borderRadius:4, fontFamily:SM, fontSize:13, fontWeight:700, letterSpacing:'.08em', cursor:'pointer', minWidth:110, flexShrink:0 }}>
+                            MARCHAR
+                          </button>
+                        ):(
+                          <div style={{ fontFamily:SM, fontSize:18, fontWeight:700, color:K.fg3, minWidth:50, textAlign:'right' }}>{pct}%</div>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                        {items.map(it=>(
+                          <div key={it.id} onClick={()=>toggle(it.id,it.estado)}
+                            style={{ padding:'6px 12px', borderRadius:3, cursor:'pointer', userSelect:'none',
+                              background:it.estado==='listo'?'rgba(63,125,68,.15)':K.rule,
+                              border:'1px solid '+(it.estado==='listo'?K.gr:K.rS),
+                              fontFamily:SM, fontSize:12, fontWeight:700,
+                              color:it.estado==='listo'?K.gr:K.fg,
+                              textDecoration:it.estado==='listo'?'line-through':'none',
+                              opacity:it.estado==='listo'?0.55:1,
+                              letterSpacing:'.04em', textTransform:'uppercase', transition:'all .15s' }}>
+                            {it.cantidad}× {it.nombre}{it.formato_nombre?' ('+it.formato_nombre+')':''}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        ) : (
+          /* ══════ VISTA NORMAL KDS ══════ */
+          comandasFiltradas.length === 0 ? (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:10 }}>
             <span style={{ fontFamily:SE, fontSize:28, color:K.fg3, fontStyle:'italic' }}>Cocina libre.</span>
             {seccionActiva && (
@@ -420,6 +495,7 @@ function KDSInner() {
               )
             })}
           </div>
+        )
         )}
       </div>
 
