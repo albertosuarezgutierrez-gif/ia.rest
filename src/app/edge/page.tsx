@@ -26,12 +26,15 @@ interface BrainResult {
 }
 
 /** Construye el texto que se leerá en voz alta al camarero */
-function buildTTSText(brain: BrainResult): string {
-  if (brain.items.length === 0) return `${brain.tipo} para ${brain.mesa}. ¿Confirmamos?`
+function buildTTSText(brain: BrainResult, alertas86: string[] = []): string {
+  const alerta = alertas86.length > 0
+    ? `Atención, ochenta y seis: ${alertas86.join(' y ')}. `
+    : ''
+  if (brain.items.length === 0) return `${alerta}${brain.tipo} para ${brain.mesa}. ¿Confirmamos?`
   const items = brain.items
     .map(it => `${it.cantidad === 1 ? 'una de' : it.cantidad} ${it.nombre}`)
     .join(', ')
-  return `${brain.mesa}: ${items}. ¿Confirmamos?`
+  return `${alerta}${brain.mesa}: ${items}. ¿Confirmamos?`
 }
 
 /** Habla el texto y devuelve una promesa que resuelve al terminar */
@@ -125,6 +128,8 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   // Voice Confirm: el sistema lee la comanda antes de mostrar botones
   const [voiceConfirm, setVoiceConfirm] = useState(true)
   const speakingRef = useRef(false)
+  // Items 86 detectados en la última comanda
+  const [alertas86Comanda, setAlertas86Comanda] = useState<string[]>([])
 
   const skipSpeaking = useCallback(() => {
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
@@ -136,7 +141,7 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   useEffect(() => {
     if (screen !== 'speaking' || !brain) return
     speakingRef.current = true
-    speak(buildTTSText(brain)).then(() => {
+    speak(buildTTSText(brain, alertas86Comanda)).then(() => {
       if (speakingRef.current) {
         speakingRef.current = false
         setScreen('confirm')
@@ -221,6 +226,7 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
         setBrain(d.brain)
         setLatencia(d.latencia_ms)
         setLastComandaId(d.comanda_id ?? null)
+        setAlertas86Comanda(d.alertas_86 ?? [])
         // Si voiceConfirm activo y speechSynthesis disponible → leer en voz alta
         const hasTTS = typeof window !== 'undefined' && 'speechSynthesis' in window
         setScreen(voiceConfirm && hasTTS ? 'speaking' : 'confirm')
@@ -255,7 +261,7 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   const reset = () => {
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
     speakingRef.current = false
-    setScreen('idle'); setBrain(null); setTranscript(''); setError(''); setPedidoCuenta({loading:false,error:'',factura:null})
+    setScreen('idle'); setBrain(null); setTranscript(''); setError(''); setPedidoCuenta({loading:false,error:'',factura:null}); setAlertas86Comanda([])
   }
 
   const pedirCuenta = async () => {
@@ -460,12 +466,29 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
                 </span>
               </div>
               <div style={{borderTop:`1px solid ${C.rule}`,paddingTop:10,display:'flex',flexDirection:'column',gap:6}}>
-                {brain.items.map((it,i)=>(
-                  <div key={i} style={{display:'flex',gap:10,fontFamily:SN,fontSize:15,color:C.fg}}>
-                    <span style={{fontFamily:SM,fontWeight:700,color:C.red,width:28}}>{it.cantidad}x</span>
-                    {it.nombre}
+                {/* Banner 86 si hay items agotados */}
+                {alertas86Comanda.length > 0 && (
+                  <div style={{background:'rgba(168,49,30,.15)',border:'1px solid #A8311E',borderRadius:4,
+                    padding:'8px 10px',fontFamily:SM,fontSize:11,color:'#D9442B',
+                    display:'flex',gap:8,alignItems:'center',marginBottom:4}}>
+                    <span style={{fontWeight:700,letterSpacing:'.08em'}}>86</span>
+                    <span>·</span>
+                    <span>{alertas86Comanda.join(' · ')} — verifica con cocina</span>
                   </div>
-                ))}
+                )}
+                {brain.items.map((it,i)=>{
+                  const is86 = alertas86Comanda.map(n=>n.toLowerCase()).includes(it.nombre.toLowerCase())
+                  return (
+                  <div key={i} style={{display:'flex',gap:10,fontFamily:SN,fontSize:15,
+                    color: is86 ? '#A8311E' : C.fg,
+                    opacity: is86 ? 0.7 : 1,
+                    textDecoration: is86 ? 'line-through' : 'none'}}>
+                    <span style={{fontFamily:SM,fontWeight:700,color: is86 ? '#A8311E' : C.red,width:28}}>{it.cantidad}x</span>
+                    {it.nombre}
+                    {is86 && <span style={{fontFamily:SM,fontSize:9,fontWeight:700,color:'#A8311E',
+                      padding:'1px 5px',background:'rgba(168,49,30,.2)',borderRadius:2,alignSelf:'center'}}>86</span>}
+                  </div>
+                )})}
                 {brain.items.length===0 && (
                   <div style={{fontFamily:SN,fontSize:13,color:C.fg3}}>Sin items</div>
                 )}

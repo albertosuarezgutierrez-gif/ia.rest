@@ -21,6 +21,24 @@ export async function POST(req: NextRequest) {
     const { texto, latencia_ms: latenciaEar } = await transcribir(audio)
     const brainResult = await parsearComanda(texto, rid)
 
+    // ── CHEQUEO 86: antes de insertar, detectar items agotados ──────────────
+    // Si la comanda trae items (no es cuenta/aviso), cruzar con productos_86 activos
+    let alertas86: string[] = []
+    if (brainResult.items.length > 0 && brainResult.tipo !== '86') {
+      const { data: activos86 } = await supabase
+        .from('productos_86')
+        .select('nombre')
+        .eq('turno_id', turnoId)
+        .eq('restaurante_id', rid)
+      if (activos86?.length) {
+        const nombres86 = activos86.map(p => p.nombre.toLowerCase())
+        alertas86 = brainResult.items
+          .filter(it => nombres86.includes(it.nombre.toLowerCase()))
+          .map(it => it.nombre)
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     const { data: mesa } = await supabase.from('mesas')
       .select('id, codigo, estado').eq('codigo', brainResult.mesa).eq('restaurante_id', rid).single()
 
@@ -97,7 +115,7 @@ export async function POST(req: NextRequest) {
       texto_brain: brainResult, latencia_ms: latenciaTotal, comanda_id: comandaId, restaurante_id: rid,
     })
 
-    return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId })
+    return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId, alertas_86: alertas86 })
   } catch (err) {
     // Identificar qué servicio devuelve el 401
     const msg = err instanceof Error ? err.message : String(err)
