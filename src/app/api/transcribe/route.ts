@@ -39,8 +39,35 @@ export async function POST(req: NextRequest) {
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── CHEQUEO ALÉRGENOS: cruzar items con alérgenos declarados en la mesa ─
+    // EU Reglamento 1169/2011 — 14 alérgenos de declaración obligatoria
+    let alertasAlergenos: { producto: string; alergenos: string[] }[] = []
     const { data: mesa } = await supabase.from('mesas')
-      .select('id, codigo, estado').eq('codigo', brainResult.mesa).eq('restaurante_id', rid).single()
+      .select('id, codigo, estado, alergenos_mesa').eq('codigo', brainResult.mesa).eq('restaurante_id', rid).single()
+
+    if (mesa?.alergenos_mesa?.length && brainResult.items.length > 0) {
+      const alergenosMesa: string[] = mesa.alergenos_mesa
+      // Consultar alérgenos de los productos en la carta
+      const nombresItems = brainResult.items.map(it => it.nombre)
+      const { data: productosConAlergenos } = await supabase
+        .from('productos')
+        .select('nombre, alergenos')
+        .in('nombre', nombresItems)
+        .eq('restaurante_id', rid)
+        .not('alergenos', 'is', null)
+      if (productosConAlergenos?.length) {
+        for (const prod of productosConAlergenos) {
+          if (!prod.alergenos?.length) continue
+          const conflicto = (prod.alergenos as string[]).filter(a =>
+            alergenosMesa.some(am => am.toLowerCase() === a.toLowerCase())
+          )
+          if (conflicto.length > 0) {
+            alertasAlergenos.push({ producto: prod.nombre, alergenos: conflicto })
+          }
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     let comandaId: string | null = null
     if (mesa) {
@@ -115,7 +142,23 @@ export async function POST(req: NextRequest) {
       texto_brain: brainResult, latencia_ms: latenciaTotal, comanda_id: comandaId, restaurante_id: rid,
     })
 
-    return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId, alertas_86: alertas86 })
+      // Log de confirmaciones de alérgenos (trazabilidad legal EU 1169/2011)
+      if (alertasAlergenos.length > 0 && comandaId && mesa) {
+        const logs = alertasAlergenos.flatMap(a =>
+          a.alergenos.map(al => ({
+            comanda_id: comandaId,
+            mesa_id: mesa.id,
+            restaurante_id: rid,
+            producto_nombre: a.producto,
+            alergeno: al,
+            confirmado_por: camareroId,
+            nota: `Alerta automática — alérgeno declarado en mesa ${brainResult.mesa}`,
+          }))
+        )
+        await supabase.from('alergeno_confirmaciones').insert(logs)
+      }
+
+    return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId, alertas_86: alertas86, alertas_alergenos: alertasAlergenos })
   } catch (err) {
     // Identificar qué servicio devuelve el 401
     const msg = err instanceof Error ? err.message : String(err)

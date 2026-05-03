@@ -26,15 +26,18 @@ interface BrainResult {
 }
 
 /** Construye el texto que se leerá en voz alta al camarero */
-function buildTTSText(brain: BrainResult, alertas86: string[] = []): string {
-  const alerta = alertas86.length > 0
+function buildTTSText(brain: BrainResult, alertas86: string[] = [], alertasAlerg: {producto:string;alergenos:string[]}[] = []): string {
+  const alerta86 = alertas86.length > 0
     ? `Atención, ochenta y seis: ${alertas86.join(' y ')}. `
     : ''
-  if (brain.items.length === 0) return `${alerta}${brain.tipo} para ${brain.mesa}. ¿Confirmamos?`
+  const alertaAlerg = alertasAlerg.length > 0
+    ? `Alérgeno detectado: ${alertasAlerg.map(a => `${a.producto} contiene ${a.alergenos.join(' y ')}`).join('. ')}. `
+    : ''
+  if (brain.items.length === 0) return `${alerta86}${alertaAlerg}${brain.tipo} para ${brain.mesa}. ¿Confirmamos?`
   const items = brain.items
     .map(it => `${it.cantidad === 1 ? 'una de' : it.cantidad} ${it.nombre}`)
     .join(', ')
-  return `${alerta}${brain.mesa}: ${items}. ¿Confirmamos?`
+  return `${alerta86}${alertaAlerg}${brain.mesa}: ${items}. ¿Confirmamos?`
 }
 
 /** Habla el texto y devuelve una promesa que resuelve al terminar */
@@ -130,6 +133,11 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   const speakingRef = useRef(false)
   // Items 86 detectados en la última comanda
   const [alertas86Comanda, setAlertas86Comanda] = useState<string[]>([])
+  // Alertas de alérgenos EU 1169/2011
+  const [alertasAlergenos, setAlertasAlergenos] = useState<{producto:string;alergenos:string[]}[]>([])
+  // Modal declaración de alérgenos de mesa
+  const [mostrarAlergenos, setMostrarAlergenos] = useState(false)
+  const [alergenosMesa, setAlergenosMesa] = useState<string[]>([])
 
   const skipSpeaking = useCallback(() => {
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
@@ -141,7 +149,7 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   useEffect(() => {
     if (screen !== 'speaking' || !brain) return
     speakingRef.current = true
-    speak(buildTTSText(brain, alertas86Comanda)).then(() => {
+    speak(buildTTSText(brain, alertas86Comanda, alertasAlergenos)).then(() => {
       if (speakingRef.current) {
         speakingRef.current = false
         setScreen('confirm')
@@ -227,6 +235,7 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
         setLatencia(d.latencia_ms)
         setLastComandaId(d.comanda_id ?? null)
         setAlertas86Comanda(d.alertas_86 ?? [])
+        setAlertasAlergenos(d.alertas_alergenos ?? [])
         // Si voiceConfirm activo y speechSynthesis disponible → leer en voz alta
         const hasTTS = typeof window !== 'undefined' && 'speechSynthesis' in window
         setScreen(voiceConfirm && hasTTS ? 'speaking' : 'confirm')
@@ -261,7 +270,7 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
   const reset = () => {
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
     speakingRef.current = false
-    setScreen('idle'); setBrain(null); setTranscript(''); setError(''); setPedidoCuenta({loading:false,error:'',factura:null}); setAlertas86Comanda([])
+    setScreen('idle'); setBrain(null); setTranscript(''); setError(''); setPedidoCuenta({loading:false,error:'',factura:null}); setAlertas86Comanda([]); setAlertasAlergenos([])
   }
 
   const pedirCuenta = async () => {
@@ -362,6 +371,16 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
                 border:`1px solid ${voiceConfirm ? C.tl : C.rS}`,
                 borderRadius:3,padding:'3px 8px',cursor:'pointer'}}>
               {voiceConfirm ? 'VOX ON' : 'VOX OFF'}
+            </button>
+            <button
+              onPointerDown={() => setMostrarAlergenos(v => !v)}
+              title="Declarar alérgenos de la mesa"
+              style={{fontFamily:SN,fontSize:10,fontWeight:600,letterSpacing:'.04em',
+                color: alergenosMesa.length > 0 ? '#E8A33B' : C.fg3,
+                background:'transparent',
+                border:`1px solid ${alergenosMesa.length > 0 ? '#E8A33B' : C.rS}`,
+                borderRadius:3,padding:'3px 8px',cursor:'pointer'}}>
+              {alergenosMesa.length > 0 ? `ALERG (${alergenosMesa.length})` : 'ALERG'}
             </button>
           <button onClick={logout}
               style={{fontFamily:SN,fontSize:10,fontWeight:600,color:C.fg3,background:'transparent',
@@ -476,6 +495,19 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
                     <span>{alertas86Comanda.join(' · ')} — verifica con cocina</span>
                   </div>
                 )}
+                {/* Banner alérgenos EU 1169/2011 */}
+                {alertasAlergenos.length > 0 && (
+                  <div style={{background:'rgba(232,163,59,.12)',border:'1px solid #E8A33B',borderRadius:4,
+                    padding:'8px 10px',fontFamily:SM,fontSize:11,color:'#E8A33B',
+                    display:'flex',flexDirection:'column',gap:4,marginBottom:4}}>
+                    <span style={{fontWeight:700,letterSpacing:'.08em'}}>ALÉRGENO DETECTADO</span>
+                    {alertasAlergenos.map((a,i)=>(
+                      <span key={i} style={{fontSize:10,opacity:.9}}>
+                        {a.producto} contiene: {a.alergenos.join(', ')}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {brain.items.map((it,i)=>{
                   const is86 = alertas86Comanda.map(n=>n.toLowerCase()).includes(it.nombre.toLowerCase())
                   return (
@@ -569,6 +601,51 @@ function EdgeContent({ session, turnoId, setTurnoId }: {
           </div>
         )}
       </div>
+
+      {/* MODAL ALÉRGENOS — declarar alérgenos del cliente en la mesa */}
+      {mostrarAlergenos && (
+        <div style={{position:'fixed',inset:0,background:'rgba(13,11,8,.88)',zIndex:200,
+          display:'flex',flexDirection:'column',padding:20,gap:12}}>
+          <div style={{fontFamily:SM,fontSize:10,color:'#E8A33B',letterSpacing:'.12em',
+            fontWeight:700,textTransform:'uppercase'}}>
+            ALÉRGENOS DE MESA · EU 1169/2011
+          </div>
+          <div style={{fontFamily:SN,fontSize:12,color:C.fg3,lineHeight:1.4}}>
+            El cliente ha indicado intolerancia / alergia a:
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,flex:1}}>
+            {[
+              'Gluten','Crustáceos','Huevos','Pescado','Cacahuetes','Soja',
+              'Lactosa','Frutos secos','Apio','Mostaza','Sésamo',
+              'Sulfitos','Altramuces','Moluscos'
+            ].map(al => {
+              const active = alergenosMesa.includes(al)
+              return (
+                <button key={al}
+                  onPointerDown={() => setAlergenosMesa(prev =>
+                    active ? prev.filter(a=>a!==al) : [...prev, al]
+                  )}
+                  style={{
+                    background: active ? 'rgba(232,163,59,.2)' : C.e1,
+                    border: `1px solid ${active ? '#E8A33B' : C.rule}`,
+                    borderRadius:4,padding:'10px 8px',
+                    fontFamily:SN,fontSize:12,fontWeight: active ? 700 : 400,
+                    color: active ? '#E8A33B' : C.fg3,
+                    cursor:'pointer',textAlign:'left',
+                    transition:'all .15s',
+                  }}>
+                  {al}
+                </button>
+              )
+            })}
+          </div>
+          <button onPointerDown={() => setMostrarAlergenos(false)}
+            style={{background:C.red,border:'none',color:C.fg,padding:14,
+              borderRadius:4,fontFamily:SN,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+            Confirmar — {alergenosMesa.length > 0 ? alergenosMesa.join(', ') : 'sin alérgenos declarados'}
+          </button>
+        </div>
+      )}
 
       {/* PTT BUTTON */}
       <div style={{padding:'12px 24px 32px',display:'flex',flexDirection:'column',
