@@ -21,7 +21,7 @@ const SM = "'JetBrains Mono',ui-monospace,monospace"
 
 /* ─── Types ─── */
 type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean; seccion_id?: string | null }
-type Mesa = { id: string; codigo: string; zona: string; capacidad: number; estado: string }
+type Mesa = { id: string; codigo: string; nombre: string | null; zona: string; capacidad: number; estado: string }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
 type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesas_activas: { codigo: string; count: number }[] }
 type Impresora = { id: string; nombre: string; seccion_id: string; cloud_device_id: string | null; modelo: string | null; activa: boolean; ultimo_ping: string | null; configurada: boolean; connection_type: string; ip_address: string | null; port: number | null }
@@ -318,7 +318,7 @@ function MesasTab() {
   const [zonas, setZonas] = useState<Zona[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<null | 'create' | 'zona-create' | { edit: Mesa } | { del: Mesa } | { editZona: Zona }>(null)
-  const [form, setForm] = useState({ codigo: '', zona: '', capacidad: '4' })
+  const [form, setForm] = useState({ codigo: '', nombre: '', zona: '', capacidad: '4' })
   const [zonaForm, setZonaForm] = useState({ nombre: '', prefijo: '', descripcion: '' })
   const [err, setErr] = useState('')
 
@@ -345,10 +345,10 @@ function MesasTab() {
   useEffect(() => { load() }, [load])
 
   const openCreate = () => {
-    setForm({ codigo: '', zona: zonas[0]?.tipo || 'salon', capacidad: '4' })
+    setForm({ codigo: '', nombre: '', zona: zonas[0]?.tipo || 'salon', capacidad: '4' })
     setErr(''); setModal('create')
   }
-  const openEdit = (m: Mesa) => { setForm({ codigo: m.codigo, zona: m.zona, capacidad: String(m.capacidad) }); setErr(''); setModal({ edit: m }) }
+  const openEdit = (m: Mesa) => { setForm({ codigo: m.codigo, nombre: m.nombre ?? '', zona: m.zona, capacidad: String(m.capacidad) }); setErr(''); setModal({ edit: m }) }
   const openDel = (m: Mesa) => setModal({ del: m })
 
   const save = async () => {
@@ -356,8 +356,8 @@ function MesasTab() {
     if (!form.codigo.trim()) return setErr('Código requerido')
     const isEdit = modal && typeof modal === 'object' && 'edit' in modal
     const body = isEdit
-      ? { id: (modal as { edit: Mesa }).edit.id, ...form, capacidad: parseInt(form.capacidad) || 4 }
-      : { ...form, capacidad: parseInt(form.capacidad) || 4 }
+      ? { id: (modal as { edit: Mesa }).edit.id, ...form, nombre: form.nombre.trim() || null, capacidad: parseInt(form.capacidad) || 4 }
+      : { ...form, nombre: form.nombre.trim() || null, capacidad: parseInt(form.capacidad) || 4 }
 
     const r = await fetch('/api/owner/mesas', { method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
@@ -446,6 +446,7 @@ function MesasTab() {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ fontFamily: SM, fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-.01em' }}>{m.codigo}</div>
+                      {m.nombre && <div style={{ fontFamily: "'Newsreader',serif", fontSize: 13, color: C.ink2, marginTop: 2, fontStyle: 'italic' }}>{m.nombre}</div>}
                       <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, marginTop: 4 }}>{m.capacidad} personas</div>
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
@@ -483,6 +484,7 @@ function MesasTab() {
         <Modal title={modal === 'create' ? 'Nueva mesa' : 'Editar mesa'} onClose={() => setModal(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label="Código (ej. T05, B02)" value={form.codigo} onChange={v => setForm(f => ({ ...f, codigo: v.toUpperCase() }))} placeholder="T05"/>
+            <Field label="Nombre personalizado (opcional)" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder='ej. "La ventana", "Reserva VIP"'/>
             <Select label="Zona" value={form.zona} onChange={v => setForm(f => ({ ...f, zona: v }))}
               options={zonas.filter(z => z.activa).map(z => ({ value: z.tipo, label: `${z.nombre} (${z.prefijo})` }))}/>
             <Field label="Capacidad" value={form.capacidad} onChange={v => setForm(f => ({ ...f, capacidad: v }))} placeholder="4" type="number"/>

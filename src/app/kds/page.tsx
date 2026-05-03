@@ -234,7 +234,7 @@ function KDSInner() {
     if (!session) return
     const { data } = await supabase
       .from('comandas')
-      .select('*,mesa:mesas(codigo),camarero:camareros(nombre),items:comanda_items(*)')
+      .select('*,mesa:mesas(codigo,nombre),camarero:camareros(nombre),items:comanda_items(*)')
       .eq('restaurante_id', session.restaurante_id)
       .in('tipo', ['comanda', 'marchar'])
       .in('estado', ['nueva', 'en_cocina'])
@@ -463,7 +463,7 @@ function KDSInner() {
                     <div key={c.id} style={{ background:allDone?'rgba(63,125,68,.12)':urgente?'rgba(217,68,43,.06)':K.c1, border:'1px solid '+(allDone?K.gr:urgente?'rgba(217,68,43,.35)':K.rule), borderRadius:0, padding:14 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
                         <span style={{ fontFamily:SE, fontSize:44, fontWeight:500, color:allDone?K.gr:K.fg, lineHeight:1, minWidth:90 }}>
-                          {c.mesa?.codigo}
+                          {c.mesa?.codigo}{c.mesa?.nombre ? <span style={{display:'block',fontFamily:"'Newsreader',serif",fontSize:12,opacity:.7,fontStyle:'italic',lineHeight:1.3,marginTop:2}}>{c.mesa.nombre}</span> : null}
                         </span>
                         <div style={{ flex:1, display:'flex', flexDirection:'column', gap:4 }}>
                           <div style={{ display:'flex', justifyContent:'space-between', fontFamily:SM, fontSize:10, color:K.fg3 }}>

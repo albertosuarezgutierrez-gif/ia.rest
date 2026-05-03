@@ -154,6 +154,7 @@ export default function HubPage(){
                       <button key={m.id} onClick={()=>setSel(s?null:m.id)} style={{background:p.bg,border:`1px solid ${s?p.ac:C.rule}`,borderRadius:8,padding:'10px 8px',cursor:'pointer',boxShadow:s?`0 0 0 2px ${p.ac}`:'none',display:'flex',flexDirection:'column',gap:4,textAlign:'left',minHeight:70}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
                           <span style={{fontFamily:SE,fontSize:18,fontWeight:500,color:p.fg,lineHeight:1}}>{m.codigo}</span>
+                          {m.nombre && <span style={{fontFamily:SE,fontSize:10,color:p.fg,opacity:.7,display:'block',marginTop:1,lineHeight:1.2,fontStyle:'italic'}}>{m.nombre}</span>}
                           {m.estado!=='libre'&&<span style={{width:6,height:6,borderRadius:999,background:p.ac,flexShrink:0}}/>}
                         </div>
                         {m.camarero&&<div style={{fontFamily:SN,fontSize:9,color:p.fg,opacity:.75}}>{m.camarero.nombre.split(' ')[0]}</div>}
@@ -178,6 +179,7 @@ export default function HubPage(){
                   <div key={c.id} className="slide-in" style={{background:C.bone,border:`1px solid ${C.rule}`,borderRadius:0,padding:14,fontFamily:SM,textTransform:'uppercase'}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
                       <span style={{fontFamily:SE,fontSize:26,fontWeight:500,color:C.ink}}>{c.mesa?.codigo}</span>
+                      {c.mesa?.nombre && <span style={{fontFamily:SE,fontSize:13,color:C.ink3,marginLeft:6,fontStyle:'italic'}}>{c.mesa.nombre}</span>}
                       <span style={{fontSize:18,fontWeight:700,color:edadColor(c.created_at)}}>{tiempoDesde(c.created_at)}</span>
                     </div>
                     <div style={{borderTop:`1px dashed ${C.ruleS}`,paddingTop:8}}>
@@ -207,7 +209,7 @@ export default function HubPage(){
                 {comandas.length===0&&<div style={{padding:20,fontFamily:SM,fontSize:12,color:C.ink4}}>Sin comandas.</div>}
                 {comandas.map(c=>(
                   <div key={c.id} style={{display:'flex',gap:10,padding:'10px 12px',borderBottom:`1px solid ${C.rule}`,alignItems:'center'}}>
-                    <span style={{fontFamily:SE,fontSize:16,fontWeight:500,color:C.ink,width:44,flexShrink:0}}>{c.mesa?.codigo}</span>
+                    <span style={{fontFamily:SE,fontSize:16,fontWeight:500,color:C.ink,width:'auto',maxWidth:100,flexShrink:0}} title={c.mesa?.nombre||undefined}>{c.mesa?.codigo}{c.mesa?.nombre ? ` · ${c.mesa.nombre}` : ''}</span>
                     <span style={{fontFamily:SM,fontSize:9,fontWeight:700,padding:'2px 5px',borderRadius:2,background:c.tipo==='86'?C.redS:C.paper2,color:c.tipo==='86'?C.redD:C.ink2,flexShrink:0}}>{c.tipo.toUpperCase()}</span>
                     <span style={{fontFamily:SN,fontSize:12,color:C.ink2,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{(c.items||[]).map(it=>`${it.cantidad}x ${it.nombre}`).join(', ')||'—'}</span>
                     <span style={{fontFamily:SM,fontSize:10,color:C.ink4,flexShrink:0}}>{new Date(c.created_at).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span>

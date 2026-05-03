@@ -5,6 +5,7 @@ export type ItemEstado = 'pendiente' | 'en_proceso' | 'listo'
 export interface Mesa {
   id: string
   codigo: string
+  nombre: string | null
   zona: string
   capacidad: number
   estado: MesaEstado
