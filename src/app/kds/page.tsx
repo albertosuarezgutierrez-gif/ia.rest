@@ -218,6 +218,7 @@ function KDSInner() {
   const [secciones, setSecciones] = useState<Seccion[]>([])
   const [time, setTime] = useState(new Date())
   const [vistaPase, setVistaPase] = useState(false)
+  const [vistaProduccion, setVistaProduccion] = useState(false)
 
   const fetchSecciones = useCallback(async () => {
     if (!session) return
@@ -315,10 +316,10 @@ function KDSInner() {
       <div style={{ padding:'0 16px', minHeight:52, borderBottom:`1px solid ${K.rule}`, display:'flex', alignItems:'center', justifyContent:'space-between', background:K.c1, flexShrink:0, position:'sticky', top:0, zIndex:10, flexWrap:'wrap', gap:8, paddingTop:6, paddingBottom:6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <svg width="22" height="22" viewBox="0 0 56 56"><rect width="56" height="56" rx="8" fill="#1F1A15"/><g transform="translate(11,14)"><rect x="0" y="11" width="3" height="6" rx="1.5" fill="#F6F1E7"/><rect x="6" y="6" width="3" height="16" rx="1.5" fill="#F6F1E7"/><rect x="12" y="0" width="3" height="28" rx="1.5" fill="#D9442B"/><rect x="18" y="3" width="3" height="22" rx="1.5" fill="#F6F1E7"/><rect x="24" y="9" width="3" height="10" rx="1.5" fill="#F6F1E7"/><rect x="30" y="12" width="3" height="4" rx="1.5" fill="#F6F1E7"/></g></svg>
-          <span style={{ fontFamily:SN, fontSize:12, color:K.fg2, fontWeight:500, letterSpacing:'.04em' }}>
-            KDS{seccionActiva ? ` · ${seccionActiva.nombre.toUpperCase()}` : ' · TODAS'}
+          <span style={{ fontFamily:SN, fontSize:12, color:vistaProduccion?K.amb:vistaPase?K.gr:K.fg2, fontWeight:500, letterSpacing:'.04em' }}>
+            {vistaProduccion ? 'KDS · PRODUCCIÓN' : vistaPase ? 'KDS · PASE' : ('KDS'+(seccionActiva ? ` · ${seccionActiva.nombre.toUpperCase()}` : ' · TODAS'))}
           </span>
-          <span style={{ width:6, height:6, borderRadius:999, background:colorSeccion }} />
+          <span style={{ width:6, height:6, borderRadius:999, background:vistaProduccion?K.amb:vistaPase?K.gr:colorSeccion }} />
         </div>
 
         {esAdmin && secciones.length > 0 && (
@@ -333,10 +334,15 @@ function KDSInner() {
                 {s.nombre.toUpperCase()}
               </a>
             ))}
-            <button onClick={()=>setVistaPase(v=>!v)}
+            <button onClick={()=>{ setVistaPase(v=>!v); setVistaProduccion(false) }}
               style={{ cursor:'pointer', padding:'4px 10px', borderRadius:3, fontFamily:SM, fontSize:9, fontWeight:700, letterSpacing:'.1em', border:'none',
                 background:vistaPase?K.gr:'transparent', color:vistaPase?'#fff':K.fg3, transition:'background .15s,color .15s' }}>
               PASE
+            </button>
+            <button onClick={()=>{ setVistaProduccion(v=>!v); setVistaPase(false) }}
+              style={{ cursor:'pointer', padding:'4px 10px', borderRadius:3, fontFamily:SM, fontSize:9, fontWeight:700, letterSpacing:'.1em', border:'none',
+                background:vistaProduccion?K.amb:'transparent', color:vistaProduccion?'#1A1714':K.fg3, transition:'background .15s,color .15s' }}>
+              PROD
             </button>
           </div>
         )}
@@ -361,7 +367,78 @@ function KDSInner() {
       </div>
 
       <div style={{ flex:1, padding:10, overflowY:'auto' }}>
-        {vistaPase ? (
+        {vistaProduccion ? (
+          /* ══════ VISTA PRODUCCIÓN — All-Day Count ══════ */
+          (() => {
+            // Agregar items por nombre de producto, filtrado por sección si aplica
+            const conteoMap: Record<string, { total: number; listos: number; secciones: Set<string> }> = {}
+            for (const c of comandas) {
+              const items = seccionFiltro
+                ? (c.items||[]).filter(it=>it.seccion_id===seccionFiltro)
+                : (c.items||[])
+              for (const it of items) {
+                const key = it.nombre + (it.formato_nombre ? ` (${it.formato_nombre})` : '')
+                if (!conteoMap[key]) conteoMap[key] = { total:0, listos:0, secciones: new Set() }
+                conteoMap[key].total += it.cantidad
+                if (it.estado==='listo') conteoMap[key].listos += it.cantidad
+                if (it.seccion_id) conteoMap[key].secciones.add(it.seccion_id)
+              }
+            }
+            const entradas = Object.entries(conteoMap)
+              .filter(([,v])=>v.total>0)
+              .sort((a,b)=>b[1].total-a[1].total)
+            if (entradas.length===0) return (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:10 }}>
+                <span style={{ fontFamily:SE, fontSize:28, color:K.fg3, fontStyle:'italic' }}>Cocina libre.</span>
+                <span style={{ fontFamily:SM, fontSize:10, color:K.fg3, letterSpacing:'.1em' }}>PRODUCCIÓN · SIN PENDIENTES</span>
+              </div>
+            )
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                <div style={{ fontFamily:SM, fontSize:9, color:K.fg3, letterSpacing:'.12em', padding:'4px 2px 10px', borderBottom:'1px solid '+K.rule, marginBottom:4 }}>
+                  PRODUCCIÓN{seccionFiltro?' · '+seccionFiltro.toUpperCase():''} · {entradas.length} PRODUCTOS · {entradas.reduce((s,[,v])=>s+v.total,0)} UNIDADES
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:8 }}>
+                  {entradas.map(([nombre, v])=>{
+                    const pendientes = v.total - v.listos
+                    const pct = Math.round((v.listos/v.total)*100)
+                    const urgent = pendientes > 8
+                    return (
+                      <div key={nombre} style={{
+                        background: v.listos===v.total?'rgba(63,125,68,.1)':urgent?'rgba(217,68,43,.08)':K.c1,
+                        border:'1px solid '+(v.listos===v.total?K.gr:urgent?'rgba(217,68,43,.4)':K.rule),
+                        borderRadius:0, padding:14,
+                        display:'flex', flexDirection:'column', gap:8,
+                      }}>
+                        {/* Número grande de pendientes */}
+                        <div style={{ fontFamily:SE, fontSize:52, fontWeight:500, lineHeight:1,
+                          color: v.listos===v.total?K.gr:urgent?K.red:K.fg }}>
+                          {pendientes}
+                        </div>
+                        {/* Nombre del producto */}
+                        <div style={{ fontFamily:SM, fontSize:11, fontWeight:700, letterSpacing:'.04em',
+                          textTransform:'uppercase', color:K.fg2, lineHeight:1.2 }}>
+                          {nombre}
+                        </div>
+                        {/* Mini barra + ratio */}
+                        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                          <div style={{ height:3, background:K.rule, borderRadius:2, overflow:'hidden' }}>
+                            <div style={{ height:'100%', width:pct+'%',
+                              background:v.listos===v.total?K.gr:K.amb,
+                              borderRadius:2, transition:'width .3s' }}/>
+                          </div>
+                          <div style={{ fontFamily:SM, fontSize:9, color:K.fg3 }}>
+                            {v.listos}/{v.total} listos
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()
+        ) : vistaPase ? (
           /* ══════ VISTA PASE — Expediting Screen ══════ */
           comandas.length === 0 ? (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:10 }}>
