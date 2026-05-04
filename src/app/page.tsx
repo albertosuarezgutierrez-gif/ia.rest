@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 
-/* âââ TOKENS âââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ─── TOKENS ─────────────────────────────────────────────── */
 const T = {
   crema:"#F6F1E7",elev1:"#FBF8F1",elev2:"#EFE7D6",
   tinta:"#1A1714",tintaMed:"#3A332C",tintaGris:"#6B5F52",
@@ -62,22 +62,22 @@ input[type=email]:focus{border-color:#D9442B;}
 `;
 
 const SCENARIOS=[
-  {cam:"Marta",mesa:"M04+M12",color:T.verm,label:"Hora punta",emoji:"ðââï¸",
+  {cam:"Marta",mesa:"M04+M12",color:T.verm,label:"Hora punta",emoji:"🏃‍♀️",
    frase:"marchar segundos mesa cuatro y un manchado para la doce, vamos vamos",
-   brain:"Entendido. El manchado sin azÃºcar, como siempre.",items:["Ã2 Segundos","Ã1 Manchado (sin azÃºcar)"]},
-  {cam:"IvÃ¡n",mesa:"M07",color:T.ambar,label:"86 croquetas",emoji:"ð¤",
+   brain:"Entendido. El manchado sin azúcar, como siempre.",items:["×2 Segundos","×1 Manchado (sin azúcar)"]},
+  {cam:"Iván",mesa:"M07",color:T.ambar,label:"86 croquetas",emoji:"😤",
    frase:"86 las croquetas, sustituye por gambas en la siete",
-   brain:"Hecho. Quedan 3 raciones de gambas, conviene avisar.",items:["86 Croquetas","Ã1 Gambas (sustituciÃ³n)"]},
-  {cam:"Marta",mesa:"M05",color:T.marchar,label:"Cobro",emoji:"ð¸",
+   brain:"Hecho. Quedan 3 raciones de gambas, conviene avisar.",items:["86 Croquetas","×1 Gambas (sustitución)"]},
+  {cam:"Marta",mesa:"M05",color:T.marchar,label:"Cobro",emoji:"💸",
    frase:"cuenta para la cinco, pago con tarjeta, separada en dos",
-   brain:"Dividida 50/50. DatÃ¡fono activado en T05. Mesa: 1h 12m.",items:["Cobro Ã2 partes","DatÃ¡fono activado"]},
-  {cam:"IvÃ¡n",mesa:"M02",color:"#8B4FC9",label:"Alergia",emoji:"â ï¸",
-   frase:"la dos es alÃ©rgica al gluten, sin pan, sin rebozado, todo limpio",
-   brain:"Marcado. Bloqueo automÃ¡tico en M02. Que David lo confirme.",items:["â  AlÃ©rgica gluten","Sin pan Â· Sin rebozado"]},
+   brain:"Dividida 50/50. Datáfono activado en T05. Mesa: 1h 12m.",items:["Cobro ×2 partes","Datáfono activado"]},
+  {cam:"Iván",mesa:"M02",color:"#8B4FC9",label:"Alergia",emoji:"⚠️",
+   frase:"la dos es alérgica al gluten, sin pan, sin rebozado, todo limpio",
+   brain:"Marcado. Bloqueo automático en M02. Que David lo confirme.",items:["⚠ Alérgica gluten","Sin pan · Sin rebozado"]},
 ];
 
 const PLANS=[
-  {id:"barra",name:"BARRA",price:59,featured:false,desc:"Bares y cafeterÃ­as",
+  {id:"barra",name:"BARRA",price:59,featured:false,desc:"Bares y cafeterías",
    features:["1 camarero con voz","Hasta 12 mesas","KDS en cocina","VeriFactu incluido","Soporte email"]},
   {id:"servicio",name:"SERVICIO",price:99,featured:true,desc:"Restaurante con sala completa",
    features:["Hasta 4 camareros con voz","Mesas ilimitadas","KDS + Control Hub","Analytics ANALYST","Soporte WhatsApp","VeriFactu incluido"]},
@@ -86,16 +86,16 @@ const PLANS=[
 ];
 
 const FAQS=[
-  {q:"Â¿Necesito hardware especial?",a:"No. Un Android en el bolsillo del camarero, una tablet en la barra y un monitor en cocina. Sin terminales propietarios."},
-  {q:"Â¿Funciona con acento o jerga hostelera?",a:"BRAIN estÃ¡ entrenado con vocabulario real: 'marchar', '86', 'sin', 'para llevar'... y aprende con cada servicio."},
-  {q:"Â¿Cumple con VeriFactu?",a:"SÃ­. Todos los planes generan facturas con QR firmado SHA-256 y envÃ­o a AEAT. Obligatorio desde enero 2026 para sociedades."},
-  {q:"Â¿CÃ³mo es el proceso de alta?",a:"Email o telÃ©fono â verificaciÃ³n â 3 pasos (local, mesas, camareros) â empiezas. Sin llamadas ni comerciales."},
-  {q:"Â¿Puedo cancelar cuando quiera?",a:"SÃ­. Sin permanencia. Cancelas desde el panel y no se renueva. Datos exportables 30 dÃ­as."},
+  {q:"¿Necesito hardware especial?",a:"No. Un Android en el bolsillo del camarero, una tablet en la barra y un monitor en cocina. Sin terminales propietarios."},
+  {q:"¿Funciona con acento o jerga hostelera?",a:"BRAIN está entrenado con vocabulario real: 'marchar', '86', 'sin', 'para llevar'... y aprende con cada servicio."},
+  {q:"¿Cumple con VeriFactu?",a:"Sí. Todos los planes generan facturas con QR firmado SHA-256 y envío a AEAT. Obligatorio desde enero 2026 para sociedades."},
+  {q:"¿Cómo es el proceso de alta?",a:"Email o teléfono → verificación → 3 pasos (local, mesas, camareros) → empiezas. Sin llamadas ni comerciales."},
+  {q:"¿Puedo cancelar cuando quiera?",a:"Sí. Sin permanencia. Cancelas desde el panel y no se renueva. Datos exportables 30 días."},
 ];
 
-const TICKER=["marchar segundos mesa cuatro","86 las croquetas","la dos sin gluten ojo","cuenta separada en dos","vamos vamos vamos","padrÃ³n con sal gorda","datÃ¡fono en la cinco","sin azÃºcar el manchado"];
+const TICKER=["marchar segundos mesa cuatro","86 las croquetas","la dos sin gluten ojo","cuenta separada en dos","vamos vamos vamos","padrón con sal gorda","datáfono en la cinco","sin azúcar el manchado"];
 
-/* âââ DEMO ââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ─── DEMO ────────────────────────────────────────────────── */
 function Demo({mob}:{mob:boolean}) {
   const [active,setActive]=useState(0);
   const [listening,setListening]=useState(false);
@@ -128,7 +128,7 @@ function Demo({mob}:{mob:boolean}) {
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
         {SCENARIOS.map((s,i)=>(
           <button key={i} className="tab" onClick={()=>setActive(i)}
-            style={{background:active===i?s.col/r:"transparent",color:active===i?T.crema:T.tintaGris,borderColor:active===i?s.color:"#3A332C",fontSize:10}}>
+            style={{background:active===i?s.color:"transparent",color:active===i?T.crema:T.tintaGris,borderColor:active===i?s.color:"#3A332C",fontSize:10}}>
             {s.emoji} {s.label}
           </button>
         ))}
@@ -136,7 +136,7 @@ function Demo({mob}:{mob:boolean}) {
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,gap:12}}>
         <div>
           <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris,letterSpacing:".12em",textTransform:"uppercase",marginBottom:2}}>Camarero</div>
-          <div style={{fontFamily:"Newsreader,serif",fontSize:17,fontStyle:"italic",color:T.crema,fontWeight:700}}>{sc.cam} Â· {sc.mesa}</div>
+          <div style={{fontFamily:"Newsreader,serif",fontSize:17,fontStyle:"italic",color:T.crema,fontWeight:700}}>{sc.cam} · {sc.mesa}</div>
         </div>
         <div onClick={run} style={{width:72,height:72,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative",
           background:listening?`radial-gradient(circle at 36% 30%,${T.verm},${T.vermDeep})`:T.elev2,
@@ -161,7 +161,7 @@ function Demo({mob}:{mob:boolean}) {
       </div>
       {(typed||listening)&&(
         <div style={{background:"#0D0B09",borderRadius:8,padding:"10px 12px",marginBottom:12,animation:"slideIn .2s ease both"}}>
-          <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.tintaGris,letterSpacing:".14em",textTransform:"uppercase",display:"block",marginBottom:3}}>EAR Â· transcribiendo</span>
+          <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.tintaGris,letterSpacing:".14em",textTransform:"uppercase",display:"block",marginBottom:3}}>EAR · transcribiendo</span>
           <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,color:T.elev1,lineHeight:1.6}}>
             "{typed}{listening&&<span style={{display:"inline-block",width:2,height:12,background:T.verm,marginLeft:2,verticalAlign:"middle",animation:"blink .7s step-end infinite"}}/>}"
           </span>
@@ -169,14 +169,14 @@ function Demo({mob}:{mob:boolean}) {
       )}
       {showBrain&&(
         <div style={{background:"#1C1509",borderRadius:8,padding:"10px 12px",marginBottom:12,animation:"slideIn .3s ease both"}}>
-          <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.ambar,letterSpacing:".14em",textTransform:"uppercase",display:"block",marginBottom:3}}>BRAIN Â· VOX</span>
-          <span style={{fontFamily:"Newsreader,serif",fontSize:13,fontStyle:"italic",color:T.elev1}}>Â«{sc.brain}Â»</span>
+          <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.ambar,letterSpacing:".14em",textTransform:"uppercase",display:"block",marginBottom:3}}>BRAIN · VOX</span>
+          <span style={{fontFamily:"Newsreader,serif",fontSize:13,fontStyle:"italic",color:T.elev1}}>«{sc.brain}»</span>
         </div>
       )}
       {showTicket&&(
         <div style={{background:T.elev1,borderRadius:8,padding:12,animation:"slideIn .3s .1s ease both",border:`1.5px solid ${T.marchar}44`}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-            <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.marchar,fontWeight:700,letterSpacing:".12em",textTransform:"uppercase"}}>â Ticket enviado</span>
+            <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.marchar,fontWeight:700,letterSpacing:".12em",textTransform:"uppercase"}}>✓ Ticket enviado</span>
             <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris}}>0.42s</span>
           </div>
           {sc.items.map((item,i)=>(
@@ -188,7 +188,7 @@ function Demo({mob}:{mob:boolean}) {
   );
 }
 
-/* âââ MAIN ââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* ─── MAIN ────────────────────────────────────────────────── */
 export default function LandingPage() {
   const mob=useIsMobile();
   const tab=useIsTablet();
@@ -212,7 +212,7 @@ export default function LandingPage() {
             {["#como","#precios","#faq"].map((h,i)=>(
               <a key={h} href={h} style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaMed,textDecoration:"none",transition:"color .18s"}}
                 onMouseEnter={e=>(e.currentTarget.style.color=T.verm)} onMouseLeave={e=>(e.currentTarget.style.color=T.tintaMed)}>
-                {["CÃ³mo funciona","Precios","FAQ"][i]}
+                {["Cómo funciona","Precios","FAQ"][i]}
               </a>
             ))}
             <a href="/registro" className="cta" style={{padding:"8px 18px",fontSize:13}}>Prueba gratis</a>
@@ -226,10 +226,10 @@ export default function LandingPage() {
         </div>
         {menuOpen&&(
           <div className="hide-desk" style={{padding:"12px 16px 20px",borderTop:`1px solid ${T.reglas}`,display:"flex",flexDirection:"column",gap:16}}>
-            {[["#como","CÃ³mo funciona"],["#precios","Precios"],["#faq","FAQ"]].map(([h,l])=>(
+            {[["#como","Cómo funciona"],["#precios","Precios"],["#faq","FAQ"]].map(([h,l])=>(
               <a key={h} href={h} onClick={()=>setMenuOpen(false)} style={{fontFamily:"Inter Tight,sans-serif",fontSize:15,color:T.tintaMed,textDecoration:"none"}}>{l}</a>
             ))}
-            <a href="/registro" className="cta" style={{padding:"13px",textAlign:"center"}}>Prueba 14 dÃ­as gratis</a>
+            <a href="/registro" className="cta" style={{padding:"13px",textAlign:"center"}}>Prueba 14 días gratis</a>
           </div>
         )}
       </nav>
@@ -239,7 +239,7 @@ export default function LandingPage() {
         <div className="ticker-wrap"><div className="ticker-track">
           {[...TICKER,...TICKER].map((t,i)=>(
             <span key={i} style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,color:i%3===0?T.verm:T.tintaGris,whiteSpace:"nowrap",padding:"0 28px"}}>
-              {i%2===0?"â¶ ":"Â· "}{t}
+              {i%2===0?"▶ ":"· "}{t}
             </span>
           ))}
         </div></div>
@@ -251,21 +251,21 @@ export default function LandingPage() {
           <div style={{flex:"1 1 0",minWidth:0,textAlign:mob?"center":"left"}}>
             <div className="fu d1" style={{display:"inline-flex",alignItems:"center",gap:7,background:T.elev2,border:`1px solid ${T.reglas}`,borderRadius:20,padding:"5px 14px",marginBottom:20}}>
               <span style={{width:6,height:6,borderRadius:"50%",background:T.marchar,display:"inline-block",animation:"pulse 1.4s ease-out infinite"}}/>
-              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaMed,fontWeight:600}}>Bodega La Plaza Â· Sevilla Â· en directo</span>
+              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaMed,fontWeight:600}}>Bodega La Plaza · Sevilla · en directo</span>
             </div>
             <h1 className="fu d2" style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(38px,11vw,52px)":"clamp(44px,5.5vw,68px)",fontStyle:"italic",fontWeight:700,color:T.tinta,lineHeight:1.06,marginBottom:16}}>
               Habla.<br/><span style={{color:T.verm}}>Cocina ya</span><br/>tiene el ticket.
             </h1>
             <p className="fu d3" style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?15:17,color:T.tintaMed,lineHeight:1.65,marginBottom:28,maxWidth:440,margin:mob?"0 auto 28px":"0 0 28px"}}>
-              Sin pantallas en sala. Sin &ldquo;espera, que apunto.&rdquo; El camarero habla y la impresora tÃ©rmica escupe el ticket en{" "}
+              Sin pantallas en sala. Sin &ldquo;espera, que apunto.&rdquo; El camarero habla y la impresora térmica escupe el ticket en{" "}
               <strong style={{color:T.tinta}}>menos de medio segundo.</strong>
             </p>
             <div className="fu d4" style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:mob?"center":"flex-start"}}>
-              <a href="/registro" className="cta" style={{fontSize:mob?15:16,padding:mob?"13px 24px":"14px 32px"}}>Prueba 14 dÃ­as gratis</a>
-              <a href="#como" className="ghost" style={{fontSize:14,color:T.tinta,padding:"12px 22px"}}>Ver cÃ³mo funciona â</a>
+              <a href="/registro" className="cta" style={{fontSize:mob?15:16,padding:mob?"13px 24px":"14px 32px"}}>Prueba 14 días gratis</a>
+              <a href="#como" className="ghost" style={{fontSize:14,color:T.tinta,padding:"12px 22px"}}>Ver cómo funciona →</a>
             </div>
             <div className="fu d5" style={{display:"grid",gridTemplateColumns:`repeat(${mob?2:4},1fr)`,gap:mob?12:20,marginTop:32}}>
-              {[["< 0.5s","voz â ticket"],["0%","comisiÃ³n"],["14 dÃ­as","gratis"],["+22%","rotaciÃ³n mesas"]].map(([v,l])=>(
+              {[["< 0.5s","voz → ticket"],["0%","comisión"],["14 días","gratis"],["+22%","rotación mesas"]].map(([v,l])=>(
                 <div key={l} style={{textAlign:mob?"center":"left"}}>
                   <div style={{fontFamily:"Newsreader,serif",fontSize:mob?22:26,fontStyle:"italic",fontWeight:700,color:T.tinta}}>{v}</div>
                   <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris}}>{l}</div>
@@ -283,18 +283,18 @@ export default function LandingPage() {
       <section id="como" style={{background:T.bisel,padding:mob?"52px 16px":"72px 24px"}}>
         <div style={{maxWidth:1000,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:mob?36:52}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Pipeline Â· 5 agentes</div>
+            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Pipeline · 5 agentes</div>
             <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(24px,7vw,34px)":"clamp(28px,4vw,42px)",fontStyle:"italic",fontWeight:700,color:T.crema}}>
               De la boca del camarero<br/>a la impresora de cocina
             </h2>
           </div>
           <div style={{display:"flex",gap:mob?10:0,alignItems:"stretch",overflowX:mob?"auto":"visible",justifyContent:mob?"flex-start":"center",flexWrap:mob?"nowrap":"wrap",paddingBottom:mob?8:0}}>
             {[
-              {id:"EAR",icon:"ð",role:"Escucha y transcribe",color:"#2B6A6E",desc:"Capta voz en tiempo real. Whisper ~0.3s."},
-              {id:"BRAIN",icon:"ð§ ",role:"Interpreta la jerga",color:T.ambar,desc:"'Marchar dos gambas' â JSON estructurado."},
-              {id:"COURIER",icon:"ð¡",role:"Enruta al destino",color:T.verm,desc:"Manda el ticket a impresora, KDS y tablet."},
-              {id:"VOX",icon:"ð",role:"Confirma al camarero",color:T.marchar,desc:"Susurro: 'entendido, sin azÃºcar como siempre'."},
-              {id:"ANALYST",icon:"ð",role:"Mide el servicio",color:T.tintaGris,desc:"Latencia, rotaciÃ³n, tickets/h."},
+              {id:"EAR",icon:"🎙",role:"Escucha y transcribe",color:"#2B6A6E",desc:"Capta voz en tiempo real. Whisper ~0.3s."},
+              {id:"BRAIN",icon:"🧠",role:"Interpreta la jerga",color:T.ambar,desc:"'Marchar dos gambas' → JSON estructurado."},
+              {id:"COURIER",icon:"📡",role:"Enruta al destino",color:T.verm,desc:"Manda el ticket a impresora, KDS y tablet."},
+              {id:"VOX",icon:"🔊",role:"Confirma al camarero",color:T.marchar,desc:"Susurro: 'entendido, sin azúcar como siempre'."},
+              {id:"ANALYST",icon:"📊",role:"Mide el servicio",color:T.tintaGris,desc:"Latencia, rotación, tickets/h."},
             ].map((a,i,arr)=>(
               <div key={a.id} style={{display:"flex",alignItems:"stretch",flexShrink:0}}>
                 <div style={{background:"#0D0B09",border:"1px solid #2A2520",borderRadius:12,padding:mob?"16px 14px":"22px 18px",width:mob?148:166}}>
@@ -303,11 +303,11 @@ export default function LandingPage() {
                   <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.crema,fontWeight:600,marginBottom:6}}>{a.role}</div>
                   <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris,lineHeight:1.55}}>{a.desc}</div>
                 </div>
-                {!mob&&i<arr.length-1&&<div style={{display:"flex",alignItems:"center",padding:"0 4px",color:T.verm,fontSize:16}}>â</div>}
+                {!mob&&i<arr.length-1&&<div style={{display:"flex",alignItems:"center",padding:"0 4px",color:T.verm,fontSize:16}}>→</div>}
               </div>
             ))}
           </div>
-          {mob&&<div style={{textAlign:"center",marginTop:8}}><span style={{fontFamily:"Caveat,cursive",fontSize:12,color:T.tintaGris}}>â desliza â</span></div>}
+          {mob&&<div style={{textAlign:"center",marginTop:8}}><span style={{fontFamily:"Caveat,cursive",fontSize:12,color:T.tintaGris}}>← desliza →</span></div>}
           <div style={{textAlign:"center",marginTop:36}}>
             <div style={{display:"inline-flex",flexWrap:"wrap",gap:12,alignItems:"center",justifyContent:"center",background:"#0D0B09",border:"1px solid #2A2520",borderRadius:10,padding:mob?"12px 18px":"12px 24px"}}>
               <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,color:T.tintaGris}}>latencia objetivo</span>
@@ -322,12 +322,12 @@ export default function LandingPage() {
       <section style={{background:T.elev2,padding:mob?"48px 16px":"64px 24px"}}>
         <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:28,alignItems:"flex-start",flexDirection:mob?"column":"row",flexWrap:"wrap"}}>
           <div style={{flex:"1 1 240px"}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,letterSpacing:".18em",textTransform:"uppercase",color:T.verm,marginBottom:8}}>Caso real Â· viernes 21:14</div>
+            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,letterSpacing:".18em",textTransform:"uppercase",color:T.verm,marginBottom:8}}>Caso real · viernes 21:14</div>
             <div style={{fontFamily:"Newsreader,serif",fontSize:22,fontStyle:"italic",fontWeight:700,color:T.tinta,marginBottom:4}}>Bodega La Plaza</div>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaGris}}>14 mesas Â· lleno hasta arriba</div>
+            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaGris}}>14 mesas · lleno hasta arriba</div>
           </div>
           <div style={{flex:"2 1 320px",display:"grid",gridTemplateColumns:`repeat(${mob?2:4},1fr)`,gap:12}}>
-            {[["38","tickets/h","hora pico 21:00"],["0.42s","latencia","VOX â ticket"],["+22%","rotaciÃ³n","vs semana anterior"],["0.7%","errores","2 de 284 comandas"]].map(([v,u,l])=>(
+            {[["38","tickets/h","hora pico 21:00"],["0.42s","latencia","VOX → ticket"],["+22%","rotación","vs semana anterior"],["0.7%","errores","2 de 284 comandas"]].map(([v,u,l])=>(
               <div key={l} style={{background:T.elev1,borderRadius:10,padding:"14px 12px",border:`1px solid ${T.reglas}`}}>
                 <div style={{fontFamily:"Newsreader,serif",fontSize:24,fontStyle:"italic",fontWeight:700,color:T.tinta}}>{v}</div>
                 <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:9,color:T.verm,marginBottom:2}}>{u}</div>
@@ -347,7 +347,7 @@ export default function LandingPage() {
               Sin comisiones.<br/>Sin sorpresas.
             </h2>
             <div style={{display:"inline-flex",background:T.elev2,borderRadius:30,padding:3,gap:2}}>
-              {["Mensual","Anual (â18%)"].map((l,i)=>(
+              {["Mensual","Anual (−18%)"].map((l,i)=>(
                 <button key={l} onClick={()=>setAnnual(i===1)} style={{padding:"8px 16px",borderRadius:26,border:"none",cursor:"pointer",fontFamily:"Inter Tight,sans-serif",fontSize:12,fontWeight:600,background:(annual?i===1:i===0)?T.tinta:"transparent",color:(annual?i===1:i===0)?T.crema:T.tintaGris,transition:"all .2s"}}>{l}</button>
               ))}
             </div>
@@ -357,22 +357,22 @@ export default function LandingPage() {
               const price=annual?Math.round(p.price*.82):p.price;
               return(
                 <div key={p.id} className="plan-card" style={{background:p.featured?T.tinta:T.elev1,border:`1.5px solid ${p.featured?T.verm:T.reglas}`,borderRadius:14,padding:mob?"22px 18px":"28px 24px",flex:"1 1 0",position:"relative",boxShadow:p.featured?`0 8px 36px ${T.tinta}2A`:undefined}}>
-                  {p.featured&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:T.verm,color:T.crema,fontSize:9,fontFamily:"Inter Tight,sans-serif",fontWeight:700,letterSpacing:".14em",padding:"4px 14px",borderRadius:20,textTransform:"uppercase",whiteSpace:"nowrap"}}>MÃ¡s popular</div>}
+                  {p.featured&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:T.verm,color:T.crema,fontSize:9,fontFamily:"Inter Tight,sans-serif",fontWeight:700,letterSpacing:".14em",padding:"4px 14px",borderRadius:20,textTransform:"uppercase",whiteSpace:"nowrap"}}>Más popular</div>}
                   <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,letterSpacing:".2em",textTransform:"uppercase",color:p.featured?T.verm:T.tintaGris,marginBottom:3}}>Plan</div>
                   <div style={{fontFamily:"Newsreader,serif",fontSize:mob?24:28,fontStyle:"italic",fontWeight:700,color:p.featured?T.crema:T.tinta,marginBottom:4}}>{p.name}</div>
                   <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris,marginBottom:20}}>{p.desc}</div>
                   <div style={{marginBottom:22}}>
-                    <span style={{fontFamily:"Newsreader,serif",fontSize:mob?36:42,fontWeight:700,fontStyle:"italic",color:p.featured?T.crema:T.tinta}}>{price}â¬</span>
+                    <span style={{fontFamily:"Newsreader,serif",fontSize:mob?36:42,fontWeight:700,fontStyle:"italic",color:p.featured?T.crema:T.tinta}}>{price}€</span>
                     <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris}}>/mes</span>
-                    {annual&&<div style={{fontFamily:"Caveat,cursive",fontSize:12,color:T.marchar,marginTop:2}}>ahorras {p.price-price}â¬/mes</div>}
+                    {annual&&<div style={{fontFamily:"Caveat,cursive",fontSize:12,color:T.marchar,marginTop:2}}>ahorras {p.price-price}€/mes</div>}
                   </div>
                   <a href="/registro" className="cta" style={{width:"100%",marginBottom:20,fontSize:13,padding:13,background:p.featured?T.verm:"transparent",color:p.featured?T.crema:T.tinta,border:`1.5px solid ${p.featured?T.verm:T.reglas}`}}>
-                    Empezar gratis 14 dÃ­as
+                    Empezar gratis 14 días
                   </a>
                   <div style={{display:"flex",flexDirection:"column",gap:9}}>
                     {p.features.map(f=>(
                       <div key={f} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-                        <span style={{color:T.marchar,fontSize:13,flexShrink:0,marginTop:1}}>â</span>
+                        <span style={{color:T.marchar,fontSize:13,flexShrink:0,marginTop:1}}>✓</span>
                         <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:p.featured?"#C4B9A8":T.tintaMed,lineHeight:1.5}}>{f}</span>
                       </div>
                     ))}
@@ -382,7 +382,7 @@ export default function LandingPage() {
             })}
           </div>
           <div style={{textAlign:"center",marginTop:24}}>
-            <span style={{fontFamily:"Caveat,cursive",color:T.tintaGris,fontSize:15}}>14 dÃ­as gratis Â· sin tarjeta Â· cancelas cuando quieras</span>
+            <span style={{fontFamily:"Caveat,cursive",color:T.tintaGris,fontSize:15}}>14 días gratis · sin tarjeta · cancelas cuando quieras</span>
           </div>
         </div>
       </section>
@@ -398,7 +398,7 @@ export default function LandingPage() {
               <div key={i} style={{borderBottom:`1px solid ${T.reglas}`}}>
                 <button className="faq-q" onClick={()=>setOpenFaq(openFaq===i?null:i)}>
                   <span style={{textAlign:"left",paddingRight:16,lineHeight:1.4}}>{f.q}</span>
-                  <span style={{color:T.verm,fontSize:20,fontWeight:300,flexShrink:0}}>{openFaq===i?"â":"+"}</span>
+                  <span style={{color:T.verm,fontSize:20,fontWeight:300,flexShrink:0}}>{openFaq===i?"−":"+"}</span>
                 </button>
                 {openFaq===i&&<div style={{fontFamily:"Inter Tight,sans-serif",fontSize:14,color:T.tintaMed,lineHeight:1.7,paddingBottom:16}}>{f.a}</div>}
               </div>
@@ -411,10 +411,10 @@ export default function LandingPage() {
       <section style={{background:T.bisel,padding:mob?"60px 16px":"72px 24px"}}>
         <div style={{maxWidth:520,margin:"0 auto",textAlign:"center"}}>
           <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(28px,8vw,44px)":"clamp(30px,5vw,52px)",fontStyle:"italic",fontWeight:700,color:T.crema,lineHeight:1.1,marginBottom:14}}>
-            El prÃ³ximo viernes<br/><span style={{color:T.verm}}>sin anotar nada.</span>
+            El próximo viernes<br/><span style={{color:T.verm}}>sin anotar nada.</span>
           </h2>
           <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?14:15,color:T.tintaGris,lineHeight:1.7,marginBottom:32}}>
-            14 dÃ­as gratis con el plan SERVICIO completo. Sin tarjeta. Sin llamadas.
+            14 días gratis con el plan SERVICIO completo. Sin tarjeta. Sin llamadas.
           </p>
           {!done?(
             <div style={{display:"flex",gap:10,flexDirection:mob?"column":"row",maxWidth:420,margin:"0 auto"}}>
@@ -422,16 +422,16 @@ export default function LandingPage() {
                 onKeyDown={e=>e.key==="Enter"&&email&&setDone(true)}/>
               <a href={`/registro${email?`?email=${encodeURIComponent(email)}`:""}`} className="cta"
                 onClick={()=>email&&setDone(true)} style={{whiteSpace:"nowrap",padding:"13px 22px",flexShrink:0}}>
-                Empezar gratis â
+                Empezar gratis →
               </a>
             </div>
           ):(
             <div style={{background:"#0D0B09",border:`1px solid ${T.marchar}44`,borderRadius:10,padding:"18px 24px",display:"inline-block"}}>
-              <div style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",color:T.marchar,marginBottom:4}}>â Perfecto</div>
+              <div style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",color:T.marchar,marginBottom:4}}>✓ Perfecto</div>
               <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaGris}}>Revisa {email} para verificar y empezar el trial.</div>
             </div>
           )}
-          <div style={{fontFamily:"Caveat,cursive",fontSize:14,color:T.tintaGris,marginTop:20}}>hecho con cariÃ±o en una cocina Â· 0 quejas</div>
+          <div style={{fontFamily:"Caveat,cursive",fontSize:14,color:T.tintaGris,marginTop:20}}>hecho con cariño en una cocina · 0 quejas</div>
         </div>
       </section>
 
@@ -440,9 +440,9 @@ export default function LandingPage() {
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
           <div style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",fontWeight:700,color:T.crema}}>ia<span style={{color:T.verm}}>.</span>rest</div>
           <div style={{display:"flex",gap:mob?16:24,flexWrap:"wrap"}}>
-            {["Privacidad","TÃ©rminos","Contacto"].map(l=>(<a key={l} href="#" style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaGris,textDecoration:"none"}}>{l}</a>))}
+            {["Privacidad","Términos","Contacto"].map(l=>(<a key={l} href="#" style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaGris,textDecoration:"none"}}>{l}</a>))}
           </div>
-          <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris}}>Â© 2026 ia.rest Â· EspaÃ±a</div>
+          <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris}}>© 2026 ia.rest · España</div>
         </div>
       </footer>
     </>
