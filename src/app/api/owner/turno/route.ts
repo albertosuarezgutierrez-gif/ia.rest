@@ -11,6 +11,24 @@ export async function GET(req: NextRequest) {
   const { data: ultimo } = await supabase.from('turnos')
     .select('*').eq('estado', 'cerrado').eq('restaurante_id', rid)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
+
+  // Impacto del turno activo (para mostrar en confirm de cierre)
+  let impacto_activo: { comandas_en_cocina: number; mesas: string[] } | null = null
+  if (activo) {
+    const { data: cActivas } = await supabase.from('comandas')
+      .select('mesa:mesas(codigo)')
+      .eq('turno_id', activo.id)
+      .eq('restaurante_id', rid)
+      .in('estado', ['nueva', 'en_cocina'])
+    if (cActivas && cActivas.length > 0) {
+      const mesas = [...new Set(cActivas.map((c) => {
+        const m = (Array.isArray(c.mesa) ? c.mesa[0] : c.mesa) as { codigo: string } | null
+        return m?.codigo ?? null
+      }).filter(Boolean))] as string[]
+      impacto_activo = { comandas_en_cocina: cActivas.length, mesas }
+    }
+  }
+
   let stats = null
   if (ultimo) {
     const { data: comandas } = await supabase.from('comandas')
@@ -30,7 +48,7 @@ export async function GET(req: NextRequest) {
         mesas_activas: Object.values(mesaCounts).sort((a,b) => b.count - a.count).slice(0,5) }
     }
   }
-  return NextResponse.json({ activo, ultimo, stats })
+  return NextResponse.json({ activo, ultimo, stats, impacto_activo })
 }
 
 export async function POST(req: NextRequest) {

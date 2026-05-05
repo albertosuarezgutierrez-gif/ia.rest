@@ -699,11 +699,13 @@ function TurnoTab() {
   const [nombre, setNombre] = useState('')
   const [acting, setActing] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [impacto, setImpacto] = useState<{ comandas_en_cocina: number; mesas: string[] } | null>(null)
 
   const load = useCallback(async () => {
     const r = await fetch('/api/owner/turno', { headers: sh() })
     const d = await r.json()
     setActivo(d.activo)
+    setImpacto(d.impacto_activo ?? null)
     setLoading(false)
   }, [])
 
@@ -797,6 +799,29 @@ function TurnoTab() {
           <div style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: C.redD, marginBottom: 12 }}>
             Cerrar &ldquo;{activo?.nombre}&rdquo;
           </div>
+
+          {/* Impacto real */}
+          {impacto && impacto.comandas_en_cocina > 0 ? (
+            <div style={{ background: '#FDE8E4', border: '1px solid #E8B4AD', borderRadius: 6, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.redD, textTransform: 'uppercase', marginBottom: 6 }}>
+                ⚠ Hay actividad en curso
+              </div>
+              <div style={{ fontFamily: SN, fontSize: 13, color: C.redD, lineHeight: 1.5 }}>
+                <strong>{impacto.comandas_en_cocina}</strong> comanda{impacto.comandas_en_cocina !== 1 ? 's' : ''} activa{impacto.comandas_en_cocina !== 1 ? 's' : ''} en cocina
+                {impacto.mesas.length > 0 && (
+                  <span style={{ color: C.redD, opacity: .8 }}> — mesas {impacto.mesas.join(', ')}</span>
+                )}
+              </div>
+              <div style={{ fontFamily: SN, fontSize: 12, color: C.redD, opacity: .7, marginTop: 4 }}>
+                Asegúrate de que cocina ha despachado todo antes de cerrar.
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontFamily: SN, fontSize: 12, color: C.redD, opacity: .7, marginBottom: 14 }}>
+              ✓ No hay comandas activas en este turno.
+            </div>
+          )}
+
           <p style={{ fontFamily: SN, fontSize: 13, color: C.redD, margin: '0 0 16px', lineHeight: 1.5 }}>
             El turno quedará cerrado. Los camareros no podrán enviar comandas hasta que abras uno nuevo.
           </p>
