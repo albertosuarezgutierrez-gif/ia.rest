@@ -471,6 +471,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                   const esMia  = c.camarero_id === session.id
                   const col    = c.estado==='en_cocina'?C.amb:C.gr
                   const bg     = c.estado==='en_cocina'?C.ambS:C.grS
+                  const pax    = c.num_comensales as number | null
                   return (
                     <div key={c.mesa_id} onClick={()=>setMesaDetalle({id:c.mesa_id, codigo})}
                       style={{background:bg,border:`1px solid ${col}55`,borderRadius:8,
@@ -480,6 +481,15 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                         <div style={{position:'absolute',top:3,right:3,width:5,height:5,
                           borderRadius:'50%',background:C.teal}}
                           title="Mesa de otro camarero"/>
+                      )}
+                      {pax && pax > 0 && (
+                        <div style={{
+                          position:'absolute',top:-5,left:'50%',transform:'translateX(-50%)',
+                          background:C.gr,color:'#fff',borderRadius:6,
+                          fontSize:7,fontWeight:700,fontFamily:SM,
+                          padding:'1px 4px',lineHeight:1.4,whiteSpace:'nowrap',
+                          border:`1px solid ${C.bg}`,
+                        }}>{pax}p</div>
                       )}
                       <div style={{fontFamily:SE,fontStyle:'italic',fontSize:17,fontWeight:600,color:col,lineHeight:1}}>{num}</div>
                       <div style={{fontSize:8,color:col,marginTop:1,opacity:.7}}>

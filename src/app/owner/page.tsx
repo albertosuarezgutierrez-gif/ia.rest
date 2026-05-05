@@ -3550,6 +3550,221 @@ function CajaTab() {
   )
 }
 
+/* ─── Tab: Servicio / Cubierto ─── */
+function ServicioTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '', 'Content-Type': 'application/json' })
+  const [form, setForm] = useState({
+    servicio_activo: false,
+    servicio_precio: 1.50,
+    servicio_nombre: 'Cubierto',
+    servicio_auto:   true,
+    servicio_skip:   true,
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
+  const [msg,     setMsg]     = useState('')
+
+  useEffect(() => {
+    fetch('/api/owner/config/servicio', { headers: sh() })
+      .then(r => r.json())
+      .then(d => {
+        if (d.config) setForm({
+          servicio_activo: d.config.servicio_activo ?? false,
+          servicio_precio: parseFloat(d.config.servicio_precio) || 1.50,
+          servicio_nombre: d.config.servicio_nombre ?? 'Cubierto',
+          servicio_auto:   d.config.servicio_auto   ?? true,
+          servicio_skip:   d.config.servicio_skip   ?? true,
+        })
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const guardar = async () => {
+    setSaving(true); setMsg('')
+    const r = await fetch('/api/owner/config/servicio', {
+      method: 'PUT', headers: sh(), body: JSON.stringify(form)
+    })
+    setSaving(false)
+    setMsg(r.ok ? 'Guardado ✓' : 'Error al guardar')
+    if (r.ok) setTimeout(() => setMsg(''), 3000)
+  }
+
+  const toggle = (key: keyof typeof form) =>
+    setForm(f => ({ ...f, [key]: !f[key] }))
+
+  const ToggleRow = ({ label, sub, k }: { label: string; sub?: string; k: 'servicio_activo'|'servicio_auto'|'servicio_skip' }) => (
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:`1px solid ${C.rule}` }}>
+      <div style={{ flex:1 }}>
+        <div style={{ fontSize:14, color:C.ink, fontWeight:500 }}>{label}</div>
+        {sub && <div style={{ fontSize:12, color:C.ink3, marginTop:2 }}>{sub}</div>}
+      </div>
+      <button onClick={() => toggle(k)} style={{
+        width:42, height:24, borderRadius:12, border:'none', cursor:'pointer',
+        background: form[k] ? C.red : C.rule, position:'relative', transition:'background .2s', flexShrink:0,
+      }}>
+        <div style={{
+          position:'absolute', top:3, left: form[k] ? 21 : 3,
+          width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left .2s',
+        }}/>
+      </button>
+    </div>
+  )
+
+  if (loading) return <div style={{ padding:24, color:C.ink3, fontFamily:SN }}>Cargando...</div>
+
+  const totalEjemplo = (form.servicio_precio * 4).toFixed(2).replace('.', ',')
+
+  return (
+    <div style={{ padding:'0 0 40px' }}>
+      <style>{`.srv-input:focus{border-color:${C.red}!important;outline:none}`}</style>
+
+      {/* Header */}
+      <div style={{ marginBottom:24 }}>
+        <div style={{ fontFamily:SE, fontStyle:'italic', fontSize:22, color:C.ink, marginBottom:4 }}>
+          Servicio de mesa
+        </div>
+        <div style={{ fontSize:13, color:C.ink3 }}>
+          Cubierto, pan, agua — cobro automático por comensal al abrir la primera comanda.
+        </div>
+      </div>
+
+      {/* Toggle principal */}
+      <div style={{
+        background: form.servicio_activo ? C.redS : C.bone,
+        border: `1.5px solid ${form.servicio_activo ? C.red+'66' : C.rule}`,
+        borderRadius:12, padding:'16px 20px', marginBottom:20, transition:'all .2s',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:16, fontWeight:500, color:C.ink }}>Cobrar servicio de mesa</div>
+            <div style={{ fontSize:12, color:C.ink3, marginTop:3 }}>
+              {form.servicio_activo
+                ? 'Activo · se añade automáticamente a la primera comanda'
+                : 'Desactivado · sin cobro de cubierto'}
+            </div>
+          </div>
+          <button onClick={() => toggle('servicio_activo')} style={{
+            width:48, height:28, borderRadius:14, border:'none', cursor:'pointer',
+            background: form.servicio_activo ? C.red : C.rule, position:'relative', transition:'background .2s', flexShrink:0,
+          }}>
+            <div style={{
+              position:'absolute', top:4, left: form.servicio_activo ? 24 : 4,
+              width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s',
+            }}/>
+          </button>
+        </div>
+      </div>
+
+      {/* Config detalle */}
+      <div style={{
+        background:C.bone, border:`1px solid ${C.rule}`, borderRadius:12, padding:'4px 20px 16px',
+        marginBottom:16, opacity: form.servicio_activo ? 1 : 0.45, transition:'opacity .2s',
+      }}>
+        {/* Nombre en ticket */}
+        <div style={{ padding:'12px 0', borderBottom:`1px solid ${C.rule}` }}>
+          <div style={{ fontSize:13, color:C.ink3, marginBottom:6 }}>Nombre en el ticket</div>
+          <input
+            className="srv-input"
+            value={form.servicio_nombre}
+            onChange={e => setForm(f => ({ ...f, servicio_nombre: e.target.value }))}
+            disabled={!form.servicio_activo}
+            style={{
+              width:'100%', padding:'9px 12px',
+              border:`1px solid ${C.rule}`, borderRadius:8,
+              background:C.paper, color:C.ink, fontSize:14, fontFamily:SN,
+            }}
+          />
+        </div>
+
+        {/* Precio */}
+        <div style={{ padding:'12px 0', borderBottom:`1px solid ${C.rule}` }}>
+          <div style={{ fontSize:13, color:C.ink3, marginBottom:6 }}>Precio por comensal</div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <input
+              className="srv-input"
+              type="number" min={0} max={20} step={0.25}
+              value={form.servicio_precio}
+              onChange={e => setForm(f => ({ ...f, servicio_precio: parseFloat(e.target.value) || 0 }))}
+              disabled={!form.servicio_activo}
+              style={{
+                width:100, padding:'9px 12px',
+                border:`1px solid ${C.rule}`, borderRadius:8,
+                background:C.paper, color:C.ink, fontSize:14, fontFamily:SM,
+              }}
+            />
+            <span style={{ fontSize:13, color:C.ink3 }}>€ / pax</span>
+          </div>
+        </div>
+
+        <ToggleRow
+          k="servicio_auto"
+          label="Añadir automáticamente"
+          sub="Al abrir primera comanda, sin que el camarero tenga que confirmarlo"
+        />
+        <ToggleRow
+          k="servicio_skip"
+          label="Permitir omitir"
+          sub="El camarero puede saltarse el cubierto mesa a mesa si el cliente no lo quiere"
+        />
+      </div>
+
+      {/* Preview */}
+      {form.servicio_activo && (
+        <div style={{
+          background:C.amberS, border:`1px solid ${C.amber}55`,
+          borderRadius:10, padding:'12px 16px', marginBottom:20,
+          display:'flex', alignItems:'center', gap:12,
+        }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:12, color:C.amber, fontFamily:SM, letterSpacing:'.06em', marginBottom:3 }}>
+              EJEMPLO · 4 COMENSALES
+            </div>
+            <div style={{ fontSize:14, color:C.ink2 }}>
+              1× {form.servicio_nombre || 'Cubierto'} (4 pax)
+            </div>
+          </div>
+          <div style={{ fontFamily:SM, fontSize:16, fontWeight:700, color:C.amber }}>
+            {totalEjemplo} €
+          </div>
+        </div>
+      )}
+
+      {/* Nota zonas */}
+      <div style={{
+        fontSize:12, color:C.ink4, fontFamily:SN,
+        background:C.paper2, borderRadius:8, padding:'10px 14px', marginBottom:24,
+        borderLeft:`3px solid ${C.rule}`,
+      }}>
+        <strong style={{ color:C.ink3 }}>Override por zona:</strong> en Mesas → editar zona puedes desactivar el servicio para zonas específicas (ej: barra, terraza alta).
+      </div>
+
+      {/* Botón guardar */}
+      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <button
+          onClick={guardar}
+          disabled={saving}
+          style={{
+            padding:'12px 28px', borderRadius:9, border:'none',
+            background:C.red, color:'#fff', fontSize:14, fontWeight:500,
+            fontFamily:SN, cursor:saving?'wait':'pointer', opacity:saving?0.7:1,
+          }}
+        >
+          {saving ? 'Guardando…' : 'Guardar configuración'}
+        </button>
+        {msg && (
+          <div style={{
+            fontSize:13, color: msg.includes('Error') ? C.red : C.green,
+            fontFamily:SM,
+          }}>
+            {msg}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const GRUPOS = [
   {
     id: 'sala', label: 'Sala', icon: ICONS.users,
@@ -3577,11 +3792,12 @@ const GRUPOS = [
   {
     id: 'config', label: 'Config', icon: ICONS.shield,
     tabs: [
-      { id: 'impresoras',     label: 'Impresoras',      icon: ICONS.printer       },
-      { id: 'flujos',         label: 'Flujos',           icon: ICONS.wifi          },
-      { id: 'notificaciones', label: 'Notificaciones',   icon: ICONS.alertTriangle },
-      { id: 'modificaciones', label: 'Modificaciones',   icon: ICONS.alertTriangle },
-      { id: 'restaurante',    label: 'Restaurante',      icon: ICONS.shield        },
+      { id: 'cubierto',       label: 'Cubierto',         icon: ICONS.receipt       },
+      { id: 'impresoras',     label: 'Impresoras',        icon: ICONS.printer       },
+      { id: 'flujos',         label: 'Flujos',            icon: ICONS.wifi          },
+      { id: 'notificaciones', label: 'Notificaciones',    icon: ICONS.alertTriangle },
+      { id: 'modificaciones', label: 'Modificaciones',    icon: ICONS.alertTriangle },
+      { id: 'restaurante',    label: 'Restaurante',       icon: ICONS.shield        },
     ]
   },
 ]
@@ -3690,6 +3906,7 @@ export default function OwnerPage() {
 
         {/* ── Contenido ── */}
         <div style={{ marginTop: getGrupo(tab).tabs.length <= 1 ? 20 : 0 }}>
+          {tab === 'cubierto'       && <ServicioTab/>}
           {tab === 'camareros'      && <CamarerosTab/>}
           {tab === 'mesas'          && <MesasTab/>}
           {tab === 'secciones'      && <SeccionesTab/>}
