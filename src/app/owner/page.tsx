@@ -2575,12 +2575,12 @@ function FlujoTab() {
                 <label style={labelSt}>Zona de sala</label>
                 <div style={{ border:`1px solid ${C.rule}`, borderRadius:6, background:C.paper }}>
                   {/* "Todas" master */}
-                  <div onClick={toggleTodasZonas} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:`1px solid ${C.rule}`, cursor:'pointer', background:form.zona_tipos.length===0?C.bone:'transparent' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:`1px solid ${C.rule}`, background:form.zona_tipos.length===0?C.bone:'transparent' }}>
                     <Chk checked={form.zona_tipos.length===0} onClick={toggleTodasZonas}/>
                     <span style={{ fontFamily:SN, fontSize:13, color:C.ink, fontStyle:'italic' }}>Todas las zonas</span>
                   </div>
                   {zonas.map((z,i)=>(
-                    <div key={z.tipo} onClick={()=>toggleZona(z.tipo)} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:i<zonas.length-1?`1px solid ${C.rule}`:'none', cursor:'pointer', background:form.zona_tipos.includes(z.tipo)?C.bone:'transparent' }}>
+                    <div key={z.tipo} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:i<zonas.length-1?`1px solid ${C.rule}`:'none', background:form.zona_tipos.includes(z.tipo)?C.bone:'transparent' }}>
                       <Chk checked={form.zona_tipos.includes(z.tipo)} onClick={()=>toggleZona(z.tipo)}/>
                       <span style={{ fontFamily:SN, fontSize:13, color:C.ink }}>{z.nombre}</span>
                     </div>
@@ -2622,7 +2622,7 @@ function FlujoTab() {
                         </div>
                         {/* Products (expanded) */}
                         {abierta && prods.map(p=>(
-                          <div key={p.id} onClick={()=>toggleProducto(p.id,s.id)} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px 6px 32px', borderTop:`1px solid ${C.rule}`, cursor:'pointer', background:isProdChecked(p.id,s.id)?C.bone:'transparent' }}>
+                          <div key={p.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px 6px 32px', borderTop:`1px solid ${C.rule}`, background:isProdChecked(p.id,s.id)?C.bone:'transparent' }}>
                             <Chk checked={isProdChecked(p.id,s.id)} onClick={()=>toggleProducto(p.id,s.id)}/>
                             <span style={{ fontFamily:SN, fontSize:12, color:C.ink2 }}>{p.nombre}</span>
                             <span style={{ marginLeft:'auto', fontFamily:SM, fontSize:11, color:C.ink4 }}>{p.precio.toFixed(2)} €</span>
