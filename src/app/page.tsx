@@ -77,11 +77,11 @@ const SCENARIOS=[
 ];
 
 const PLANS=[
-  {id:"barra",name:"BARRA",price:39,featured:false,desc:"Bares y cafeterías",
+  {id:"barra",name:"BARRA",price:59,featured:false,desc:"Bares y cafeterías",
    features:["1 camarero con voz","Hasta 12 mesas","KDS en cocina","Impresoras ilimitadas","VeriFactu homologado","Alérgenos EU incluidos","Soporte email"]},
-  {id:"servicio",name:"SERVICIO",price:79,featured:true,desc:"Restaurante con sala completa",
+  {id:"servicio",name:"SERVICIO",price:99,featured:true,desc:"Restaurante con sala completa",
    features:["Hasta 4 camareros con voz","Mesas ilimitadas","KDS + Control Hub","Analytics ANALYST","Cobro Stripe + Bizum","VeriFactu homologado","Soporte WhatsApp · 24h"]},
-  {id:"casa",name:"CASA",price:129,featured:false,desc:"Grupos y varios locales",
+  {id:"casa",name:"CASA",price:169,featured:false,desc:"Grupos y varios locales",
    features:["Camareros ilimitados","Hasta 3 locales","Secciones ilimitadas","API acceso","Hardware Bridge incluido","Onboarding personalizado","VeriFactu homologado"]},
 ];
 
@@ -95,7 +95,7 @@ const FAQS=[
   {q:"¿Puedo cancelar cuando quiera?",a:"Sí. Sin permanencia ni penalización. Cancelas desde el panel y no se renueva. Datos exportables en formato estándar durante 30 días."},
 ];
 
-const TICKER=["marchar segundos mesa cuatro","86 las croquetas","la dos sin gluten ojo","cuenta separada en dos","vamos vamos vamos","padrón con sal gorda","datáfono en la cinco","sin azúcar el manchado","verifactu homologado","sin comisiones","39€/mes completo","14 días gratis sin tarjeta","kit digital compatible","funciona en terraza"];
+const TICKER=["marchar segundos mesa cuatro","86 las croquetas","la dos sin gluten ojo","cuenta separada en dos","vamos vamos vamos","padrón con sal gorda","datáfono en la cinco","sin azúcar el manchado","verifactu homologado","sin comisiones","14 días gratis sin tarjeta","kit digital compatible","funciona en terraza"];
 
 /* ─── DEMO ────────────────────────────────────────────────── */
 function Demo({mob}:{mob:boolean}) {
@@ -267,7 +267,7 @@ export default function LandingPage() {
               <a href="#como" className="ghost" style={{fontSize:14,color:T.tinta,padding:"12px 22px"}}>Ver cómo funciona →</a>
             </div>
             <div className="fu d5" style={{display:"grid",gridTemplateColumns:`repeat(${mob?2:4},1fr)`,gap:mob?12:20,marginTop:32}}>
-              {[["< 0.5s","voz → ticket"],["0%","comisión"],["desde 39€","al mes"],["14 días","gratis sin tarjeta"]].map(([v,l])=>(
+              {[["< 0.5s","voz → ticket"],["0%","comisión"],["desde 59€","al mes"],["14 días","gratis sin tarjeta"]].map(([v,l])=>(
                 <div key={l} style={{textAlign:mob?"center":"left"}}>
                   <div style={{fontFamily:"Newsreader,serif",fontSize:mob?22:26,fontStyle:"italic",fontWeight:700,color:T.tinta}}>{v}</div>
                   <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris}}>{l}</div>
@@ -395,14 +395,14 @@ export default function LandingPage() {
           <div style={{textAlign:"center",marginBottom:32}}>
             <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:8}}>Comparativa · mayo 2026</div>
             <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(20px,6vw,28px)":"clamp(22px,3vw,32px)",fontStyle:"italic",fontWeight:700,color:T.tinta}}>
-              Lo que dan los demás a 59 €/mes.<br/>Lo que da ia.rest a 39 €/mes.
+              Lo que dan los demás a 59 €/mes.<br/>Lo que da ia.rest a 59 €/mes.
             </h2>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"Inter Tight,sans-serif",fontSize:mob?11:13}}>
               <thead>
                 <tr>
-                  {["Característica","ia.rest 39 €","TPV básico ~34–59 €"].map((h,i)=>(
+                  {["Característica","ia.rest 59 €","TPV básico ~34–59 €"].map((h,i)=>(
                     <th key={h} style={{padding:"10px 14px",textAlign:i===0?"left":"center",
                       borderBottom:`2px solid ${i===1?T.verm:T.reglas}`,
                       fontWeight:700,color:i===1?T.verm:T.tintaMed,
@@ -519,7 +519,7 @@ export default function LandingPage() {
           </h2>
           <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?14:15,color:T.tintaGris,lineHeight:1.7,marginBottom:32}}>
             14 días gratis con el plan SERVICIO completo. Sin tarjeta. Sin llamadas.<br/>
-            <span style={{fontFamily:"Caveat,cursive",fontSize:15,color:T.ambar}}>Luego desde 39 €/mes. Sin comisiones. Sin permanencia.</span>
+            <span style={{fontFamily:"Caveat,cursive",fontSize:15,color:T.ambar}}>Luego desde 59 €/mes. Sin comisiones. Sin permanencia.</span>
           </p>
           {!done?(
             <div style={{display:"flex",gap:10,flexDirection:mob?"column":"row",maxWidth:420,margin:"0 auto"}}>

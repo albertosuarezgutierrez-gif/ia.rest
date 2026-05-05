@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: '%s · ia.rest',
   },
   description:
-    'Software TPV con IA para restaurantes y bares en España. Comanda por voz en menos de 0,5 segundos. VeriFactu homologado, KDS, cobro con tarjeta y Bizum. Desde 39 €/mes. Sin comisiones. 14 días gratis.',
+    'Software TPV con IA para restaurantes y bares en España. Comanda por voz en menos de 0,5 segundos. VeriFactu homologado, KDS, cobro con tarjeta y Bizum. Desde 59 €/mes. Sin comisiones. 14 días gratis.',
   keywords: [
     'tpv hosteleria','tpv restaurante','tpv bar','software tpv hosteleria españa',
     'tpv voz restaurante','verifactu tpv','verifactu hosteleria',
@@ -94,12 +94,12 @@ const jsonLdApp = {
   softwareVersion: '1.0',
   datePublished: '2026-01-01',
   offers: [
-    { '@type': 'Offer', name: 'Plan BARRA', price: '39', priceCurrency: 'EUR', url: `${BASE_URL}/registro`,
-      priceSpecification: { '@type': 'UnitPriceSpecification', price: '39', priceCurrency: 'EUR', billingDuration: 'P1M' } },
-    { '@type': 'Offer', name: 'Plan SERVICIO', price: '79', priceCurrency: 'EUR', url: `${BASE_URL}/registro`,
-      priceSpecification: { '@type': 'UnitPriceSpecification', price: '79', priceCurrency: 'EUR', billingDuration: 'P1M' } },
-    { '@type': 'Offer', name: 'Plan CASA', price: '129', priceCurrency: 'EUR', url: `${BASE_URL}/registro`,
-      priceSpecification: { '@type': 'UnitPriceSpecification', price: '129', priceCurrency: 'EUR', billingDuration: 'P1M' } },
+    { '@type': 'Offer', name: 'Plan BARRA', price: '59', priceCurrency: 'EUR', url: `${BASE_URL}/registro`,
+      priceSpecification: { '@type': 'UnitPriceSpecification', price: '59', priceCurrency: 'EUR', billingDuration: 'P1M' } },
+    { '@type': 'Offer', name: 'Plan SERVICIO', price: '99', priceCurrency: 'EUR', url: `${BASE_URL}/registro`,
+      priceSpecification: { '@type': 'UnitPriceSpecification', price: '99', priceCurrency: 'EUR', billingDuration: 'P1M' } },
+    { '@type': 'Offer', name: 'Plan CASA', price: '169', priceCurrency: 'EUR', url: `${BASE_URL}/registro`,
+      priceSpecification: { '@type': 'UnitPriceSpecification', price: '169', priceCurrency: 'EUR', billingDuration: 'P1M' } },
   ],
   featureList: [
     'Comandas por voz con IA (Whisper + Claude)',
