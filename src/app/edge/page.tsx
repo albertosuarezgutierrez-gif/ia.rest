@@ -609,7 +609,7 @@ function PendientesScreen({session,turnoId}:{session:{id:string;nombre:string;ro
         {vis.length===0&&(<div style={{textAlign:'center',padding:'40px 0'}}><div style={{fontFamily:SE,fontStyle:'italic',fontSize:17,color:C.ink3}}>Sin comandas activas</div><div style={{fontFamily:SM,fontSize:11,color:C.ink4,marginTop:6}}>todo tranquilo</div></div>)}
         {vis.map(c=>{
           const mesa=c.mesa?.codigo||'?'; const enCocina=c.estado==='en_cocina'
-          const items=(c.items||[]).filter((it:Record<string,unknown>)=>it.estado_item!=='eliminado')
+          const items=(c.items||[]).filter(it=>(it as unknown as {estado_item?:string}).estado_item!=='eliminado')
           return (
             <div key={c.id} style={{background:C.bg1,border:`1px solid ${enCocina?C.amb+'66':C.gr+'44'}`,borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(26,23,20,.06)'}}>
               <div style={{padding:'9px 13px',borderBottom:`1px solid ${C.rule}`,display:'flex',justifyContent:'space-between',alignItems:'center',background:enCocina?C.ambS:C.grS}}>
