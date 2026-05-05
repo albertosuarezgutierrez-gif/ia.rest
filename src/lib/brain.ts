@@ -121,11 +121,20 @@ export async function parsearComanda(texto: string, restaurante_id?: string): Pr
   const content = response.content[0]
   if (content.type !== 'text') throw new Error('Respuesta inesperada de BRAIN')
 
+  // Limpiar markdown code blocks que Haiku a veces añade
+  const raw_text = content.text.trim()
+  const clean = raw_text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+
   try {
-    const parsed = JSON.parse(content.text)
+    const parsed = JSON.parse(clean)
+    console.log('[BRAIN] OK:', parsed.mesa, parsed.tipo, parsed.items?.length, 'items')
     return { ...parsed, raw: texto }
-  } catch {
-    // ── FIX: fallback usa M00 (salon) en lugar de T00 (terraza) ──
+  } catch (e) {
+    console.error('[BRAIN] JSON.parse failed. raw_text:', raw_text.substring(0, 200), 'error:', e)
     return { mesa: 'M00', tipo: 'aviso', items: [], confianza: 0.1, raw: texto }
   }
 }

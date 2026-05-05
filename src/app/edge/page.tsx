@@ -139,6 +139,17 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     .filter(c => c.camarero_id === session.id)
     .slice(-2)
 
+  // Todas las mesas ocupadas del turno (de cualquier camarero) para el grid
+  const mesasOcupadas = comandas
+    .filter(c => ['nueva','en_cocina'].includes(c.estado) || c.tipo==='cuenta')
+    .reduce((acc: Record<string,typeof comandas[0]>, c) => {
+      // Una entrada por mesa (la más reciente)
+      if (!acc[c.mesa_id] || new Date(c.created_at) > new Date(acc[c.mesa_id].created_at)) {
+        acc[c.mesa_id] = c
+      }
+      return acc
+    }, {})
+
   useEffect(() => {
     if (productos86.length > prev86.current) {
       const nuevos = productos86.slice(0, productos86.length - prev86.current)
@@ -214,10 +225,18 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         setTranscript(d.texto); setBrain(d.brain); setLatencia(d.latencia_ms)
         setLastComandaId(d.comanda_id??null); setAlertas86(d.alertas_86??[]); setAlertasAlerg(d.alertas_alergenos??[])
         addMsg('camarero', d.texto)
-        if (!d.comanda_id && d.brain?.mesa && ['T00','M00','','desconocida'].includes(d.brain.mesa)) {
+        // Si BRAIN no encontró mesa o no creó comanda → preguntar
+        const mesaInvalida = !d.comanda_id && (
+          !d.brain?.mesa ||
+          ['T00','M00','','desconocida','undefined'].includes(d.brain.mesa) ||
+          d.brain?.tipo === 'aviso' && !d.brain?.items?.length
+        )
+        if (mesaInvalida) {
           if (d.brain?.items?.length>0) setPendingItems(d.brain.items)
-          addMsg('brain','¿Qué mesa?','pregunta')
-          setScreen('asking'); speak('¿Qué mesa?').then(()=>startRecording()); return
+          // NO añadimos al chat aquí — ya lo muestra screen==='asking' directamente
+          setScreen('asking')
+          speak('¿Qué mesa?').then(() => startRecording())
+          return
         }
         setPendingItems([])
         const bItems: BrainResult['items'] = d.brain?.items||[]
@@ -408,6 +427,40 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       {/* ══ TAB: HABLAR ══════════════════════════════════════════ */}
       {tab==='hablar' && (
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+
+          {/* TODAS LAS MESAS OCUPADAS — cualquier camarero */}
+          {Object.values(mesasOcupadas).length > 0 && (
+            <div style={{padding:'6px 16px 2px',flexShrink:0}}>
+              <div style={{fontSize:9,fontWeight:600,textTransform:'uppercase',letterSpacing:'1.2px',color:C.ink4,marginBottom:6}}>
+                Mesas activas — tap para ver
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>
+                {Object.values(mesasOcupadas).map(c => {
+                  const codigo = c.mesa?.codigo || '?'
+                  const num    = codigo.replace(/[^0-9]/g,'')
+                  const esMia  = c.camarero_id === session.id
+                  const col    = c.estado==='en_cocina'?C.amb:C.gr
+                  const bg     = c.estado==='en_cocina'?C.ambS:C.grS
+                  return (
+                    <div key={c.mesa_id} onClick={()=>setMesaDetalle({id:c.mesa_id, codigo})}
+                      style={{background:bg,border:`1px solid ${col}55`,borderRadius:8,
+                        padding:'6px 3px',textAlign:'center',cursor:'pointer',position:'relative',
+                        transition:'transform .1s cubic-bezier(.34,1.56,.64,1)'}}>
+                      {!esMia && (
+                        <div style={{position:'absolute',top:3,right:3,width:5,height:5,
+                          borderRadius:'50%',background:C.teal}}
+                          title="Mesa de otro camarero"/>
+                      )}
+                      <div style={{fontFamily:SE,fontStyle:'italic',fontSize:17,fontWeight:600,color:col,lineHeight:1}}>{num}</div>
+                      <div style={{fontSize:8,color:col,marginTop:1,opacity:.7}}>
+                        {c.tipo==='cuenta'?'cuenta':c.estado==='en_cocina'?'cocina':'activa'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ÚLTIMAS 2 COMANDAS — tap para ver detalle */}
           {ultimasComandas.length>0 && (
