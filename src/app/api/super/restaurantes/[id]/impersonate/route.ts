@@ -10,7 +10,8 @@ function getSession(req: NextRequest) {
 // POST /api/super/restaurantes/[id]/impersonate
 // Genera una sesiÃ³n temporal de owner para que el super admin acceda al panel del restaurante
 // sin necesitar el PIN. La sesiÃ³n generada solo vale para la sesiÃ³n del navegador.
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = getSession(req)
   if (!session || session.rol !== 'super_admin') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: restaurante, error: errRest } = await supabase
     .from('restaurantes')
     .select('id, nombre, nombre_comercial, slug')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (errRest || !restaurante) {
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: camareros } = await supabase
     .from('camareros')
     .select('id, nombre, rol, restaurante_id, seccion_id')
-    .eq('restaurante_id', params.id)
+    .eq('restaurante_id', id)
     .eq('activo', true)
     .in('rol', ['owner', 'admin'])
     .order('rol') // owner primero
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { data: cualquiera } = await supabase
       .from('camareros')
       .select('id, nombre, rol, restaurante_id, seccion_id')
-      .eq('restaurante_id', params.id)
+      .eq('restaurante_id', id)
       .eq('activo', true)
       .limit(1)
     camarero = cualquiera?.[0]
