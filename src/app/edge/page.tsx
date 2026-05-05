@@ -7,6 +7,7 @@ import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useAlertas } from '@/hooks/useAlertas'
 import AlertaBanner from '@/components/AlertaBanner'
+import SugerenciaButton from '@/components/SugerenciaButton'
 
 /* ─── PALETA CREMA (light) ──────────────────────────────────── */
 const C = {
@@ -276,6 +277,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
       {/* ALERTAS — banner audio + notificación */}
       <AlertaBanner alertas={alertas} onMarcarLeida={marcarLeida} />
+
+      {/* SUGERENCIAS — botón flotante */}
+      <SugerenciaButton session={session} tema="light" />
 
       {/* PUSH */}
       {showPush && (

@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Comanda } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
+import SugerenciaButton from '@/components/SugerenciaButton'
 
 const K={bg:'#0D0B08',c1:'#161310',fg:'#F6F1E7',fg2:'#C9BFAA',fg3:'#8D8270',rule:'#2F2820',rS:'#4A3F33',red:'#D9442B',amb:'#E8A33B',gr:'#3F7D44',tl:'#2B6A6E'}
 const SE="'Newsreader',Georgia,serif"
@@ -300,6 +301,8 @@ function KDSInner() {
   if (checking || !session) return <div style={{ minHeight: '100dvh', background: K.bg }} />
 
   return (
+    <>
+    <SugerenciaButton session={session} tema="dark" />
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: K.bg }}>
       <style>{`
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -585,11 +588,13 @@ function KDSInner() {
         onConfirmed={handleVozConfirmada}
       />
     </div>
+    </>
   )
 }
 
 export default function KDSPage() {
   return (
+    <>
     <Suspense fallback={<div style={{ minHeight:'100dvh', background:'#0D0B08' }}/>}>
       <KDSInner />
     </Suspense>

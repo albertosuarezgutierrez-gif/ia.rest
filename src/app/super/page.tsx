@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth, Session } from '@/hooks/useAuth'
+import SugerenciasPanel from '@/components/SugerenciasPanel'
 
 const C = {
   bg: '#F6F1E7', bg2: '#EFE7D6', bg3: '#E5DAC2', ink: '#1A1714',
@@ -42,6 +43,49 @@ export default function SuperPage() {
   const [form, setForm] = useState({ nombre: '', slug: '', codigo_acceso: '', plan: 'starter', ciudad: 'Madrid' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [tabSuper, setTabSuper] = useState<'restaurantes'|'sugerencias'>('restaurantes')
+  const [sugerencias, setSugerencias] = useState<any[]>([])
+  const [loadingSug, setLoadingSug] = useState(false)
+  const [filtroSug, setFiltroSug] = useState<string>('todas')
+  const [badgeSug, setBadgeSug] = useState(0)
+
+  const loadSugerencias = useCallback(async () => {
+    if (!session) return
+    setLoadingSug(true)
+    const r = await fetch('/api/sugerencias', {
+      headers: { 'x-ia-session': JSON.stringify(session) }
+    })
+    const d = await r.json()
+    const lista = d.sugerencias ?? []
+    setSugerencias(lista)
+    setBadgeSug(lista.filter((s: any) => !s.leida).length)
+    setLoadingSug(false)
+  }, [session])
+
+  const marcarLeida = async (id: string) => {
+    setSugerencias(prev => prev.map(s => s.id === id ? { ...s, leida: true } : s))
+    setBadgeSug(prev => Math.max(0, prev - 1))
+    await fetch('/api/sugerencias', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-ia-session': JSON.stringify(session) },
+      body: JSON.stringify({ id, leida: true }),
+    })
+  }
+
+  const cambiarEstado = async (id: string, estado: string) => {
+    setSugerencias(prev => prev.map(s => s.id === id ? { ...s, estado } : s))
+    await fetch('/api/sugerencias', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-ia-session': JSON.stringify(session) },
+      body: JSON.stringify({ id, estado }),
+    })
+  }
+
+  useEffect(() => { if (session && tabSuper === 'sugerencias') loadSugerencias() }, [session, tabSuper, loadSugerencias])
+  useEffect(() => { if (session) { 
+    fetch('/api/sugerencias', { headers: { 'x-ia-session': JSON.stringify(session) } })
+      .then(r => r.json()).then(d => setBadgeSug((d.sugerencias ?? []).filter((s: any) => !s.leida).length))
+  }}, [session])
 
   const load = useCallback(async () => {
     if (!session) return
@@ -119,7 +163,54 @@ export default function SuperPage() {
         </div>
       </header>
 
+      {/* TABS NAV */}
+      <div style={{ borderBottom: `1px solid ${C.rule}`, background: C.bg }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', display: 'flex', gap: 0 }}>
+          {([
+            { id: 'restaurantes', label: 'Restaurantes' },
+            { id: 'sugerencias', label: 'Sugerencias', badge: badgeSug },
+          ] as const).map(t => (
+            <button key={t.id} onClick={() => setTabSuper(t.id)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '14px 20px',
+                fontFamily: SM, fontSize: 11, letterSpacing: '.1em',
+                color: tabSuper === t.id ? C.ink : C.ink4,
+                borderBottom: `2px solid ${tabSuper === t.id ? C.red : 'transparent'}`,
+                position: 'relative',
+                display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'color .15s',
+              }}
+            >
+              {t.label.toUpperCase()}
+              {'badge' in t && (t as any).badge > 0 && (
+                <span style={{
+                  background: C.red, color: '#fff',
+                  borderRadius: 10, fontSize: 9, fontWeight: 700,
+                  padding: '1px 5px', lineHeight: '14px',
+                  fontFamily: SM,
+                }}>
+                  {(t as any).badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 32px' }}>
+        {tabSuper === 'sugerencias' ? (
+          <SugerenciasPanel
+            sugerencias={sugerencias}
+            loading={loadingSug}
+            filtro={filtroSug}
+            setFiltro={setFiltroSug}
+            onMarcarLeida={marcarLeida}
+            onCambiarEstado={cambiarEstado}
+            onRecargar={loadSugerencias}
+          />
+        ) : (
+        <div>
         {/* Title */}
         <div style={{ marginBottom: 48 }}>
           <div style={{ fontFamily: SM, fontSize: 11, color: C.red, letterSpacing: '.12em', marginBottom: 8 }}>
@@ -331,6 +422,8 @@ export default function SuperPage() {
           <span>ia.rest · Multi-tenant</span>
           <span>Supabase: efncqyvhniaxsirhdxaa</span>
         </div>
+        </div>
+        )}
       </div>
     </div>
   )

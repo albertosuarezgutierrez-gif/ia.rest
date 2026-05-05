@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import Analytics from '@/components/Analytics'
+import SugerenciaButton from '@/components/SugerenciaButton'
 
 /* ─── Design Tokens ─── */
 const C = {
@@ -2076,6 +2077,7 @@ export default function OwnerPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: C.paper, fontFamily: SN }}>
+      <SugerenciaButton session={session} tema="light" />
       <style>{`
         * { box-sizing: border-box; }
         input:focus, select:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(217,68,43,.15); }
