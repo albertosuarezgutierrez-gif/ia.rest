@@ -15,7 +15,7 @@ type Comanda = { id: string; created_at: string; mesa_id: string; camarero_id: s
 function edadColor(iso: string) { const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000); return m < 10 ? K.gr : m < 20 ? K.amb : K.red }
 
 function CocinaInner() {
-  const { session, checking } = useAuth(['cocina', 'admin', 'super_admin'])
+  const { session, checking } = useAuth(['cocina', 'jefe_sala', 'super_admin'])
   const searchParams = useSearchParams()
   const paramSeccion = searchParams.get('seccion')
   const seccionFiltro = paramSeccion ?? session?.seccion_id ?? null

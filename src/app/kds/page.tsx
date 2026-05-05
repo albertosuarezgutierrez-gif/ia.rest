@@ -209,7 +209,7 @@ function PttButton({
 }
 
 function KDSInner() {
-  const { session, checking } = useAuth(['admin', 'cocina', 'super_admin'])
+  const { session, checking } = useAuth(['jefe_sala', 'cocina', 'super_admin'])
   const searchParams = useSearchParams()
   const paramSeccion = searchParams.get('seccion')
 
@@ -296,7 +296,7 @@ function KDSInner() {
 
   const seccionActiva = secciones.find(s => s.id === seccionFiltro)
   const colorSeccion = seccionActiva?.color_kds ?? K.gr
-  const esAdmin = session?.rol === 'admin' || session?.rol === 'super_admin'
+  const esAdmin = session?.rol === 'jefe_sala' || session?.rol === 'super_admin'
 
   if (checking || !session) return <div style={{ minHeight: '100dvh', background: K.bg }} />
 

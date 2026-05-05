@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     .insert({
       nombre: 'Admin',
       pin: '0000',
-      rol: 'admin',
+      rol: 'jefe_sala',
       restaurante_id: rest.id,
       activo: true,
     })

@@ -78,7 +78,7 @@ const ICONS = {
 }
 
 const ZONA_LABEL: Record<string, string> = { salon: 'Salón', terraza: 'Terraza', barra: 'Barra' }
-const ROL_LABEL: Record<string, string> = { camarero: 'Camarero', admin: 'Admin', cocina: 'Cocina' }
+const ROL_LABEL: Record<string, string> = { camarero: 'Camarero', jefe_sala: 'Jefe sala', cocina: 'Cocina', owner: 'Owner', super_admin: 'Super' }
 
 /* ─── Components ─── */
 const Badge = ({ children, color = C.paper2 }: { children: React.ReactNode; color?: string }) => (
@@ -245,7 +245,7 @@ function CamarerosTab() {
             borderBottom: i < camareros.length - 1 ? `1px solid ${C.rule}` : 'none',
             background: !c.activo ? C.paper : 'transparent' }}>
             <span style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: c.activo ? C.ink : C.ink4 }}>{c.nombre}</span>
-            <span><Badge color={c.rol === 'admin' ? C.redS : c.rol === 'cocina' ? C.paper2 : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge></span>
+            <span><Badge color={c.rol === 'jefe_sala' ? C.redS : c.rol === 'cocina' ? C.paper2 : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge></span>
             <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{c.seccion_id ? secciones.find(s => s.id === c.seccion_id)?.nombre || c.seccion_id : '—'}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontFamily: SM, fontSize: 13, color: C.ink2 }}>
@@ -280,7 +280,7 @@ function CamarerosTab() {
             <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder="Marta"/>
             <Field label="PIN (4 dígitos)" value={form.pin} onChange={v => setForm(f => ({ ...f, pin: v }))} placeholder="1234" type="text" error={err.includes('PIN') ? err : undefined}/>
             <Select label="Rol" value={form.rol} onChange={v => setForm(f => ({ ...f, rol: v, seccion_id: '' }))}
-              options={[{ value: 'camarero', label: 'Camarero' }, { value: 'admin', label: 'Admin' }, { value: 'cocina', label: 'Cocina' }]}/>
+              options={[{ value: 'camarero', label: 'Camarero' }, { value: 'jefe_sala', label: 'Jefe de sala' }, { value: 'cocina', label: 'Cocina' }]}/>
             {form.rol === 'cocina' && (
               <Select label="Sección" value={form.seccion_id} onChange={v => setForm(f => ({ ...f, seccion_id: v }))}
                 options={[{ value: '', label: 'Todas las secciones' }, ...secciones.map(s => ({ value: s.id, label: s.nombre }))]}/>

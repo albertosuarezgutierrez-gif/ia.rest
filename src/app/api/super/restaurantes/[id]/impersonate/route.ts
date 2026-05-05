@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .select('id, nombre, rol, restaurante_id, seccion_id')
     .eq('restaurante_id', id)
     .eq('activo', true)
-    .in('rol', ['owner', 'admin'])
+    .in('rol', ['owner', 'jefe_sala'])
     .order('rol') // owner primero
     .limit(1)
 
