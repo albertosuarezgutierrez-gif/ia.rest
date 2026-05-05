@@ -91,7 +91,7 @@ export default function EdgePage() {
 }
 
 function EdgeContent({ session, turnoId, setTurnoId }:{
-  session: {id:string;nombre:string;rol:string}
+  session: {id:string;nombre:string;rol:string;restaurante_id:string}
   turnoId: string|null
   setTurnoId: (id:string|null)=>void
 }) {

@@ -324,7 +324,7 @@ export default function SugerenciaButton({ session, tema = 'light' }: Sugerencia
               )}
 
               {/* Footer info */}
-              <div style={{ marginTop: 16, fontSize: 11, color: T.text3, textAlign: 'center', fontFamily: "'Caveat',cursive", fontSize: 13 }}>
+              <div style={{ marginTop: 16, fontSize: 13, color: T.text3, textAlign: 'center', fontFamily: "'Caveat',cursive" }}>
                 Solo lo ve Alberto — directo al panel de mejoras
               </div>
             </div>
