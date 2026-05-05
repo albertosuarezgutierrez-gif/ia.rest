@@ -105,7 +105,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const { comandas: todasComandas } = useComandas(turnoId??undefined)
   // Últimas 2 comandas del camarero activo en este turno
   const ultimasComandas = todasComandas
-    .filter((c:Record<string,unknown>)=>(c.camarero as Record<string,unknown>)?.id===session.id)
+    .filter(c => c.camarero_id === session.id)
     .slice(-2)
   const prev86Ref = useRef(0)
 
@@ -410,21 +410,20 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           {/* ÚLTIMAS 2 COMANDAS DEL TURNO */}
           {ultimasComandas.length>0&&(
             <div style={{padding:'8px 16px 0',display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
-              {(ultimasComandas as Record<string,unknown>[]).map((c)=>{
-                const mesa = (c.mesa as Record<string,string>)?.codigo||'?'
-                const items = (c.items as Record<string,unknown>[])
+              {ultimasComandas.map((c)=>{
+                const mesa = c.mesa?.codigo||'?'
+                const items = c.items||[]
                 const resumen = items.slice(0,3).map(it=>`${it.cantidad}× ${it.nombre}`).join(' · ')+(items.length>3?` +${items.length-3}`:'')
-                const estado = c.estado as string
-                const col = estado==='en_cocina'?C.amber:estado==='lista'?C.green:C.txt4
+                const col = c.estado==='en_cocina'?C.amber:c.estado==='lista'?C.green:C.txt4
                 return(
-                  <div key={c.id as string} style={{background:C.bg1,border:`1px solid ${C.rule}`,borderLeft:`3px solid ${col}`,borderRadius:8,padding:'7px 10px',display:'flex',alignItems:'center',gap:10}}>
+                  <div key={c.id} style={{background:C.bg1,border:`1px solid ${C.rule}`,borderLeft:`3px solid ${col}`,borderRadius:8,padding:'7px 10px',display:'flex',alignItems:'center',gap:10}}>
                     <div style={{fontFamily:SE,fontStyle:'italic',fontSize:19,fontWeight:600,color:col,lineHeight:1,minWidth:24,textAlign:'center'}}>
                       {mesa.replace(/[^0-9]/g,'')}
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:11,color:C.txt2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{resumen||'—'}</div>
                     </div>
-                    <div style={{fontFamily:SM,fontSize:9,color:col,textTransform:'uppercase',flexShrink:0}}>{estado==='en_cocina'?'cocina':estado}</div>
+                    <div style={{fontFamily:SM,fontSize:9,color:col,textTransform:'uppercase',flexShrink:0}}>{c.estado==='en_cocina'?'cocina':c.estado}</div>
                   </div>
                 )
               })}
