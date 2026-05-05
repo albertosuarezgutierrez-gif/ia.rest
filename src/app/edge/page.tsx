@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import ManualComanda from '@/components/ManualComanda'
-import { useProductos86 } from '@/hooks/useRealtime'
+import { useProductos86, useComandas } from '@/hooks/useRealtime'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
@@ -102,6 +102,11 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const { prompt: installPrompt, install } = useInstallPrompt()
   const { subscribed, subscribe } = usePushNotifications(session.id)
   const productos86 = useProductos86(turnoId??undefined)
+  const { comandas: todasComandas } = useComandas(turnoId??undefined)
+  // Últimas 2 comandas del camarero activo en este turno
+  const ultimasComandas = todasComandas
+    .filter((c:Record<string,unknown>)=>(c.camarero as Record<string,unknown>)?.id===session.id)
+    .slice(-2)
   const prev86Ref = useRef(0)
 
   useEffect(()=>{
@@ -402,7 +407,31 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       {tab==='hablar'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
-          {/* CHAT — mensajes BRAIN + camarero */}
+          {/* ÚLTIMAS 2 COMANDAS DEL TURNO */}
+          {ultimasComandas.length>0&&(
+            <div style={{padding:'8px 16px 0',display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+              {(ultimasComandas as Record<string,unknown>[]).map((c)=>{
+                const mesa = (c.mesa as Record<string,string>)?.codigo||'?'
+                const items = (c.items as Record<string,unknown>[])
+                const resumen = items.slice(0,3).map(it=>`${it.cantidad}× ${it.nombre}`).join(' · ')+(items.length>3?` +${items.length-3}`:'')
+                const estado = c.estado as string
+                const col = estado==='en_cocina'?C.amber:estado==='lista'?C.green:C.txt4
+                return(
+                  <div key={c.id as string} style={{background:C.bg1,border:`1px solid ${C.rule}`,borderLeft:`3px solid ${col}`,borderRadius:8,padding:'7px 10px',display:'flex',alignItems:'center',gap:10}}>
+                    <div style={{fontFamily:SE,fontStyle:'italic',fontSize:19,fontWeight:600,color:col,lineHeight:1,minWidth:24,textAlign:'center'}}>
+                      {mesa.replace(/[^0-9]/g,'')}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,color:C.txt2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{resumen||'—'}</div>
+                    </div>
+                    <div style={{fontFamily:SM,fontSize:9,color:col,textTransform:'uppercase',flexShrink:0}}>{estado==='en_cocina'?'cocina':estado}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* CHAT */}
           <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const,padding:'10px 16px',display:'flex',flexDirection:'column',justifyContent:'flex-end',gap:6}}>
 
             {/* Estado vacío */}
