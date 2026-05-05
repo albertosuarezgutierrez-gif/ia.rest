@@ -26,7 +26,8 @@ function navigateByRol(camarero: { rol: string; seccion_id?: string | null }) {
   const dest: Record<string, string> = {
     super_admin: '/super', owner: '/owner', admin: '/hub',
     jefe_sala: '/jefe',
-    camarero: '/edge', cocina: camarero.seccion_id ? `/kds?seccion=${camarero.seccion_id}` : '/kds'
+    camarero: '/edge', cocina: camarero.seccion_id ? `/kds?seccion=${camarero.seccion_id}` : '/kds',
+    running: '/running'
   }
   window.location.href = dest[camarero.rol] ?? '/edge'
 }

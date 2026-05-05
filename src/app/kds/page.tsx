@@ -220,6 +220,33 @@ function KDSInner() {
   const [time, setTime] = useState(new Date())
   const [vistaPase, setVistaPase] = useState(false)
   const [vistaProduccion, setVistaProduccion] = useState(false)
+  // Map zona_id → nombre del running que la cubre (para preview en botón MARCHAR)
+  const [runningPorZona, setRunningPorZona] = useState<Record<string, string>>({})
+
+  const fetchRunnings = useCallback(async () => {
+    if (!session) return
+    try {
+      const res = await fetch('/api/owner/running-zonas', {
+        headers: { 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      // Construir mapa zona_id → nombre running
+      const map: Record<string, string> = {}
+      for (const rz of data ?? []) {
+        if (rz.activo) {
+          // Necesitamos el nombre del running — fetch camarero
+          const { data: cam } = await supabase
+            .from('camareros')
+            .select('nombre')
+            .eq('id', rz.camarero_id)
+            .single()
+          if (cam) map[rz.zona_id] = cam.nombre
+        }
+      }
+      setRunningPorZona(map)
+    } catch { /* silencioso */ }
+  }, [session])
 
   const fetchSecciones = useCallback(async () => {
     if (!session) return
@@ -247,6 +274,9 @@ function KDSInner() {
     if (!session) return
     fetchSecciones()
     fetchData()
+    fetchRunnings()
+    // Refrescar runnings cada 30s (pueden cambiar de zonas)
+    const r = setInterval(fetchRunnings, 30000)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ch = (supabase.channel('kds') as any)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, fetchData)
@@ -254,8 +284,8 @@ function KDSInner() {
       .subscribe()
     const t = setInterval(() => { fetchData(); setTime(new Date()) }, 5000)
     const c = setInterval(() => setTime(new Date()), 1000)
-    return () => { supabase.removeChannel(ch); clearInterval(t); clearInterval(c) }
-  }, [session, fetchData, fetchSecciones])
+    return () => { supabase.removeChannel(ch); clearInterval(t); clearInterval(c); clearInterval(r) }
+  }, [session, fetchData, fetchSecciones, fetchRunnings])
 
   const toggle = async (itemId: string, estado: string) => {
     await supabase.from('comanda_items').update({ estado: estado === 'listo' ? 'pendiente' : 'listo' }).eq('id', itemId)
@@ -263,24 +293,44 @@ function KDSInner() {
   }
 
   const cerrar = async (id: string, mesaId: string, camareroId?: string, mesaCodigo?: string) => {
-    await supabase.from('comandas').update({ estado: 'lista' }).eq('id', id)
-    await supabase.from('mesas').update({ estado: 'activa' }).eq('id', mesaId)
-    if (camareroId) {
-      fetch('/api/push/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-ia-session': localStorage.getItem('ia_rest_session') ?? '',
-        },
-        body: JSON.stringify({
-          title: 'Comanda lista',
-          body: `${mesaCodigo || 'Mesa'} — todo listo. Puedes servir.`,
-          mesa: mesaCodigo,
-          camarero_ids: [camareroId],
-          data: { url: '/edge' },
-        }),
-      }).catch(() => {})
-    }
+    // Obtener items de la comanda para el resumen
+    const comanda = comandas.find(c => c.id === id)
+    const items = (comanda?.items || [])
+      .filter(it => it.estado !== 'cancelado')
+      .map(it => ({ nombre: it.nombre, cantidad: it.cantidad }))
+
+    // Llamar al agente MARCHAR centralizado (notificaciones configurables)
+    await fetch('/api/marchar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-ia-session': localStorage.getItem('ia_rest_session') ?? '',
+      },
+      body: JSON.stringify({
+        comanda_id:  id,
+        mesa_codigo: mesaCodigo ?? 'Mesa',
+        items,
+      }),
+    }).catch(() => {
+      // Fallback: push directo si /api/marchar falla
+      if (camareroId) {
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-ia-session': localStorage.getItem('ia_rest_session') ?? '',
+          },
+          body: JSON.stringify({
+            title: 'Comanda lista',
+            body: `${mesaCodigo || 'Mesa'} — todo listo. Puedes servir.`,
+            mesa: mesaCodigo,
+            camarero_ids: [camareroId],
+            data: { url: '/edge' },
+          }),
+        }).catch(() => {})
+      }
+    })
+
     fetchData()
   }
 
@@ -479,10 +529,26 @@ function KDSInner() {
                           <div style={{ fontFamily:SN, fontSize:10, color:K.fg3 }}>{c.camarero?.nombre} · {new Date(c.created_at).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</div>
                         </div>
                         {allDone ? (
-                          <button onClick={()=>cerrar(c.id,c.mesa_id,c.camarero_id,c.mesa?.codigo)}
-                            style={{ background:K.gr, border:'none', color:'#fff', padding:'14px 20px', borderRadius:4, fontFamily:SM, fontSize:13, fontWeight:700, letterSpacing:'.08em', cursor:'pointer', minWidth:110, flexShrink:0 }}>
-                            MARCHAR
-                          </button>
+                          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
+                            <button onClick={()=>cerrar(c.id,c.mesa_id,c.camarero_id,c.mesa?.codigo)}
+                              style={{ background:K.gr, border:'none', color:'#fff', padding:'14px 20px', borderRadius:4, fontFamily:SM, fontSize:13, fontWeight:700, letterSpacing:'.08em', cursor:'pointer', minWidth:110 }}>
+                              MARCHAR
+                            </button>
+                            {/* Preview receptor */}
+                            {(() => {
+                              const zonaId = (c.mesa as unknown as { zona_id?: string })?.zona_id
+                              const runningNombre = zonaId ? runningPorZona[zonaId] : null
+                              return runningNombre ? (
+                                <div style={{ fontFamily:SM, fontSize:9, color:K.gr, letterSpacing:'.06em' }}>
+                                  → {runningNombre} (running)
+                                </div>
+                              ) : (
+                                <div style={{ fontFamily:SM, fontSize:9, color:K.fg3, letterSpacing:'.06em' }}>
+                                  → {c.camarero?.nombre}
+                                </div>
+                              )
+                            })()}
+                          </div>
                         ):(
                           <div style={{ fontFamily:SM, fontSize:18, fontWeight:700, color:K.fg3, minWidth:50, textAlign:'right' }}>{pct}%</div>
                         )}

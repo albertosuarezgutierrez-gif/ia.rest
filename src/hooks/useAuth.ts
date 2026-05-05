@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-export type Rol = 'super_admin' | 'owner' | 'jefe_sala' | 'camarero' | 'cocina'
+export type Rol = 'super_admin' | 'owner' | 'jefe_sala' | 'camarero' | 'cocina' | 'running'
 
 export interface Session {
   id: string
@@ -18,6 +18,7 @@ const REDIRECT: Record<Rol, string> = {
   jefe_sala:   '/jefe',
   camarero:    '/edge',
   cocina:      '/kds',
+  running:     '/running',
 }
 
 // Lee sesión de localStorage de forma síncrona (sin flicker)

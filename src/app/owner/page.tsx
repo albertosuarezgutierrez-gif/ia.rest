@@ -78,7 +78,7 @@ const ICONS = {
 }
 
 const ZONA_LABEL: Record<string, string> = { salon: 'Salón', terraza: 'Terraza', barra: 'Barra' }
-const ROL_LABEL: Record<string, string> = { camarero: 'Camarero', jefe_sala: 'Jefe sala', cocina: 'Cocina', owner: 'Owner', super_admin: 'Super' }
+const ROL_LABEL: Record<string, string> = { camarero: 'Camarero', jefe_sala: 'Jefe sala', cocina: 'Cocina', running: 'Running', owner: 'Owner', super_admin: 'Super' }
 
 /* ─── Components ─── */
 const Badge = ({ children, color = C.paper2 }: { children: React.ReactNode; color?: string }) => (
@@ -280,10 +280,15 @@ function CamarerosTab() {
             <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder="Marta"/>
             <Field label="PIN (4 dígitos)" value={form.pin} onChange={v => setForm(f => ({ ...f, pin: v }))} placeholder="1234" type="text" error={err.includes('PIN') ? err : undefined}/>
             <Select label="Rol" value={form.rol} onChange={v => setForm(f => ({ ...f, rol: v, seccion_id: '' }))}
-              options={[{ value: 'camarero', label: 'Camarero' }, { value: 'jefe_sala', label: 'Jefe de sala' }, { value: 'cocina', label: 'Cocina' }]}/>
+              options={[{ value: 'camarero', label: 'Camarero' }, { value: 'jefe_sala', label: 'Jefe de sala' }, { value: 'cocina', label: 'Cocina' }, { value: 'running', label: 'Running' }]}/>
             {form.rol === 'cocina' && (
               <Select label="Sección" value={form.seccion_id} onChange={v => setForm(f => ({ ...f, seccion_id: v }))}
                 options={[{ value: '', label: 'Todas las secciones' }, ...secciones.map(s => ({ value: s.id, label: s.nombre }))]}/>
+            )}
+            {form.rol === 'running' && (
+              <div style={{ padding: '10px 12px', background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 8, fontFamily: SN, fontSize: 12, color: C.ink3 }}>
+                💡 Las zonas que cubre el running se configuran desde la pantalla <strong>/running</strong> o en esta ficha tras guardarlo.
+              </div>
             )}
             {err && !err.includes('PIN') && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
@@ -2406,6 +2411,154 @@ type Factura = {
   qr_data: string; enviada_aeat: boolean; anulada: boolean; comanda_id: string | null
 }
 
+// ── Tab: Notificaciones Marchar ───────────────────────────────────
+const CANAL_OPTS = [
+  { value: 'push_audio_completo', label: 'Push + Audio completo', desc: '"Saliendo. Mesa 4. Entrecot por dos, patatas."' },
+  { value: 'push_audio_corto',    label: 'Push + Audio corto',    desc: '"Mesa 4, lista para servir."' },
+  { value: 'solo_visual',         label: 'Solo visual',           desc: 'Banner en pantalla, sin voz' },
+  { value: 'igual_que_running',   label: 'Igual que Running',     desc: 'Misma notificación que recibe el running' },
+  { value: 'sin_notificacion',    label: 'Sin notificación',      desc: 'No recibe nada' },
+]
+
+const AUDIO_OPTS = [
+  { value: 'tts',       label: 'Voz TTS (español)',    desc: 'Síntesis de voz natural en es-ES' },
+  { value: 'tono',      label: 'Tono + banner',         desc: 'Pitido y texto en pantalla, sin voz' },
+  { value: 'vibracion', label: 'Solo vibración',        desc: 'Sin sonido, solo vibración del dispositivo' },
+]
+
+function NotificacionesTab() {
+  const sh = useCallback(() => ({ 'Content-Type': 'application/json', 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' }), [])
+  const [config, setConfig] = useState({
+    running_canal:         'push_audio_completo',
+    camarero_con_running:  'solo_visual',
+    camarero_sin_running:  'push_audio_completo',
+    canal_audio:           'tts',
+  })
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+
+  useEffect(() => {
+    fetch('/api/owner/notif-config', { headers: sh() })
+      .then(r => r.json())
+      .then(d => { if (d.marchar) setConfig(c => ({ ...c, ...d.marchar })) })
+      .catch(() => {})
+  }, [sh])
+
+  const guardar = async () => {
+    setSaving(true)
+    await fetch('/api/owner/notif-config', {
+      method: 'PUT',
+      headers: sh(),
+      body: JSON.stringify({ marchar: config }),
+    })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  const CanalSelect = ({ label, value, onChange, excluir }: { label: string; value: string; onChange: (v: string) => void; excluir?: string[] }) => {
+    const opts = CANAL_OPTS.filter(o => !excluir?.includes(o.value))
+    const sel = opts.find(o => o.value === value)
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontFamily: SN, fontSize: 12, fontWeight: 600, color: C.ink2, marginBottom: 6 }}>{label}</div>
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ width: '100%', padding: '9px 12px', border: `1px solid ${C.rule}`, borderRadius: 8, background: C.paper, fontFamily: SN, fontSize: 13, color: C.ink, cursor: 'pointer' }}
+        >
+          {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {sel && <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3, marginTop: 4, fontStyle: 'italic' }}>{sel.desc}</div>}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ paddingTop: 24 }}>
+      <div style={{ fontFamily: SE, fontStyle: 'italic', fontSize: 20, color: C.ink, marginBottom: 4 }}>Notificaciones · MARCHAR</div>
+      <div style={{ fontFamily: SN, fontSize: 13, color: C.ink3, marginBottom: 24 }}>
+        Configura quién recibe qué cuando cocina pulsa MARCHAR en el KDS.
+      </div>
+
+      {/* Bloque Running */}
+      <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
+        <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.red, marginBottom: 14 }}>
+          Running (receptor principal)
+        </div>
+        <CanalSelect
+          label="Notificación al Running cuando está activo"
+          value={config.running_canal}
+          onChange={v => setConfig(c => ({ ...c, running_canal: v }))}
+          excluir={['igual_que_running']}
+        />
+      </div>
+
+      {/* Bloque Camarero con Running */}
+      <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
+        <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.ink3, marginBottom: 14 }}>
+          Camarero cuando hay Running en la zona
+        </div>
+        <CanalSelect
+          label="El camarero también recibe..."
+          value={config.camarero_con_running}
+          onChange={v => setConfig(c => ({ ...c, camarero_con_running: v }))}
+        />
+      </div>
+
+      {/* Bloque Camarero sin Running */}
+      <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
+        <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.ink3, marginBottom: 14 }}>
+          Camarero cuando NO hay Running
+        </div>
+        <CanalSelect
+          label="Notificación directa al camarero"
+          value={config.camarero_sin_running}
+          onChange={v => setConfig(c => ({ ...c, camarero_sin_running: v }))}
+          excluir={['igual_que_running']}
+        />
+      </div>
+
+      {/* Canal audio */}
+      <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 12, padding: '18px 20px', marginBottom: 24 }}>
+        <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.ink3, marginBottom: 14 }}>
+          Canal de audio
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {AUDIO_OPTS.map(o => (
+            <label key={o.value} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="canal_audio"
+                value={o.value}
+                checked={config.canal_audio === o.value}
+                onChange={() => setConfig(c => ({ ...c, canal_audio: o.value }))}
+                style={{ marginTop: 3, accentColor: C.red }}
+              />
+              <div>
+                <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, color: C.ink }}>{o.label}</div>
+                <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3, fontStyle: 'italic' }}>{o.desc}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Guardar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Btn variant="primary" onClick={guardar}>
+          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar configuración'}
+        </Btn>
+        {saved && (
+          <span style={{ fontFamily: SN, fontSize: 12, color: C.green }}>
+            Cambios aplicados — efecto inmediato
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function FacturasTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [facturas, setFacturas] = useState<Factura[]>([])
@@ -3032,10 +3185,11 @@ const GRUPOS = [
   {
     id: 'config', label: 'Config', icon: ICONS.shield,
     tabs: [
-      { id: 'impresoras',     label: 'Impresoras',    icon: ICONS.printer       },
-      { id: 'flujos',         label: 'Flujos',         icon: ICONS.wifi          },
-      { id: 'modificaciones', label: 'Modificaciones', icon: ICONS.alertTriangle },
-      { id: 'restaurante',    label: 'Restaurante',    icon: ICONS.shield        },
+      { id: 'impresoras',     label: 'Impresoras',      icon: ICONS.printer       },
+      { id: 'flujos',         label: 'Flujos',           icon: ICONS.wifi          },
+      { id: 'notificaciones', label: 'Notificaciones',   icon: ICONS.alertTriangle },
+      { id: 'modificaciones', label: 'Modificaciones',   icon: ICONS.alertTriangle },
+      { id: 'restaurante',    label: 'Restaurante',      icon: ICONS.shield        },
     ]
   },
 ]
@@ -3154,6 +3308,7 @@ export default function OwnerPage() {
           {tab === 'facturas'       && <FacturasTab/>}
           {tab === 'impresoras'     && <ImpresorasTab/>}
           {tab === 'flujos'         && <FlujoTab/>}
+          {tab === 'notificaciones' && <NotificacionesTab/>}
           {tab === 'modificaciones' && <ModificacionesTab restauranteId={session.restaurante_id}/>}
           {tab === 'restaurante'    && <RestauranteTab/>}
         </div>
