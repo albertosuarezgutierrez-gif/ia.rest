@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth, Session } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 import SugerenciasPanel from '@/components/SugerenciasPanel'
 
 const C = {
@@ -50,13 +51,15 @@ const PLAN_COLOR: Record<string, string> = {
 
 export default function SuperPage() {
   const { session, checking } = useAuth(['super_admin'] as any)
+  const router = useRouter()
+  const [trainingStats, setTrainingStats] = useState<any>(null)
   const [restaurantes, setRestaurantes] = useState<Restaurante[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ nombre: '', slug: '', codigo_acceso: '', plan: 'starter', ciudad: 'Madrid' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'sugerencias'>('restaurantes')
+  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'sugerencias'|'ia_training'>('restaurantes')
   const [sugerencias, setSugerencias] = useState<any[]>([])
   const [loadingSug, setLoadingSug] = useState(false)
   const [filtroSug, setFiltroSug] = useState<string>('todas')
@@ -102,7 +105,12 @@ export default function SuperPage() {
 
   useEffect(() => { if (session && tabSuper === 'sugerencias') loadSugerencias() }, [session, tabSuper, loadSugerencias])
   useEffect(() => { if (session && tabSuper === 'clientes') loadCuentas() }, [session, tabSuper])
-  useEffect(() => { if (session) { 
+  useEffect(() => { if (session && tabSuper === 'ia_training') {
+    fetch('/api/super/training-stats', { headers: { 'x-ia-session': JSON.stringify(session) } })
+      .then(r => r.json()).then(d => setTrainingStats(d))
+  }}, [session, tabSuper])
+
+    useEffect(() => { if (session) { 
     fetch('/api/sugerencias', { headers: { 'x-ia-session': JSON.stringify(session) } })
       .then(r => r.json()).then(d => setBadgeSug((d.sugerencias ?? []).filter((s: any) => !s.leida).length))
   }}, [session])
@@ -218,8 +226,9 @@ export default function SuperPage() {
             { id: 'restaurantes', label: 'Restaurantes' },
             { id: 'clientes',     label: 'Clientes' },
             { id: 'sugerencias',  label: 'Sugerencias', badge: badgeSug },
-          ] as const).map(t => (
-            <button key={t.id} onClick={() => setTabSuper(t.id)}
+            { id: 'ia_training',  label: 'IA Training' },
+          ] as any[]).map((t: any) => (
+            <button key={t.id} onClick={() => setTabSuper(t.id as any)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: '14px 20px',
@@ -546,14 +555,14 @@ export default function SuperPage() {
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
-                    onClick={() => window.open(`/login?r=${r.codigo_acceso}`, '_blank')}
+                    onClick={() => router.push(`/super/${r.id}`)}
                     style={{
-                      background: 'none', border: `1px solid ${C.rule}`, borderRadius: 4,
-                      fontFamily: SM, fontSize: 10, color: C.ink3, padding: '6px 10px',
+                      background: C.red, border: 'none', borderRadius: 4,
+                      fontFamily: SM, fontSize: 10, color: '#fff', padding: '6px 12px',
                       cursor: 'pointer', letterSpacing: '.06em',
                     }}
                   >
-                    ABRIR
+                    GESTIONAR →
                   </button>
                   <button
                     onClick={() => toggleActivo(r)}
@@ -569,6 +578,54 @@ export default function SuperPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+
+        {/* IA TRAINING TAB */}
+        {tabSuper === 'ia_training' && (
+          <div>
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontFamily: SM, fontSize: 11, color: C.red, letterSpacing: '.12em', marginBottom: 8 }}>IA TRAINING · FINE-TUNING PROPIO</div>
+              <h1 style={{ fontFamily: SE, fontSize: 40, fontWeight: 500, margin: '0 0 8px', color: C.ink }}>IA Training</h1>
+              <p style={{ fontFamily: SN, fontSize: 15, color: C.ink3, margin: 0 }}>
+                Pares EAR→BRAIN acumulados para el futuro modelo propio. Activar fine-tuning a partir de ~50 clientes.
+              </p>
+            </div>
+            {!trainingStats ? (
+              <div style={{ fontFamily: SM, fontSize: 12, color: C.ink3 }}>Cargando estadísticas…</div>
+            ) : (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32 }}>
+                  {[
+                    { l: 'Total pares', v: trainingStats.total ?? 0 },
+                    { l: 'Restaurantes activos', v: trainingStats.restaurantes ?? 0 },
+                    { l: 'Hoy', v: trainingStats.hoy ?? 0 },
+                    { l: 'Esta semana', v: trainingStats.semana ?? 0 },
+                  ].map(m => (
+                    <div key={m.l} style={{ background: C.bg2, borderRadius: 8, padding: '20px 24px', border: `1px solid ${C.rule}` }}>
+                      <div style={{ fontFamily: SM, fontSize: 9, color: C.ink4, letterSpacing: '.1em', marginBottom: 8 }}>{m.l.toUpperCase()}</div>
+                      <div style={{ fontFamily: SE, fontSize: 40, fontWeight: 500, color: C.red, lineHeight: 1 }}>{m.v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background: C.bg2, borderRadius: 8, padding: 24, border: `1px solid ${C.rule}`, marginBottom: 24 }}>
+                  <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, letterSpacing: '.1em', marginBottom: 16 }}>ESTADO DEL PIPELINE DE ENTRENAMIENTO</div>
+                  {[
+                    ['Trigger activo', 'trg_transcripcion_to_training_log — copia cada par EAR/BRAIN automáticamente', true],
+                    ['Tabla', 'ia_training_log — índices + RLS + vista v_training_stats', true],
+                    ['Umbral fine-tuning', '~50 clientes / ~100.000 pares mínimo recomendado', false],
+                    ['Modelo objetivo', 'Claude fine-tuned o modelo propio vía API Anthropic', false],
+                  ].map(([k, v, ok]) => (
+                    <div key={k as string} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: `1px solid ${C.rule}`, alignItems: 'flex-start' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: ok ? C.green : C.ink4, display: 'inline-block', marginTop: 5, flexShrink: 0 }} />
+                      <span style={{ fontFamily: SM, fontSize: 12, color: C.ink3, width: 180, flexShrink: 0 }}>{k as string}</span>
+                      <span style={{ fontFamily: SN, fontSize: 13, color: C.ink2 }}>{v as string}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
