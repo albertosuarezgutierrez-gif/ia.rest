@@ -175,7 +175,7 @@ export default function MesaDetalleSheet({ mesaId, mesaCodigo, capacidad, sessio
                   <span style={{fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:20,
                     background:estadoBg(comanda.estado),color:estadoColor(comanda.estado),
                     textTransform:'uppercase',letterSpacing:'.7px'}}>
-                    {({'nueva':'Nueva','en_cocina':'En cocina','lista':'Lista ✓','cuenta':'Cuenta','cerrada':'Cerrada'})[comanda.estado]||comanda.estado}
+                    {({'nueva':'Nueva','en_cocina':'En cocina','lista':'Lista ✓','cuenta':'Cuenta','cerrada':'Cerrada'} as Record<string,string>)[comanda.estado]||comanda.estado}
                   </span>
                 )}
               </div>
@@ -225,294 +225,245 @@ export default function MesaDetalleSheet({ mesaId, mesaCodigo, capacidad, sessio
           </div>
         )}
 
-        {/* CONTENIDO */}
-        <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const}}>
+        {/* CONTENIDO — 2 modos exclusivos: COMANDA o AÑADIR */}
 
-          {loading && (
-            <div style={{padding:30,textAlign:'center',color:C.ink3,fontFamily:SM,fontSize:11}}>
-              cargando…
-            </div>
-          )}
+        {/* ── MODO COMANDA: items actuales ── */}
+        {!vistaAnadir && (
+          <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const}}>
 
-          {error && (
-            <div style={{padding:20,textAlign:'center',color:C.verm,fontFamily:SM,fontSize:12}}>
-              {error}
-            </div>
-          )}
+            {loading && (
+              <div style={{padding:30,textAlign:'center',color:C.ink3,fontFamily:SM,fontSize:11}}>cargando…</div>
+            )}
+            {error && (
+              <div style={{padding:20,textAlign:'center',color:C.verm,fontFamily:SM,fontSize:12}}>{error}</div>
+            )}
 
-          {!loading && !error && !comanda && (
-            <div style={{padding:30,textAlign:'center'}}>
-              <div style={{fontFamily:SE,fontStyle:'italic',fontSize:18,color:C.ink3}}>Mesa libre</div>
-              <div style={{fontSize:12,color:C.ink4,marginTop:6,marginBottom:20}}>Sin comanda activa</div>
-              {onAbrirMesa && (
-                <button
-                  onClick={() => { onClose(); onAbrirMesa(mesaId!, mesaCodigo, capacidad) }}
-                  style={{
-                    padding:'12px 28px', borderRadius:10, border:'none',
-                    background:C.verm, color:'#fff',
-                    fontSize:14, fontWeight:500,
-                    fontFamily:"'Inter Tight',system-ui,sans-serif",
-                    cursor:'pointer',
-                  }}
-                >
-                  Abrir mesa
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* ── VISTA: ITEMS ── */}
-          {!loading && comanda && vista==='items' && (
-            <div style={{padding:'0 20px 10px'}}>
-
-              {/* Edit inline de item */}
-              {editItem && (
-                <div style={{background:C.ambS,border:`1px solid ${C.amb}55`,borderRadius:10,padding:14,margin:'12px 0'}}>
-                  <div style={{fontSize:12,fontWeight:600,color:C.ink,marginBottom:10}}>
-                    Modificar: <span style={{fontFamily:SE,fontStyle:'italic'}}>{editItem.nombre}</span>
-                  </div>
-                  <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:10}}>
-                    <span style={{fontSize:11,color:C.ink3,width:70}}>Cantidad</span>
-                    <div style={{display:'flex',alignItems:'center',gap:10}}>
-                      <button onClick={()=>setEditQty(q=>Math.max(1,q-1))}
-                        style={{width:28,height:28,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg1,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
-                      <span style={{fontFamily:SM,fontSize:15,minWidth:20,textAlign:'center'}}>{editQty}</span>
-                      <button onClick={()=>setEditQty(q=>q+1)}
-                        style={{width:28,height:28,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg1,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
-                    </div>
-                  </div>
-                  <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:12}}>
-                    <span style={{fontSize:11,color:C.ink3,width:70}}>Nota</span>
-                    <input value={editNotas} onChange={e=>setEditNotas(e.target.value)} placeholder="sin sal, bien hecho…"
-                      style={{flex:1,background:C.bg1,border:`1px solid ${C.rule}`,borderRadius:7,padding:'7px 10px',fontFamily:SC,fontSize:13,color:C.ink,outline:'none'}}/>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <button onClick={()=>setEditItem(null)}
-                      style={{flex:1,padding:'9px',border:`1px solid ${C.rule}`,borderRadius:8,background:'transparent',color:C.ink3,fontSize:12,fontWeight:600,cursor:'pointer'}}>Cancelar</button>
-                    <button onClick={()=>modificarItem(editItem,editQty,editNotas)} disabled={saving}
-                      style={{flex:2,padding:'9px',border:'none',borderRadius:8,background:C.verm,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?.6:1}}>
-                      {saving?'Guardando…':'Guardar cambio'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {comanda.items.length===0 && (
-                <div style={{padding:20,textAlign:'center',color:C.ink3,fontSize:12}}>Sin items</div>
-              )}
-
-              {comanda.items.map(item => (
-                <div key={item.id} style={{
-                  borderBottom:`1px solid ${C.rule}`,
-                  padding:'10px 0',
-                  opacity:editItem&&editItem.id!==item.id?.5:1,
-                  transition:'opacity .15s',
-                }}>
-                  <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
-                    {/* Cantidad editable inline */}
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,flexShrink:0,minWidth:32}}>
-                      <button onPointerDown={e=>{e.preventDefault();if(!editItem){setEditQty(item.cantidad+1);setEditNotas(item.notas??'');setEditItem(item)}else if(editItem.id===item.id){setEditQty(q=>q+1)}}}
-                        style={{width:20,height:20,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center',color:C.ink3,lineHeight:1}}>+</button>
-                      <span style={{fontFamily:SE,fontStyle:'italic',fontSize:20,color:C.verm,lineHeight:1,fontWeight:600}}>{item.cantidad}</span>
-                      <button onPointerDown={e=>{e.preventDefault();if(!editItem){setEditQty(Math.max(1,item.cantidad-1));setEditNotas(item.notas??'');setEditItem(item)}else if(editItem.id===item.id){setEditQty(q=>Math.max(1,q-1))}}}
-                        style={{width:20,height:20,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center',color:C.ink3,lineHeight:1}}>−</button>
-                    </div>
-
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:500,color:C.ink}}>{item.nombre}</div>
-                      {item.formato_nombre&&<div style={{fontSize:10,color:C.ink3,marginTop:1}}>{item.formato_nombre}</div>}
-                      {item.notas&&<div style={{fontFamily:SC,fontSize:13,color:C.amb,marginTop:2}}>{item.notas}</div>}
-                      {item.precio_unitario&&<div style={{fontFamily:SM,fontSize:10,color:C.ink4,marginTop:2}}>{(item.precio_unitario*item.cantidad).toFixed(2)} €</div>}
-                    </div>
-
-                    <div style={{display:'flex',gap:5,flexShrink:0}}>
-                      {/* Editar */}
-                      <button onPointerDown={e=>{e.preventDefault();setEditItem(item);setEditQty(item.cantidad);setEditNotas(item.notas??'')}}
-                        style={{width:30,height:30,border:`1px solid ${C.rule}`,borderRadius:7,background:C.bg2,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:C.ink3,fontSize:13}}>
-                        ✎
-                      </button>
-                      {/* Eliminar */}
-                      <button onPointerDown={e=>{e.preventDefault();eliminarItem(item)}}
-                        style={{width:30,height:30,border:`1px solid ${C.verm}44`,borderRadius:7,background:C.vermS,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:C.verm,fontSize:14}}>
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── VISTA: AUDIT ── */}
-          {!loading && comanda && vista==='audit' && (
-            <div style={{padding:'10px 20px'}}>
-              {audit.length===0&&<div style={{textAlign:'center',padding:20,color:C.ink3,fontSize:12}}>Sin cambios registrados</div>}
-              {audit.map(a=>(
-                <div key={a.id} style={{
-                  borderBottom:`1px solid ${C.rule}`,padding:'9px 0',
-                  display:'flex',alignItems:'flex-start',gap:10,
-                }}>
-                  <div style={{
-                    width:8,height:8,borderRadius:'50%',flexShrink:0,marginTop:4,
-                    background:a.es_propietario?C.gr:C.verm,
-                  }}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <span style={{fontSize:12,fontWeight:600,color:a.es_propietario?C.ink:C.verm}}>
-                        {a.camarero_nombre}
-                        {!a.es_propietario&&<span style={{fontSize:9,fontWeight:700,marginLeft:6,padding:'1px 5px',background:C.vermS,borderRadius:3,color:C.verm}}>NO PROPIETARIO</span>}
-                      </span>
-                      <span style={{fontFamily:SM,fontSize:9,color:C.ink4}}>
-                        {new Date(a.created_at).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}
-                      </span>
-                    </div>
-                    <div style={{fontSize:11,color:C.ink3,marginTop:2}}>
-                      <span style={{fontFamily:SM,fontSize:9,color:C.teal,textTransform:'uppercase',letterSpacing:'.5px'}}>{a.accion.replace('_',' ')}</span>
-                      {a.item_nombre&&<span> · {a.item_nombre}</span>}
-                      {a.item_cantidad_antes!==null&&a.item_cantidad_despues!==null&&a.item_cantidad_antes!==a.item_cantidad_despues&&(
-                        <span style={{color:C.amb}}> · {a.item_cantidad_antes}→{a.item_cantidad_despues}</span>
-                      )}
-                      {a.notas_despues&&a.notas_despues!==a.notas_antes&&(
-                        <span style={{fontFamily:SC,color:C.amb}}> · nota: {a.notas_despues}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* VISTA: AÑADIR MANUAL */}
-        {vistaAnadir && comanda && (
-          <div style={{padding:'10px 16px',borderTop:`1px solid ${C.rule}`,background:C.bg2}}>
-            {/* Carrito */}
-            {cartAnadir.length > 0 && (
-              <div style={{marginBottom:10}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'1px',color:C.ink4,marginBottom:6}}>En el carrito</div>
-                <div style={{display:'flex',flexDirection:'column' as const,gap:4}}>
-                  {cartAnadir.map((it,i) => (
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:8,background:C.bg1,borderRadius:7,padding:'6px 10px'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <button onClick={()=>setCartAnadir(p=>p.map((x,j)=>j===i?{...x,cantidad:Math.max(1,x.cantidad-1)}:x))}
-                          style={{width:22,height:22,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:C.ink3}}>−</button>
-                        <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:15,color:C.verm,fontWeight:700,minWidth:16,textAlign:'center' as const}}>{it.cantidad}</span>
-                        <button onClick={()=>setCartAnadir(p=>p.map((x,j)=>j===i?{...x,cantidad:x.cantidad+1}:x))}
-                          style={{width:22,height:22,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:C.ink3}}>+</button>
-                      </div>
-                      <span style={{flex:1,fontSize:13,color:C.ink}}>{it.nombre}</span>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.ink4}}>{(it.precio_unitario*it.cantidad).toFixed(2)} €</span>
-                      <button onClick={()=>setCartAnadir(p=>p.filter((_,j)=>j!==i))}
-                        style={{background:'none',border:'none',color:C.verm,cursor:'pointer',fontSize:16,padding:2}}>×</button>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={enviarCartAnadir} disabled={savingAnadir}
-                  style={{marginTop:8,width:'100%',padding:'10px',background:C.verm,border:'none',borderRadius:8,color:'#fff',fontFamily:"'Inter Tight',sans-serif",fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingAnadir?.6:1}}>
-                  {savingAnadir?'Añadiendo…':`Añadir ${cartAnadir.reduce((s,x)=>s+x.cantidad,0)} items a la comanda`}
-                </button>
+            {/* Mesa libre */}
+            {!loading && !error && !comanda && (
+              <div style={{padding:30,textAlign:'center'}}>
+                <div style={{fontFamily:SE,fontStyle:'italic',fontSize:18,color:C.ink3}}>Mesa libre</div>
+                <div style={{fontSize:12,color:C.ink4,marginTop:6,marginBottom:20}}>Sin comanda activa</div>
+                {onAbrirMesa && (
+                  <button onClick={()=>{ onClose(); onAbrirMesa(mesaId!, mesaCodigo, capacidad) }}
+                    style={{padding:'12px 28px',borderRadius:10,border:'none',background:C.verm,color:'#fff',fontSize:14,fontWeight:500,fontFamily:SN,cursor:'pointer'}}>
+                    Abrir mesa
+                  </button>
+                )}
               </div>
             )}
-            {/* Catálogo con búsqueda + categorías */}
-            {(() => {
-              const cats = ['todo', ...Array.from(new Set(productos.map(p=>(p as {categoria?:string}).categoria||'Otros'))).sort()]
-              const filtrados = productos.filter(p => {
-                const q = searchAnadir.toLowerCase().trim()
-                const matchQ = !q || p.nombre.toLowerCase().includes(q)
-                const matchC = catAnadir==='todo' || ((p as {categoria?:string}).categoria||'Otros')===catAnadir
-                return p.precio && p.precio > 0 && matchQ && matchC
-              })
-              return (
-                <div>
-                  {/* Buscador */}
-                  <div style={{position:'relative',marginBottom:8}}>
-                    <svg style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.ink4} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    <input
-                      value={searchAnadir}
-                      onChange={e=>setSearchAnadir(e.target.value)}
-                      placeholder="Buscar producto…"
-                      style={{width:'100%',padding:'8px 10px 8px 28px',background:C.bg1,border:`1px solid ${C.rule}`,borderRadius:8,fontFamily:"'Inter Tight',sans-serif",fontSize:13,color:C.ink,outline:'none',boxSizing:'border-box' as const}}
-                    />
-                    {searchAnadir && (
-                      <button onClick={()=>setSearchAnadir('')} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:C.ink4,fontSize:16,lineHeight:1,padding:0}}>×</button>
-                    )}
-                  </div>
-                  {/* Tabs categoría */}
-                  {!searchAnadir && (
-                    <div style={{display:'flex',gap:4,overflowX:'auto',scrollbarWidth:'none' as const,marginBottom:8,paddingBottom:2}}>
-                      {cats.map(cat=>(
-                        <button key={cat} onClick={()=>setCatAnadir(cat)}
-                          style={{padding:'4px 10px',borderRadius:20,flexShrink:0,border:`1px solid ${catAnadir===cat?C.verm+'55':C.rule}`,background:catAnadir===cat?C.vermS:'transparent',fontSize:10,fontWeight:catAnadir===cat?600:400,color:catAnadir===cat?C.verm:C.ink3,cursor:'pointer',whiteSpace:'nowrap' as const}}>
-                          {cat==='todo'?'Todo':cat}
-                        </button>
-                      ))}
+
+            {/* Items de la comanda */}
+            {!loading && comanda && vista==='items' && (
+              <div style={{padding:'0 20px 10px'}}>
+
+                {/* Edit inline de item */}
+                {editItem && (
+                  <div style={{background:C.ambS,border:`1px solid ${C.amb}55`,borderRadius:10,padding:14,margin:'12px 0'}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.ink,marginBottom:10}}>
+                      Modificar: <span style={{fontFamily:SE,fontStyle:'italic'}}>{editItem.nombre}</span>
                     </div>
-                  )}
-                  {/* Lista de productos */}
-                  <div style={{display:'flex',flexDirection:'column' as const,gap:4,maxHeight:220,overflowY:'auto' as const,scrollbarWidth:'none' as const}}>
-                    {filtrados.map(p => {
-                      const enCarrito = cartAnadir.find(x=>x.producto_id===p.id)
-                      const addP = () => setCartAnadir(prev => {
-                        const ex = prev.find(x=>x.producto_id===p.id)
-                        if (ex) return prev.map(x=>x.producto_id===p.id?{...x,cantidad:x.cantidad+1}:x)
-                        return [...prev,{producto_id:p.id,nombre:p.nombre,cantidad:1,precio_unitario:p.precio}]
-                      })
-                      return (
-                        <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,background:enCarrito?C.vermS:C.bg1,border:`1px solid ${enCarrito?C.verm+'44':C.rule}`,borderRadius:8,padding:'8px 10px'}}>
-                          <span style={{flex:1,fontSize:13,color:enCarrito?C.verm:C.ink,fontWeight:enCarrito?600:400}}>{p.nombre}</span>
-                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.ink4,flexShrink:0}}>{p.precio?.toFixed(2)}€</span>
-                          {enCarrito ? (
-                            <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
-                              <button onClick={()=>setCartAnadir(prev=>prev.map(x=>x.producto_id===p.id?{...x,cantidad:Math.max(0,x.cantidad-1)}:x).filter(x=>x.cantidad>0))}
-                                style={{width:24,height:24,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',fontSize:14,color:C.ink3,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
-                              <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:C.verm,fontWeight:700,minWidth:16,textAlign:'center' as const}}>{enCarrito.cantidad}</span>
-                              <button onClick={addP}
-                                style={{width:24,height:24,borderRadius:'50%',border:'none',background:C.verm,cursor:'pointer',fontSize:14,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
-                            </div>
-                          ) : (
-                            <button onClick={addP}
-                              style={{width:28,height:28,borderRadius:7,border:'none',background:C.ink,cursor:'pointer',fontSize:18,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
-                          )}
-                        </div>
-                      )
-                    })}
-                    {filtrados.length===0 && (
-                      <div style={{textAlign:'center' as const,padding:'16px 0',fontFamily:"'Newsreader',serif",fontStyle:'italic',fontSize:14,color:C.ink4}}>Sin resultados</div>
-                    )}
+                    <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+                      <button onClick={()=>setEditQty(q=>Math.max(1,q-1))}
+                        style={{width:32,height:32,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',fontSize:18,color:C.ink3,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                      <span style={{fontFamily:SE,fontStyle:'italic',fontSize:24,color:C.verm,minWidth:24,textAlign:'center' as const}}>{editQty}</span>
+                      <button onClick={()=>setEditQty(q=>q+1)}
+                        style={{width:32,height:32,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',fontSize:18,color:C.ink3,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                    </div>
+                    <input value={editNotas} onChange={e=>setEditNotas(e.target.value)} placeholder="Notas (sin sal, muy hecho…)"
+                      style={{width:'100%',padding:'8px 10px',background:C.bg1,border:`1px solid ${C.rule}`,borderRadius:8,fontFamily:SN,fontSize:12,color:C.ink,outline:'none',boxSizing:'border-box' as const,marginBottom:10}}/>
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={()=>setEditItem(null)}
+                        style={{flex:1,padding:'9px',background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:8,fontSize:12,fontWeight:600,color:C.ink3,cursor:'pointer'}}>Cancelar</button>
+                      <button onClick={async()=>{
+                        if (!editItem) return; setSaving(true)
+                        await fetch(`/api/comanda/${comanda.id}/item/${editItem.id}`,{method:'PUT',headers:{'Content-Type':'application/json','x-ia-session':session_str},body:JSON.stringify({cantidad:editQty,notas:editNotas})})
+                        setEditItem(null); await cargarComanda(); setSaving(false); flash('Guardado ✓')
+                      }} disabled={saving}
+                        style={{flex:2,padding:'9px',background:C.verm,border:'none',borderRadius:8,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer',opacity:saving?.6:1}}>
+                        {saving?'Guardando…':'Guardar cambios'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
-            })()}
+                )}
+
+                {comanda.items.length===0 && (
+                  <div style={{padding:20,textAlign:'center',color:C.ink3,fontSize:12}}>Sin items</div>
+                )}
+
+                {comanda.items.map(item => (
+                  <div key={item.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:`1px solid ${C.rule}`}}>
+                    <div style={{display:'flex',flexDirection:'column' as const,alignItems:'center',gap:4,flexShrink:0}}>
+                      <button onClick={async()=>{
+                        await fetch(`/api/comanda/${comanda.id}/item/${item.id}`,{method:'PUT',headers:{'Content-Type':'application/json','x-ia-session':session_str},body:JSON.stringify({cantidad:item.cantidad+1})})
+                        await cargarComanda()
+                      }} style={{width:28,height:28,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:C.ink3}}>+</button>
+                      <span style={{fontFamily:SE,fontStyle:'italic',fontSize:22,fontWeight:600,color:C.verm,lineHeight:1}}>{item.cantidad}</span>
+                      <button onClick={async()=>{
+                        const nq = item.cantidad - 1
+                        if (nq <= 0) {
+                          await fetch(`/api/comanda/${comanda.id}/item/${item.id}`,{method:'DELETE',headers:{'x-ia-session':session_str}})
+                        } else {
+                          await fetch(`/api/comanda/${comanda.id}/item/${item.id}`,{method:'PUT',headers:{'Content-Type':'application/json','x-ia-session':session_str},body:JSON.stringify({cantidad:nq})})
+                        }
+                        await cargarComanda()
+                      }} style={{width:28,height:28,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:C.ink3}}>−</button>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:600,color:C.ink}}>{item.nombre}</div>
+                      {item.notas && <div style={{fontSize:11,color:C.ink4,marginTop:2,fontStyle:'italic' as const}}>{item.notas}</div>}
+                      <div style={{fontSize:12,color:C.ink4,marginTop:2}}>{item.precio_unitario?.toFixed(2)} € × {item.cantidad}</div>
+                    </div>
+                    <button onClick={()=>{setEditItem(item);setEditQty(item.cantidad);setEditNotas(item.notas||'')}}
+                      style={{width:32,height:32,borderRadius:8,background:C.bg2,border:`1px solid ${C.rule}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button onClick={async()=>{
+                      await fetch(`/api/comanda/${comanda.id}/item/${item.id}`,{method:'DELETE',headers:{'x-ia-session':session_str}})
+                      await cargarComanda()
+                    }} style={{width:32,height:32,borderRadius:8,background:C.vermS,border:`1px solid ${C.verm}44`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.verm} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                    </button>
+                  </div>
+                ))}
+
+                {comanda.total_estimado > 0 && (
+                  <div style={{display:'flex',justifyContent:'flex-end',padding:'12px 0 4px',fontSize:15,fontWeight:700,color:C.ink,fontFamily:SM}}>
+                    Total: {comanda.total_estimado.toFixed(2).replace('.',',')} €
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Historial */}
+            {!loading && comanda && vista==='audit' && (
+              <div style={{padding:'10px 20px'}}>
+                {audit.length === 0 && (
+                  <div style={{padding:20,textAlign:'center',color:C.ink4,fontSize:12,fontStyle:'italic' as const}}>Sin cambios registrados</div>
+                )}
+                {audit.map((a,i)=>(
+                  <div key={i} style={{padding:'8px 0',borderBottom:`1px solid ${C.rule}`,fontSize:12,color:C.ink2}}>
+                    <span style={{fontWeight:600,color:C.ink}}>{a.camarero_nombre}</span> · {a.accion}
+                    {a.item_nombre && <span style={{color:C.ink4}}> · {a.item_nombre}</span>}
+                    <span style={{color:C.ink4,float:'right' as const}}>{new Date(a.created_at).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ACCIONES FIJAS ABAJO */}
-        {comanda && (
+        {/* ── MODO AÑADIR: carta completa pantalla ── */}
+        {vistaAnadir && comanda && (() => {
+          const cats = ['todo', ...Array.from(new Set(productos.map(p=>(p as {categoria?:string}).categoria||'Otros'))).sort()]
+          const filtrados = productos.filter(p => {
+            const q = searchAnadir.toLowerCase().trim()
+            const matchQ = !q || p.nombre.toLowerCase().includes(q)
+            const matchC = catAnadir==='todo' || ((p as {categoria?:string}).categoria||'Otros')===catAnadir
+            return p.precio && p.precio > 0 && matchQ && matchC
+          })
+          const totalAnadir = cartAnadir.reduce((s,x)=>s+x.cantidad,0)
+          return (
+            <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+              {/* Search + categorías */}
+              <div style={{padding:'8px 14px 6px',borderBottom:`1px solid ${C.rule}`,flexShrink:0,background:C.bg1}}>
+                <div style={{position:'relative',marginBottom:6}}>
+                  <svg style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.ink4} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input value={searchAnadir} onChange={e=>setSearchAnadir(e.target.value)}
+                    placeholder="Buscar producto…" autoFocus
+                    style={{width:'100%',padding:'9px 32px 9px 30px',background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:8,fontFamily:SN,fontSize:13,color:C.ink,outline:'none',boxSizing:'border-box' as const}}/>
+                  {searchAnadir && (
+                    <button onClick={()=>setSearchAnadir('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:C.ink4,fontSize:16,lineHeight:1,padding:0}}>×</button>
+                  )}
+                </div>
+                {!searchAnadir && (
+                  <div style={{display:'flex',gap:4,overflowX:'auto',scrollbarWidth:'none' as const,paddingBottom:2}}>
+                    {cats.map(cat=>(
+                      <button key={cat} onClick={()=>setCatAnadir(cat)}
+                        style={{padding:'4px 10px',borderRadius:20,flexShrink:0,border:`1px solid ${catAnadir===cat?C.verm+'55':C.rule}`,background:catAnadir===cat?C.vermS:'transparent',fontSize:10,fontWeight:catAnadir===cat?600:400,color:catAnadir===cat?C.verm:C.ink3,cursor:'pointer',whiteSpace:'nowrap' as const}}>
+                        {cat==='todo'?'Todo':cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Lista productos — scroll seguro, solo botón + añade */}
+              <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const,padding:'6px 14px'}}>
+                {filtrados.map(p => {
+                  const enCarrito = cartAnadir.find(x=>x.producto_id===p.id)
+                  const addP = () => setCartAnadir(prev => {
+                    const ex = prev.find(x=>x.producto_id===p.id)
+                    if (ex) return prev.map(x=>x.producto_id===p.id?{...x,cantidad:x.cantidad+1}:x)
+                    return [...prev,{producto_id:p.id,nombre:p.nombre,cantidad:1,precio_unitario:p.precio??0}]
+                  })
+                  return (
+                    <div key={p.id} style={{display:'flex',alignItems:'center',gap:10,padding:'11px 0',borderBottom:`1px solid ${C.rule}`}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:enCarrito?700:500,color:enCarrito?C.verm:C.ink}}>{p.nombre}</div>
+                        <div style={{fontFamily:SM,fontSize:11,color:C.ink4,marginTop:1}}>{p.precio?.toFixed(2)} €</div>
+                      </div>
+                      {enCarrito ? (
+                        <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                          <button onPointerDown={()=>setCartAnadir(prev=>prev.map(x=>x.producto_id===p.id?{...x,cantidad:Math.max(0,x.cantidad-1)}:x).filter(x=>x.cantidad>0))}
+                            style={{width:30,height:30,borderRadius:'50%',border:`1px solid ${C.rule}`,background:C.bg2,cursor:'pointer',fontSize:16,color:C.ink3,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                          <span style={{fontFamily:SM,fontSize:15,color:C.verm,fontWeight:700,minWidth:20,textAlign:'center' as const}}>{enCarrito.cantidad}</span>
+                          <button onPointerDown={addP}
+                            style={{width:30,height:30,borderRadius:'50%',border:'none',background:C.verm,cursor:'pointer',fontSize:16,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                        </div>
+                      ) : (
+                        <button onPointerDown={addP}
+                          style={{width:36,height:36,borderRadius:9,border:'none',background:C.ink,cursor:'pointer',fontSize:20,fontWeight:300,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,touchAction:'manipulation'}}>+</button>
+                      )}
+                    </div>
+                  )
+                })}
+                {filtrados.length===0 && (
+                  <div style={{textAlign:'center',padding:'24px 0',fontFamily:SE,fontStyle:'italic',fontSize:14,color:C.ink4}}>Sin resultados</div>
+                )}
+              </div>
+
+              {/* Barra confirmar */}
+              <div style={{padding:'10px 14px 20px',borderTop:`1px solid ${C.rule}`,flexShrink:0,background:C.bg1,display:'flex',gap:8}}>
+                <button onClick={()=>{setVistaAnadir(false);setCartAnadir([]);setSearchAnadir('');setCatAnadir('todo')}}
+                  style={{flex:1,padding:'12px',background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,fontSize:13,fontWeight:600,color:C.ink3,cursor:'pointer'}}>
+                  Cancelar
+                </button>
+                <button onClick={enviarCartAnadir} disabled={savingAnadir||totalAnadir===0}
+                  style={{flex:2,padding:'12px',background:totalAnadir>0?C.verm:C.bg3,border:'none',borderRadius:10,fontSize:13,fontWeight:700,color:totalAnadir>0?'#fff':C.ink4,cursor:totalAnadir>0?'pointer':'default',opacity:savingAnadir?.6:1}}>
+                  {savingAnadir?'Añadiendo…':totalAnadir>0?`✓ Añadir ${totalAnadir} item${totalAnadir>1?'s':''}`:'Elige productos'}
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* FLASH MSG */}
+        {savedMsg && !vistaAnadir && (
+          <div style={{padding:'8px 20px',background:C.grS,borderTop:`1px solid ${C.gr}44`,
+            fontFamily:SM,fontSize:11,color:C.gr,flexShrink:0}}>
+            {savedMsg}
+          </div>
+        )}
+
+        {/* ACCIONES FIJAS — solo en modo COMANDA */}
+        {comanda && !vistaAnadir && (
           <div style={{padding:'10px 16px 20px',borderTop:`1px solid ${C.rule}`,flexShrink:0,display:'flex',gap:8,background:C.bg1}}>
-            {/* Añadir por voz */}
             <button onClick={()=>{ onAnadirPorVoz(mesaId!, mesaCodigo, comanda.id); onClose() }}
-              style={{flex:1,padding:'11px 8px',background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,
-                display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer'}}>
+              style={{flex:1,padding:'11px 8px',background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer'}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
               </svg>
               <span style={{fontSize:10,fontWeight:600,color:C.teal}}>Añadir voz</span>
             </button>
-
-            {/* Añadir manual — abre selector de carta inline */}
-            <button onClick={()=>{setVistaAnadir(v=>!v);setCartAnadir([])}}
-              style={{flex:1,padding:'11px 8px',background:vistaAnadir?C.vermS:C.bg2,border:`1px solid ${vistaAnadir?C.verm+'55':C.rule}`,borderRadius:10,
-                display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer'}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={vistaAnadir?C.verm:C.ink3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <button onClick={()=>{setVistaAnadir(true);setCartAnadir([]);setSearchAnadir('');setCatAnadir('todo')}}
+              style={{flex:1,padding:'11px 8px',background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer'}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              <span style={{fontSize:10,fontWeight:600,color:vistaAnadir?C.verm:C.ink3}}>{vistaAnadir?'Cerrar':'Añadir manual'}</span>
+              <span style={{fontSize:10,fontWeight:600,color:C.ink3}}>＋ Añadir</span>
             </button>
-
-            {/* Pedir cuenta */}
             <button onClick={()=>setCobrarOpen(true)}
-              style={{flex:2,padding:'11px 12px',background:C.verm,border:'none',borderRadius:10,
-                display:'flex',alignItems:'center',justifyContent:'center',gap:8,cursor:'pointer'}}>
+              style={{flex:2,padding:'11px 12px',background:C.verm,border:'none',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',gap:8,cursor:'pointer'}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
               </svg>
@@ -526,13 +477,13 @@ export default function MesaDetalleSheet({ mesaId, mesaCodigo, capacidad, sessio
         {!loading && !comanda && (
           <div style={{padding:'12px 16px 20px',borderTop:`1px solid ${C.rule}`,flexShrink:0,background:C.bg1}}>
             <button onClick={onClose}
-              style={{width:'100%',padding:13,background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,
-                fontSize:13,fontWeight:600,color:C.ink3,cursor:'pointer'}}>
+              style={{width:'100%',padding:13,background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,fontSize:13,fontWeight:600,color:C.ink3,cursor:'pointer'}}>
               Cerrar
             </button>
           </div>
         )}
       </div>
+
 
       {/* COBRAR SHEET */}
       {cobrarOpen && comanda && (
