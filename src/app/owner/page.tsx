@@ -234,9 +234,10 @@ function CamarerosTab() {
         <Btn variant="primary" onClick={openCreate}><Icon d={ICONS.plus} size={15}/>Añadir</Btn>
       </div>
 
-      <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone }}>
+      <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, background: C.bone, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as 'touch' }}>
+        <div style={{ minWidth: 640 }}>
         {/* Table header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px 80px 100px',
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 80px 80px 100px',
           padding: '10px 20px', borderBottom: `1px solid ${C.rule}`,
           fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
           <span>Nombre</span><span>Rol</span><span>Sección</span><span>PIN</span><span>Estado</span><span style={{ textAlign: 'right' }}>Acciones</span>
@@ -280,6 +281,7 @@ function CamarerosTab() {
             </span>
           </div>
         ))}
+        </div>{/* /minWidth */}
       </div>
 
       {/* Create / Edit modal */}
@@ -1797,7 +1799,8 @@ function ImpresorasTab() {
           <div style={{ fontSize: 13 }}>Añade la primera para empezar a imprimir tickets automáticamente</div>
         </div>
       ) : (
-        <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone, marginBottom: 32 }}>
+        <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, background: C.bone, marginBottom: 32, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as 'touch' }}>
+          <div style={{ minWidth: 580 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 80px 120px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
             <span>Impresora</span><span>Sección</span><span>Conexión</span><span>Ping</span><span style={{ textAlign: 'right' }}>Acciones</span>
           </div>
@@ -1905,6 +1908,7 @@ function ImpresorasTab() {
               </div>
             )
           })}
+          </div>{/* /minWidth impresoras */}
         </div>
       )}
 
@@ -1912,7 +1916,8 @@ function ImpresorasTab() {
       {jobs.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase', marginBottom: 12 }}>Últimos jobs · polling 5s</div>
-          <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone }}>
+          <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, background: C.bone, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as 'touch' }}>
+          <div style={{ minWidth: 480 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 90px 60px 60px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
               <span>Impresora · Sección</span><span>Estado</span><span>Creado</span><span>Enviado</span><span>Intentos</span>
             </div>
@@ -1938,6 +1943,7 @@ function ImpresorasTab() {
                 </div>
               )
             })}
+          </div>{/* /minWidth printjobs */}
           </div>
         </div>
       )}
@@ -3837,6 +3843,8 @@ export default function OwnerPage() {
         @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         .owner-tabs { display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
         .owner-tabs::-webkit-scrollbar { display:none; }
+        .owner-subtabs { overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+        .owner-subtabs::-webkit-scrollbar { display:none; }
         .owner-tab-lbl { display:inline; }
         .owner-wrap { max-width:960px; margin:0 auto; padding:24px 20px 80px; }
         @media (max-width:640px) {
@@ -3895,7 +3903,7 @@ export default function OwnerPage() {
           const grupo = getGrupo(tab)
           if (grupo.tabs.length <= 1) return null
           return (
-            <div style={{ display:'flex', gap:2, marginBottom:20, borderBottom:`1px solid ${C.rule}`, paddingBottom:0 }}>
+            <div className="owner-subtabs" style={{ display:'flex', gap:2, marginBottom:20, borderBottom:`1px solid ${C.rule}`, paddingBottom:0 }}>
               {grupo.tabs.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)}
                   style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 14px',
