@@ -11,13 +11,13 @@ REGLAS ESTRICTAS:
 - Responde SOLO con JSON válido, sin texto adicional ni markdown
 - El cocinero indica qué mesa ha terminado de cocinar
 - Extrae el código de mesa según los prefijos del local (ver ZONAS abajo)
-- Fallback de prefijos si no hay zonas: T=sala/mesa, B=barra, P=terraza, E=exterior
+- Fallback de prefijos si no hay zonas: S=salon, T=terraza, B=barra
 
 FRASES QUE DEBES ENTENDER (ejemplos):
-- "listo la cuatro" → T04
-- "mesa 4 pasa" → T04
-- "sale todo T04" → T04
-- "listo mesa doce" → T12
+- "listo la cuatro" → S4
+- "mesa 4 pasa" → S4
+- "sale todo S4" → S4
+- "listo mesa doce" → S12
 - "sale la ocho" → T08
 - "barra dos lista" → B02
 - "pasa terraza cinco" → P05
@@ -25,7 +25,7 @@ FRASES QUE DEBES ENTENDER (ejemplos):
 - "sale mesa siete" → T07
 
 SCHEMA (responde EXACTAMENTE con este formato):
-{"mesa":"T04","confianza":0.95,"raw":"texto original"}`
+{"mesa":"S4","confianza":0.95,"raw":"texto original"}`
 
 async function buildZonasKDS(restaurante_id: string): Promise<string> {
   try {
