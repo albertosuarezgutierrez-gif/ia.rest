@@ -56,8 +56,13 @@ export default function LoginPage() {
     restaurantes: { id: string; nombre: string; ciudad?: string; plan: string; plan_status: string }[]
   }>(null)
   const [selectedRestaurante, setSelectedRestaurante] = useState('')
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false)
 
-  useEffect(() => { setRestauranteCode(detectRestauranteCode()) }, [])
+  useEffect(() => {
+    setRestauranteCode(detectRestauranteCode())
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') setCheckoutSuccess(true)
+  }, [])
   useEffect(() => { if (pin.length === 4 && !showCodeInput) doLogin(pin) }, [pin, showCodeInput])
 
   const doLogin = async (p: string) => {
@@ -185,6 +190,16 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight:'100dvh', background:C.bg, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 24px 48px', userSelect:'none' }}>
+      {/* Banner bienvenida post-checkout */}
+      {checkoutSuccess && (
+        <div style={{ position:'fixed', top:16, left:'50%', transform:'translateX(-50%)', zIndex:100, background:'#1a2d1b', border:'1px solid #3F7D44', borderRadius:12, padding:'12px 20px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 4px 24px rgba(0,0,0,.4)', maxWidth:'90vw' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3F7D44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 12 10 18 20 6"/></svg>
+          <div style={{ fontFamily:SN, fontSize:13, color:'#a8d4ab', lineHeight:1.4 }}>
+            <strong style={{ color:'#c8e6c9' }}>¡Cuenta activada!</strong><br/>
+            <span style={{ fontSize:12, opacity:.85 }}>Introduce tu PIN de propietario para entrar.</span>
+          </div>
+        </div>
+      )}
       <style>{`
         .pk{width:76px;height:76px;border-radius:999px;background:#1F1A15;border:1px solid #2F2820;color:#F6F1E7;font-family:'Inter Tight',system-ui,sans-serif;font-size:24px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:background .1s,transform .08s;}
         .pk:active{background:#2A241D;transform:scale(.9);}
@@ -322,7 +337,9 @@ export default function LoginPage() {
           {vozMode==='idle' && (
             <>
               <button onPointerDown={()=>{setShowCodeInput(true);setCodeInput('')}} style={{ marginTop:24, background:'none', border:'none', fontFamily:SM, fontSize:9, color:C.rS, letterSpacing:'.08em', cursor:'pointer', textDecoration:'underline', textDecorationStyle:'dotted' }}>CAMBIAR RESTAURANTE</button>
-              <div style={{ marginTop:12, fontFamily:SM, fontSize:9, color:'#2F2820', textAlign:'center', lineHeight:2, letterSpacing:'.08em' }}>ADMIN · 0000 &nbsp;|&nbsp; OWNER · 2026 &nbsp;|&nbsp; SUPER · 9999</div>
+              {(!restauranteCode || restauranteCode === 'DEMO') && (
+                <div style={{ marginTop:12, fontFamily:SM, fontSize:9, color:'#2F2820', textAlign:'center', lineHeight:2, letterSpacing:'.08em' }}>ADMIN · 0000 &nbsp;|&nbsp; OWNER · 2026 &nbsp;|&nbsp; SUPER · 9999</div>
+              )}
             </>
           )}
         </>
