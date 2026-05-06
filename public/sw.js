@@ -1,7 +1,7 @@
-// ia.rest · Service Worker v2
+// ia.rest · Service Worker v3
 // Cache /edge assets + push notifications para el camarero
 
-const CACHE = 'iarest-edge-v2'
+const CACHE = 'iarest-edge-v3'
 const OFFLINE_URL = '/offline.html'
 
 // Assets críticos del camarero
