@@ -23,7 +23,7 @@ const SM = "'JetBrains Mono',ui-monospace,monospace"
 
 /* ─── Types ─── */
 type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean; seccion_id?: string | null }
-type Mesa = { id: string; codigo: string; nombre: string | null; zona: string; capacidad: number; estado: string }
+type Mesa = { id: string; codigo: string; nombre: string | null; zona: string; capacidad: number; estado: string; pos_x: number | null; pos_y: number | null; forma: 'round' | 'square' | 'bar' | null }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
 type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesas_activas: { codigo: string; count: number }[] }
 type Impresora = { id: string; nombre: string; seccion_id: string; cloud_device_id: string | null; modelo: string | null; activa: boolean; ultimo_ping: string | null; configurada: boolean; connection_type: string; ip_address: string | null; port: number | null; impresora_fallback_id: string | null }
@@ -346,15 +346,42 @@ function CamarerosTab() {
 /* ─── Tab: Mesas ─── */
 type Zona = { id: string; nombre: string; tipo: string; prefijo: string; descripcion?: string; orden: number; activa: boolean }
 
+// ── Constantes diseñador ──────────────────────────────────────
+const CANVAS_W = 580
+const CANVAS_H = 360
+const GRID     = 20   // snap a 20px
+
+function snapGrid(v: number) { return Math.round(v / GRID) * GRID }
+function mesaSize(forma: string, cap: number) {
+  if (forma === 'bar')    return { w: 64, h: 32 }
+  if (forma === 'square') return { w: cap >= 6 ? 68 : 56, h: cap >= 6 ? 68 : 56 }
+  return { w: cap >= 6 ? 64 : 54, h: cap >= 6 ? 64 : 54 }  // round
+}
+
 function MesasTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
-  const [mesas, setMesas] = useState<Mesa[]>([])
-  const [zonas, setZonas] = useState<Zona[]>([])
+  const [mesas,  setMesas]  = useState<Mesa[]>([])
+  const [zonas,  setZonas]  = useState<Zona[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<null | 'create' | 'zona-create' | { edit: Mesa } | { del: Mesa } | { editZona: Zona }>(null)
-  const [form, setForm] = useState({ codigo: '', nombre: '', zona: '', capacidad: '4' })
-  const [zonaForm, setZonaForm] = useState({ nombre: '', prefijo: '', descripcion: '' })
-  const [err, setErr] = useState('')
+  const [vista,  setVista]  = useState<'plano'|'lista'>('plano')
+  const [zonaActiva, setZonaActiva] = useState<string>('')
+
+  // Modales
+  const [modal,    setModal]    = useState<null|'create'|'zona-create'|{edit:Mesa}|{del:Mesa}|{editZona:Zona}>(null)
+  const [form,     setForm]     = useState({ codigo:'', nombre:'', zona:'', capacidad:'4', forma:'round' as 'round'|'square'|'bar' })
+  const [zonaForm, setZonaForm] = useState({ nombre:'', prefijo:'', descripcion:'' })
+  const [err,      setErr]      = useState('')
+
+  // Drag
+  const draggingRef = useRef<string|null>(null)
+  const dragOffRef  = useRef({ x:0, y:0 })
+  const canvasRef   = useRef<HTMLDivElement>(null)
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+
+  // Detalle lateral
+  const [selectedId, setSelectedId] = useState<string|null>(null)
+  const selected = mesas.find(m => m.id === selectedId) ?? null
 
   const loadZonas = useCallback(async () => {
     const r = await fetch('/api/owner/zonas', { headers: sh() })
@@ -370,31 +397,137 @@ function MesasTab() {
       loadZonas(),
     ])
     const d = await r.json()
-    setMesas(d.mesas || [])
-    // Set default zona for form
-    if (zs.length > 0) setForm(f => ({ ...f, zona: zs[0].tipo }))
+    const ms: Mesa[] = d.mesas || []
+    setMesas(ms)
+    if (zs.length > 0) {
+      setForm(f => ({ ...f, zona: zs[0].tipo }))
+      setZonaActiva(zs.filter(z => z.activa)[0]?.tipo ?? '')
+    }
     setLoading(false)
   }, [loadZonas])
 
   useEffect(() => { load() }, [load])
 
-  const openCreate = () => {
-    setForm({ codigo: '', nombre: '', zona: zonas[0]?.tipo || 'salon', capacidad: '4' })
-    setErr(''); setModal('create')
+  // ── DRAG ──────────────────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent, id: string) => {
+    e.preventDefault()
+    const mesa = mesas.find(m => m.id === id)
+    if (!mesa) return
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const sz = mesaSize(mesa.forma ?? 'round', mesa.capacidad)
+    const mx = mesa.pos_x ?? 40
+    const my = mesa.pos_y ?? 40
+    dragOffRef.current = { x: e.clientX - rect.left - mx, y: e.clientY - rect.top - my }
+    draggingRef.current = id
+    setSelectedId(id)
+
+    const onMove = (ev: MouseEvent) => {
+      if (!draggingRef.current) return
+      const r = canvasRef.current!.getBoundingClientRect()
+      const nx = snapGrid(Math.max(0, Math.min(ev.clientX - r.left - dragOffRef.current.x, CANVAS_W - sz.w)))
+      const ny = snapGrid(Math.max(0, Math.min(ev.clientY - r.top  - dragOffRef.current.y, CANVAS_H - sz.h)))
+      setMesas(prev => prev.map(m => m.id === draggingRef.current ? { ...m, pos_x: nx, pos_y: ny } : m))
+    }
+    const onUp = () => {
+      draggingRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
-  const openEdit = (m: Mesa) => { setForm({ codigo: m.codigo, nombre: m.nombre ?? '', zona: m.zona, capacidad: String(m.capacidad) }); setErr(''); setModal({ edit: m }) }
-  const openDel = (m: Mesa) => setModal({ del: m })
+
+  // ── AUTO-LAYOUT si mesa sin posición ─────────────────────────
+  const getPos = (mesa: Mesa, idx: number): { x: number; y: number } => {
+    if (mesa.pos_x !== null && mesa.pos_y !== null) return { x: mesa.pos_x, y: mesa.pos_y }
+    const col = idx % 5
+    const row = Math.floor(idx / 5)
+    return { x: 30 + col * 90, y: 30 + row * 100 }
+  }
+
+  // ── GUARDAR PLANO ────────────────────────────────────────────
+  const guardarPlano = async () => {
+    setSaving(true)
+    const mesasZona = mesas.filter(m => m.zona === zonaActiva)
+    await Promise.all(mesasZona.map(m =>
+      fetch('/api/owner/mesas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...sh() },
+        body: JSON.stringify({ id: m.id, pos_x: m.pos_x, pos_y: m.pos_y, forma: m.forma }),
+      })
+    ))
+    setSaving(false); setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  // ── AÑADIR MESA EN PLANO ─────────────────────────────────────
+  const addMesaPlano = async (forma: 'round'|'square'|'bar') => {
+    const zona = zonas.find(z => z.tipo === zonaActiva)
+    if (!zona) return
+    const mesasZona = mesas.filter(m => m.zona === zonaActiva)
+    const n = mesasZona.length + 1
+    const codigo = zona.prefijo + String(n).padStart(2, '0')
+    const r = await fetch('/api/owner/mesas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({
+        codigo, zona: zonaActiva, capacidad: forma === 'bar' ? 2 : 4,
+        forma, pos_x: snapGrid(30 + (mesasZona.length % 5) * 90),
+        pos_y: snapGrid(30 + Math.floor(mesasZona.length / 5) * 100),
+      }),
+    })
+    const d = await r.json()
+    if (d.mesa) { setMesas(prev => [...prev, d.mesa]); setSelectedId(d.mesa.id) }
+  }
+
+  // ── UPDATE SELECTED ──────────────────────────────────────────
+  const updateSelected = (patch: Partial<Mesa>) => {
+    if (!selectedId) return
+    setMesas(prev => prev.map(m => m.id === selectedId ? { ...m, ...patch } : m))
+  }
+
+  const saveSelected = async () => {
+    if (!selected) return
+    await fetch('/api/owner/mesas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({
+        id: selected.id, codigo: selected.codigo, nombre: selected.nombre,
+        capacidad: selected.capacidad, zona: selected.zona, forma: selected.forma,
+        pos_x: selected.pos_x, pos_y: selected.pos_y,
+      }),
+    })
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  const delSelected = async () => {
+    if (!selected || !confirm(`¿Eliminar ${selected.codigo}?`)) return
+    await fetch('/api/owner/mesas', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({ id: selected.id }),
+    })
+    setMesas(prev => prev.filter(m => m.id !== selected.id))
+    setSelectedId(null)
+  }
+
+  // ── CRUD LISTA ───────────────────────────────────────────────
+  const openCreate = () => { setForm({ codigo:'', nombre:'', zona: zonas[0]?.tipo||'salon', capacidad:'4', forma:'round' }); setErr(''); setModal('create') }
+  const openEdit   = (m: Mesa) => { setForm({ codigo:m.codigo, nombre:m.nombre??'', zona:m.zona, capacidad:String(m.capacidad), forma: m.forma??'round' }); setErr(''); setModal({ edit: m }) }
+  const openDel    = (m: Mesa) => setModal({ del: m })
 
   const save = async () => {
     setErr('')
     if (!form.codigo.trim()) return setErr('Código requerido')
     const isEdit = modal && typeof modal === 'object' && 'edit' in modal
     const body = isEdit
-      ? { id: (modal as { edit: Mesa }).edit.id, ...form, nombre: form.nombre.trim() || null, capacidad: parseInt(form.capacidad) || 4 }
-      : { ...form, nombre: form.nombre.trim() || null, capacidad: parseInt(form.capacidad) || 4 }
-
-    const r = await fetch('/api/owner/mesas', { method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
+      ? { id: (modal as {edit:Mesa}).edit.id, ...form, nombre: form.nombre.trim()||null, capacidad: parseInt(form.capacidad)||4 }
+      : { ...form, nombre: form.nombre.trim()||null, capacidad: parseInt(form.capacidad)||4 }
+    const r = await fetch('/api/owner/mesas', {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: { 'Content-Type':'application/json', ...sh() },
+      body: JSON.stringify(body),
+    })
     const d = await r.json()
     if (!r.ok) return setErr(d.error || 'Error')
     await load(); setModal(null)
@@ -402,8 +535,11 @@ function MesasTab() {
 
   const del = async () => {
     if (!modal || typeof modal !== 'object' || !('del' in modal)) return
-    await fetch('/api/owner/mesas', { method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify({ id: (modal as { del: Mesa }).del.id }) })
+    await fetch('/api/owner/mesas', {
+      method: 'DELETE',
+      headers: { 'Content-Type':'application/json', ...sh() },
+      body: JSON.stringify({ id: (modal as {del:Mesa}).del.id }),
+    })
     await load(); setModal(null)
   }
 
@@ -411,102 +547,358 @@ function MesasTab() {
     setErr('')
     if (!zonaForm.nombre.trim() || !zonaForm.prefijo.trim()) return setErr('Nombre y prefijo requeridos')
     const isEdit = modal && typeof modal === 'object' && 'editZona' in modal
-    const body = isEdit
-      ? { id: (modal as { editZona: Zona }).editZona.id, ...zonaForm }
-      : zonaForm
+    const body = isEdit ? { id: (modal as {editZona:Zona}).editZona.id, ...zonaForm } : zonaForm
     const r = await fetch('/api/owner/zonas', {
       method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json', ...sh() },
+      headers: { 'Content-Type':'application/json', ...sh() },
       body: JSON.stringify(body),
     })
     const d = await r.json()
     if (!r.ok) return setErr(d.error || 'Error')
-    await load(); setModal(null); setZonaForm({ nombre: '', prefijo: '', descripcion: '' })
+    await load(); setModal(null); setZonaForm({ nombre:'', prefijo:'', descripcion:'' })
   }
 
   const delZona = async (z: Zona) => {
     if (!confirm(`Eliminar zona "${z.nombre}"?`)) return
     await fetch('/api/owner/zonas', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json', ...sh() },
+      method: 'DELETE', headers: { 'Content-Type':'application/json', ...sh() },
       body: JSON.stringify({ id: z.id }),
     })
     await load()
   }
 
-  const byZona = (tipo: string) => mesas.filter(m => m.zona === tipo)
+  if (loading) return <div style={{ padding:40, textAlign:'center', color:C.ink3, fontFamily:SM, fontSize:12 }}>CARGANDO...</div>
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
+  const mesasZonaActiva = mesas.filter(m => m.zona === zonaActiva)
+  const zonaObj = zonas.find(z => z.tipo === zonaActiva)
+
+  // ── RENDER ───────────────────────────────────────────────────
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <style>{`
+        .mesa-plano{cursor:move;transition:filter .1s}
+        .mesa-plano:hover .mesa-body-inner{filter:brightness(.95)}
+        .mesa-plano.sel .mesa-body-inner{outline:2px solid ${C.red};outline-offset:2px}
+        .dp-input:focus{border-color:${C.red}!important;outline:none}
+        .dp-sel:focus{border-color:${C.red}!important;outline:none}
+        .shape-opt:hover{border-color:${C.red}!important;color:${C.red}!important}
+        .add-btn:hover{background:${C.paper2}!important}
+      `}</style>
+
+      {/* Header */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
-          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase' }}>Espacio</div>
-          <div style={{ fontFamily: SE, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 2 }}>Mesas</div>
+          <div style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.14em', color:C.ink3, textTransform:'uppercase' }}>Espacio</div>
+          <div style={{ fontFamily:SE, fontSize:28, fontWeight:500, color:C.ink, marginTop:2 }}>Mesas</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Btn variant="ghost" onClick={() => { setZonaForm({ nombre: '', prefijo: '', descripcion: '' }); setErr(''); setModal('zona-create') }}>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {/* Toggle vista */}
+          <div style={{ display:'flex', border:`1px solid ${C.rule}`, borderRadius:8, overflow:'hidden' }}>
+            {(['plano','lista'] as const).map(v => (
+              <button key={v} onClick={() => setVista(v)} style={{
+                padding:'7px 14px', border:'none', cursor:'pointer',
+                background: vista===v ? C.ink : C.bone,
+                color: vista===v ? C.paper : C.ink3,
+                fontSize:12, fontFamily:SN, fontWeight:500,
+              }}>
+                {v === 'plano' ? '⊞ Plano' : '☰ Lista'}
+              </button>
+            ))}
+          </div>
+          <Btn variant="ghost" onClick={() => { setZonaForm({ nombre:'', prefijo:'', descripcion:'' }); setErr(''); setModal('zona-create') }}>
             <Icon d={ICONS.grid} size={14}/>Zonas
           </Btn>
-          <Btn variant="primary" onClick={openCreate}><Icon d={ICONS.plus} size={15}/>Añadir mesa</Btn>
+          {vista === 'lista' && (
+            <Btn variant="primary" onClick={openCreate}><Icon d={ICONS.plus} size={15}/>Añadir mesa</Btn>
+          )}
         </div>
       </div>
 
-      {zonas.filter(z => z.activa).map(zona => {
-        const ms = byZona(zona.tipo)
-        if (ms.length === 0 && zonas.indexOf(zona) > 0) return null
-        return (
-          <div key={zona.id} style={{ marginBottom: 28 }}>
-            <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.red,
-              textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ background: C.paper2, color: C.ink, fontFamily: SM, fontSize: 10, padding: '2px 6px', borderRadius: 3, border: `1px solid ${C.rule}` }}>{zona.prefijo}</span>
-              {zona.nombre}
-              <span style={{ color: C.ink4 }}>· {ms.length} mesas</span>
-              <button onClick={() => { setZonaForm({ nombre: zona.nombre, prefijo: zona.prefijo, descripcion: zona.descripcion || '' }); setErr(''); setModal({ editZona: zona }) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4, opacity: 0.5 }}>
-                <Icon d={ICONS.edit} size={11}/>
-              </button>
-              <button onClick={() => delZona(zona)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, opacity: 0.4 }}>
-                <Icon d={ICONS.trash} size={11}/>
-              </button>
-            </div>
-            {ms.length === 0 ? (
-              <div style={{ fontFamily: SN, fontSize: 13, color: C.ink4, padding: '12px 0' }}>Sin mesas en esta zona.</div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-                {ms.map(m => (
-                  <div key={m.id} style={{ background: C.bone, border: `1px solid ${C.rule}`,
-                    borderRadius: 8, padding: '14px 16px',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontFamily: SM, fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-.01em' }}>{m.codigo}</div>
-                      {m.nombre && <div style={{ fontFamily: "'Newsreader',serif", fontSize: 13, color: C.ink2, marginTop: 2, fontStyle: 'italic' }}>{m.nombre}</div>}
-                      <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, marginTop: 4 }}>{m.capacidad} personas</div>
+      {/* ══ VISTA PLANO ══════════════════════════════════════════ */}
+      {vista === 'plano' && (
+        <div>
+          {/* Tabs de zona */}
+          <div style={{ display:'flex', gap:4, marginBottom:14, flexWrap:'wrap' }}>
+            {zonas.filter(z => z.activa).map(z => {
+              const cnt = mesas.filter(m => m.zona === z.tipo).length
+              const on  = zonaActiva === z.tipo
+              return (
+                <button key={z.id} onClick={() => { setZonaActiva(z.tipo); setSelectedId(null) }} style={{
+                  padding:'7px 14px', borderRadius:8, border:`1px solid ${on ? C.red : C.rule}`,
+                  background: on ? C.redS : C.bone, color: on ? C.red : C.ink3,
+                  fontSize:12, fontFamily:SN, fontWeight: on ? 500 : 400, cursor:'pointer',
+                  display:'flex', alignItems:'center', gap:6,
+                }}>
+                  {z.nombre}
+                  <span style={{ fontFamily:SM, fontSize:9, opacity:.7 }}>{cnt}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+            {/* Canvas */}
+            <div style={{ flex:1, minWidth:0 }}>
+              {/* Toolbar añadir */}
+              <div style={{ display:'flex', gap:6, marginBottom:8, alignItems:'center' }}>
+                <span style={{ fontSize:11, color:C.ink3, fontFamily:SM, marginRight:4 }}>AÑADIR:</span>
+                {([
+                  { forma:'round'  as const, label:'● Redonda' },
+                  { forma:'square' as const, label:'■ Cuadrada' },
+                  { forma:'bar'    as const, label:'▬ Barra'   },
+                ]).map(({ forma, label }) => (
+                  <button key={forma} className="add-btn" onClick={() => addMesaPlano(forma)} style={{
+                    padding:'5px 10px', borderRadius:6, border:`1px solid ${C.rule}`,
+                    background:C.bone, color:C.ink2, fontSize:11, fontFamily:SN, cursor:'pointer',
+                  }}>{label}</button>
+                ))}
+                <div style={{ marginLeft:'auto', display:'flex', gap:6, alignItems:'center' }}>
+                  {saved && <span style={{ fontSize:11, color:C.green, fontFamily:SM }}>Guardado ✓</span>}
+                  <Btn variant="primary" onClick={guardarPlano}>
+                    {saving ? 'Guardando…' : 'Guardar plano'}
+                  </Btn>
+                </div>
+              </div>
+
+              {/* Canvas drag */}
+              <div ref={canvasRef} style={{
+                position:'relative', width:'100%', height:CANVAS_H,
+                background:C.bone, border:`1px solid ${C.rule}`, borderRadius:12,
+                overflow:'hidden',
+                backgroundImage:`linear-gradient(${C.rule}55 1px,transparent 1px),linear-gradient(90deg,${C.rule}55 1px,transparent 1px)`,
+                backgroundSize:`${GRID*2}px ${GRID*2}px`,
+              }}
+                onClick={e => { if (e.target === canvasRef.current) setSelectedId(null) }}
+              >
+                {/* Hint zona */}
+                <div style={{
+                  position:'absolute', top:10, left:14,
+                  fontFamily:SM, fontSize:9, color:C.ink4,
+                  letterSpacing:'.08em', textTransform:'uppercase',
+                  pointerEvents:'none',
+                }}>
+                  {zonaObj?.nombre ?? zonaActiva} · arrastra las mesas
+                </div>
+
+                {/* Mesas */}
+                {mesasZonaActiva.map((mesa, idx) => {
+                  const { x, y } = getPos(mesa, idx)
+                  const sz = mesaSize(mesa.forma ?? 'round', mesa.capacidad)
+                  const isSel = selectedId === mesa.id
+                  const isRound  = (mesa.forma ?? 'round') === 'round'
+                  const isSquare = (mesa.forma ?? 'round') === 'square'
+                  const isBar    = (mesa.forma ?? 'round') === 'bar'
+
+                  return (
+                    <div
+                      key={mesa.id}
+                      className={`mesa-plano${isSel ? ' sel' : ''}`}
+                      onMouseDown={e => handleMouseDown(e, mesa.id)}
+                      onClick={e => { e.stopPropagation(); setSelectedId(mesa.id) }}
+                      style={{
+                        position:'absolute',
+                        left: x, top: y,
+                        width: sz.w, height: sz.h,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                      }}
+                    >
+                      <div className="mesa-body-inner" style={{
+                        width:'100%', height:'100%',
+                        borderRadius: isRound ? '50%' : isSquare ? 8 : 4,
+                        background: isSel ? C.redS : C.paper,
+                        border: `1.5px solid ${isSel ? C.red : C.rule}`,
+                        display:'flex', flexDirection:'column',
+                        alignItems:'center', justifyContent:'center', gap:1,
+                        boxShadow: isSel ? `0 0 0 2px ${C.red}33` : '0 1px 3px rgba(26,23,20,.08)',
+                      }}>
+                        {!isBar && (
+                          <div style={{ fontFamily:SE, fontStyle:'italic', fontSize: sz.w > 56 ? 20 : 17, fontWeight:500, color: isSel ? C.red : C.ink, lineHeight:1 }}>
+                            {mesa.capacidad}
+                          </div>
+                        )}
+                        <div style={{ fontFamily:SM, fontSize:8, color: isSel ? C.red : C.ink3, lineHeight:1 }}>
+                          {mesa.codigo}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <Btn size="sm" variant="ghost" onClick={() => openEdit(m)}><Icon d={ICONS.edit} size={13}/></Btn>
-                      <Btn size="sm" variant="danger" onClick={() => openDel(m)}><Icon d={ICONS.trash} size={13}/></Btn>
+                  )
+                })}
+
+                {mesasZonaActiva.length === 0 && (
+                  <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, opacity:.4 }}>
+                    <div style={{ fontSize:28 }}>⊞</div>
+                    <div style={{ fontFamily:SN, fontSize:13, color:C.ink3 }}>Sin mesas en esta zona — usa los botones de arriba</div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ fontFamily:SM, fontSize:10, color:C.ink4, marginTop:6 }}>
+                Tip · snap a cuadrícula de {GRID}px · toca una mesa para editar su nombre, capacidad y forma
+              </div>
+            </div>
+
+            {/* Panel detalle lateral */}
+            <div style={{
+              width:192, flexShrink:0,
+              background:C.bone, border:`1px solid ${C.rule}`,
+              borderRadius:12, padding:'14px',
+              minHeight:280,
+            }}>
+              {!selected ? (
+                <div style={{ textAlign:'center', padding:'40px 0', opacity:.4 }}>
+                  <div style={{ fontSize:22, marginBottom:8 }}>⊞</div>
+                  <div style={{ fontFamily:SN, fontSize:11, color:C.ink3 }}>Toca una mesa<br/>para editarla</div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ fontFamily:SM, fontSize:9, color:C.ink3, letterSpacing:'.08em' }}>
+                    {selected.codigo}
+                  </div>
+
+                  {/* Código */}
+                  <div>
+                    <div style={{ fontSize:11, color:C.ink3, marginBottom:4 }}>Código</div>
+                    <input className="dp-input" value={selected.codigo}
+                      onChange={e => updateSelected({ codigo: e.target.value.toUpperCase() })}
+                      onBlur={saveSelected}
+                      style={{ width:'100%', padding:'7px 10px', border:`1px solid ${C.rule}`, borderRadius:6, background:C.paper, color:C.ink, fontSize:13, fontFamily:SM }}
+                    />
+                  </div>
+
+                  {/* Capacidad */}
+                  <div>
+                    <div style={{ fontSize:11, color:C.ink3, marginBottom:4 }}>Capacidad (pax)</div>
+                    <input className="dp-input" type="number" min={1} max={20} value={selected.capacidad}
+                      onChange={e => updateSelected({ capacidad: parseInt(e.target.value)||1 })}
+                      onBlur={saveSelected}
+                      style={{ width:'100%', padding:'7px 10px', border:`1px solid ${C.rule}`, borderRadius:6, background:C.paper, color:C.ink, fontSize:13, fontFamily:SM }}
+                    />
+                  </div>
+
+                  {/* Nombre */}
+                  <div>
+                    <div style={{ fontSize:11, color:C.ink3, marginBottom:4 }}>Nombre (opcional)</div>
+                    <input className="dp-input" value={selected.nombre ?? ''}
+                      onChange={e => updateSelected({ nombre: e.target.value || null })}
+                      onBlur={saveSelected}
+                      placeholder="ej. La ventana"
+                      style={{ width:'100%', padding:'7px 10px', border:`1px solid ${C.rule}`, borderRadius:6, background:C.paper, color:C.ink, fontSize:12, fontFamily:SN }}
+                    />
+                  </div>
+
+                  {/* Forma */}
+                  <div>
+                    <div style={{ fontSize:11, color:C.ink3, marginBottom:6 }}>Forma</div>
+                    <div style={{ display:'flex', gap:5 }}>
+                      {([
+                        { v:'round'  as const, svg:<circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" strokeWidth="1.5"/> },
+                        { v:'square' as const, svg:<rect x="2" y="2" width="14" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5"/> },
+                        { v:'bar'    as const, svg:<rect x="1" y="5" width="16" height="8" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5"/> },
+                      ]).map(({ v, svg }) => (
+                        <button key={v} className="shape-opt" onClick={() => { updateSelected({ forma: v }); setTimeout(saveSelected, 100) }}
+                          style={{
+                            flex:1, padding:'7px 3px', borderRadius:6, cursor:'pointer',
+                            border:`1.5px solid ${selected.forma===v ? C.red : C.rule}`,
+                            background: selected.forma===v ? C.redS : C.paper,
+                            color: selected.forma===v ? C.red : C.ink3,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                          }}>
+                          <svg width="18" height="18" viewBox="0 0 18 18">{svg}</svg>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })}
 
-      {/* Modal nueva/editar zona */}
+                  {/* Zona */}
+                  <div>
+                    <div style={{ fontSize:11, color:C.ink3, marginBottom:4 }}>Zona</div>
+                    <select className="dp-sel" value={selected.zona}
+                      onChange={e => { updateSelected({ zona: e.target.value }); setTimeout(saveSelected, 100) }}
+                      style={{ width:'100%', padding:'7px 10px', border:`1px solid ${C.rule}`, borderRadius:6, background:C.paper, color:C.ink, fontSize:12, fontFamily:SN }}
+                    >
+                      {zonas.filter(z => z.activa).map(z => (
+                        <option key={z.id} value={z.tipo}>{z.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Botón borrar */}
+                  <button onClick={delSelected} style={{
+                    width:'100%', padding:'8px', borderRadius:7,
+                    border:`1px solid ${C.rule}`, background:'none',
+                    color:C.ink3, fontSize:11, fontFamily:SN, cursor:'pointer',
+                    marginTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:5,
+                  }}>
+                    <Icon d={ICONS.trash} size={12}/>Eliminar mesa
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ VISTA LISTA ══════════════════════════════════════════ */}
+      {vista === 'lista' && (
+        <div>
+          {zonas.filter(z => z.activa).map(zona => {
+            const ms = mesas.filter(m => m.zona === zona.tipo)
+            if (ms.length === 0 && zonas.indexOf(zona) > 0) return null
+            return (
+              <div key={zona.id} style={{ marginBottom:28 }}>
+                <div style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.14em', color:C.red,
+                  textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ background:C.paper2, color:C.ink, fontFamily:SM, fontSize:10, padding:'2px 6px', borderRadius:3, border:`1px solid ${C.rule}` }}>{zona.prefijo}</span>
+                  {zona.nombre}
+                  <span style={{ color:C.ink4 }}>· {ms.length} mesas</span>
+                  <button onClick={() => { setZonaForm({ nombre:zona.nombre, prefijo:zona.prefijo, descripcion:zona.descripcion||'' }); setErr(''); setModal({ editZona: zona }) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', padding:0, marginLeft:4, opacity:.5 }}>
+                    <Icon d={ICONS.edit} size={11}/>
+                  </button>
+                  <button onClick={() => delZona(zona)}
+                    style={{ background:'none', border:'none', cursor:'pointer', padding:0, opacity:.4 }}>
+                    <Icon d={ICONS.trash} size={11}/>
+                  </button>
+                </div>
+                {ms.length === 0 ? (
+                  <div style={{ fontFamily:SN, fontSize:13, color:C.ink4, padding:'12px 0' }}>Sin mesas en esta zona.</div>
+                ) : (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:10 }}>
+                    {ms.map(m => (
+                      <div key={m.id} style={{ background:C.bone, border:`1px solid ${C.rule}`,
+                        borderRadius:8, padding:'12px 14px',
+                        display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                        <div>
+                          <div style={{ fontFamily:SM, fontSize:18, fontWeight:700, color:C.ink }}>{m.codigo}</div>
+                          {m.nombre && <div style={{ fontFamily:SE, fontSize:12, color:C.ink2, marginTop:1, fontStyle:'italic' }}>{m.nombre}</div>}
+                          <div style={{ fontFamily:SN, fontSize:11, color:C.ink3, marginTop:3 }}>{m.capacidad} pax · {m.forma ?? 'round'}</div>
+                        </div>
+                        <div style={{ display:'flex', gap:4 }}>
+                          <Btn size="sm" variant="ghost" onClick={() => openEdit(m)}><Icon d={ICONS.edit} size={13}/></Btn>
+                          <Btn size="sm" variant="danger" onClick={() => openDel(m)}><Icon d={ICONS.trash} size={13}/></Btn>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modales zonas */}
       {modal && (modal === 'zona-create' || (typeof modal === 'object' && 'editZona' in modal)) && (
         <Modal title={modal === 'zona-create' ? 'Nueva zona' : 'Editar zona'} onClose={() => setModal(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="Nombre (ej. Terraza VIP)" value={zonaForm.nombre} onChange={v => setZonaForm(f => ({ ...f, nombre: v }))} placeholder="Terraza VIP"/>
-            <Field label="Prefijo de mesa (1-2 letras, ej. V)" value={zonaForm.prefijo} onChange={v => setZonaForm(f => ({ ...f, prefijo: v.toUpperCase().slice(0,2) }))} placeholder="V"/>
-            <Field label="Descripción (opcional)" value={zonaForm.descripcion} onChange={v => setZonaForm(f => ({ ...f, descripcion: v }))} placeholder="Zona exterior cubierta"/>
-            <div style={{ background: C.paper2, borderRadius: 4, padding: '8px 12px', fontFamily: SM, fontSize: 11, color: C.ink3 }}>
-              El prefijo define el código de mesa: prefijo <strong>{zonaForm.prefijo || 'V'}</strong> → mesas <strong>{zonaForm.prefijo || 'V'}01, {zonaForm.prefijo || 'V'}02…</strong>
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            <Field label="Nombre (ej. Terraza VIP)"        value={zonaForm.nombre}      onChange={v => setZonaForm(f => ({ ...f, nombre: v }))}      placeholder="Terraza VIP"/>
+            <Field label="Prefijo de mesa (1-2 letras)"    value={zonaForm.prefijo}     onChange={v => setZonaForm(f => ({ ...f, prefijo: v.toUpperCase().slice(0,2) }))} placeholder="V"/>
+            <Field label="Descripción (opcional)"          value={zonaForm.descripcion} onChange={v => setZonaForm(f => ({ ...f, descripcion: v }))} placeholder="Zona exterior cubierta"/>
+            <div style={{ background:C.paper2, borderRadius:4, padding:'8px 12px', fontFamily:SM, fontSize:11, color:C.ink3 }}>
+              Prefijo <strong>{zonaForm.prefijo||'V'}</strong> → mesas <strong>{zonaForm.prefijo||'V'}01, {zonaForm.prefijo||'V'}02…</strong>
             </div>
-            {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+            {err && <div style={{ fontFamily:SM, fontSize:11, color:C.red }}>{err}</div>}
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
               <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
               <Btn variant="primary" onClick={saveZona}><Icon d={ICONS.check} size={14}/>{modal === 'zona-create' ? 'Crear' : 'Guardar'}</Btn>
             </div>
@@ -514,16 +906,17 @@ function MesasTab() {
         </Modal>
       )}
 
+      {/* Modales crear/editar mesa (lista) */}
       {modal && (modal === 'create' || (typeof modal === 'object' && 'edit' in modal)) && (
         <Modal title={modal === 'create' ? 'Nueva mesa' : 'Editar mesa'} onClose={() => setModal(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <Field label="Código (ej. T05, B02)" value={form.codigo} onChange={v => setForm(f => ({ ...f, codigo: v.toUpperCase() }))} placeholder="T05"/>
-            <Field label="Nombre personalizado (opcional)" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder='ej. "La ventana", "Reserva VIP"'/>
+            <Field label="Nombre personalizado (opcional)" value={form.nombre} onChange={v => setForm(f => ({ ...f, nombre: v }))} placeholder='ej. "La ventana"'/>
             <Select label="Zona" value={form.zona} onChange={v => setForm(f => ({ ...f, zona: v }))}
               options={zonas.filter(z => z.activa).map(z => ({ value: z.tipo, label: `${z.nombre} (${z.prefijo})` }))}/>
             <Field label="Capacidad" value={form.capacidad} onChange={v => setForm(f => ({ ...f, capacidad: v }))} placeholder="4" type="number"/>
-            {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+            {err && <div style={{ fontFamily:SM, fontSize:11, color:C.red }}>{err}</div>}
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
               <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
               <Btn variant="primary" onClick={save}><Icon d={ICONS.check} size={14}/>{modal === 'create' ? 'Crear' : 'Guardar'}</Btn>
             </div>
@@ -533,10 +926,10 @@ function MesasTab() {
 
       {modal && typeof modal === 'object' && 'del' in modal && (
         <Modal title="Borrar mesa" onClose={() => setModal(null)}>
-          <p style={{ fontFamily: SN, fontSize: 14, color: C.ink2, marginTop: 0 }}>
-            ¿Borrar la mesa <strong>{(modal as { del: Mesa }).del.codigo}</strong>?
+          <p style={{ fontFamily:SN, fontSize:14, color:C.ink2, marginTop:0 }}>
+            ¿Borrar la mesa <strong>{(modal as {del:Mesa}).del.codigo}</strong>?
           </p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
             <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
             <Btn variant="danger" onClick={del}><Icon d={ICONS.trash} size={14}/>Borrar</Btn>
           </div>
@@ -545,6 +938,7 @@ function MesasTab() {
     </div>
   )
 }
+
 
 /* ─── Tab: Restaurante / Configuración ─── */
 type RestauranteConfig = {
