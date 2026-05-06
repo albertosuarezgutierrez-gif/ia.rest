@@ -164,3 +164,34 @@ export function useProductosActivos() {
 
   return { productos, refetch: fetch }
 }
+
+// ── useServicioPendiente ──────────────────────────────────────
+// Devuelve Set de mesa_ids que tienen servicio de running pendiente
+export function useServicioPendiente(restauranteId?: string) {
+  const [mesasConPendiente, setMesasConPendiente] = useState<Set<string>>(new Set())
+
+  const fetchPendientes = useCallback(async () => {
+    if (!restauranteId) return
+    const { data } = await supabase
+      .from('marchar_log')
+      .select('mesa_id')
+      .eq('restaurante_id', restauranteId)
+      .eq('tipo', 'servicio')
+      .eq('recogido', false)
+    setMesasConPendiente(new Set((data ?? []).map((r: { mesa_id: string }) => r.mesa_id)))
+  }, [restauranteId])
+
+  useEffect(() => {
+    fetchPendientes()
+    const ch = supabase
+      .channel(`servicio-pendiente-${restauranteId ?? 'all'}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'marchar_log',
+        filter: restauranteId ? `restaurante_id=eq.${restauranteId}` : undefined,
+      }, fetchPendientes)
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [fetchPendientes, restauranteId])
+
+  return mesasConPendiente
+}

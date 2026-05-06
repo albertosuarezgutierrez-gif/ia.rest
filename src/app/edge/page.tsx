@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import ManualComanda from '@/components/ManualComanda'
 import MesaDetalleSheet from '@/components/edge/MesaDetalleSheet'
-import { useProductos86, useComandas } from '@/hooks/useRealtime'
+import { useProductos86, useComandas, useServicioPendiente } from '@/hooks/useRealtime'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useAlertas } from '@/hooks/useAlertas'
@@ -152,6 +152,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const { alertas, marcarLeida }           = useAlertas(session.id, session.restaurante_id)
   const productos86                        = useProductos86(turnoId??undefined)
   const { comandas }                       = useComandas(turnoId??undefined)
+  const servicioPendiente                  = useServicioPendiente(session.restaurante_id)
   const prev86 = useRef(0)
 
   const ultimasComandas = comandas
@@ -233,7 +234,11 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     if (!mesasPlano.length) return
     setMesasPlano(prev => prev.map(m => {
       const comanda = mesasOcupadas[m.id]
-      if (!comanda) return { ...m, estado: 'libre' as const, num_comensales: null, es_mia: false, minutos_abierta: null }
+      if (!comanda) return {
+        ...m, estado: 'libre' as const,
+        num_comensales: null, es_mia: false,
+        minutos_abierta: null, servicio_pendiente: false,
+      }
       const min = Math.floor((Date.now() - new Date(comanda.created_at).getTime()) / 60000)
       const estado: MesaPlano['estado'] = comanda.tipo === 'cuenta' ? 'cuenta'
         : comanda.estado === 'en_cocina' ? 'en_cocina'
@@ -244,10 +249,11 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         num_comensales: comanda.num_comensales ?? null,
         es_mia: comanda.camarero_id === session.id,
         minutos_abierta: min,
+        servicio_pendiente: servicioPendiente.has(m.id),
       }
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comandas, session.id])
+  }, [comandas, session.id, servicioPendiente])
 
   useEffect(() => {
     if (screen !== 'speaking' || !brain) return
@@ -352,6 +358,23 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const logout = () => {
     fetch('/api/auth',{method:'DELETE'}); localStorage.removeItem('ia_rest_session')
     window.location.href='/login'
+  }
+
+  // Marchar rápido desde doble-tap en plano
+  const marcharRapido = async (mesa: MesaPlano) => {
+    const comanda = mesasOcupadas[mesa.id]
+    if (!comanda || !['en_cocina','activa'].includes(comanda.estado ?? '')) return
+    const items = (comanda.items ?? []).map((it: {nombre:string;cantidad:number}) => ({
+      nombre: it.nombre, cantidad: it.cantidad,
+    }))
+    if (!items.length) return
+    const ses = localStorage.getItem('ia_rest_session') ?? ''
+    await fetch('/api/marchar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-ia-session': ses },
+      body: JSON.stringify({ comanda_id: comanda.id, mesa_codigo: mesa.codigo, items }),
+    })
+    addMsg('sistema', `✓ Marchado · ${mesa.codigo}`, 'ok')
   }
   const reset = () => {
     if (typeof window!=='undefined') window.speechSynthesis?.cancel()
@@ -533,6 +556,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                 onMesaTap={m => setMesaDetalle({
                   id: m.id, codigo: m.codigo, capacidad: m.capacidad
                 })}
+                onMesaDoubleTap={marcharRapido}
               />
             </div>
           )}

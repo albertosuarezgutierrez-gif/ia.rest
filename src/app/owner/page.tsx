@@ -343,6 +343,79 @@ function CamarerosTab() {
   )
 }
 
+// ── ZonaTabs: tabs de zona arrastrables ──────────────────────
+function ZonaTabs({ zonas, mesas, zonaActiva, onSelect, onReorder }: {
+  zonas: Zona[]; mesas: Mesa[]
+  zonaActiva: string
+  onSelect: (tipo: string) => void
+  onReorder: (ids: string[]) => void
+}) {
+  const [order, setOrder] = useState<string[]>([])
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null)
+  const [overIdx, setOverIdx]         = useState<number | null>(null)
+
+  useEffect(() => { setOrder(zonas.map(z => z.id)) }, [zonas])
+
+  const ordered = order
+    .map(id => zonas.find(z => z.id === id))
+    .filter(Boolean) as Zona[]
+
+  const handleDragStart = (idx: number) => setDraggingIdx(idx)
+  const handleDragOver  = (e: React.DragEvent, idx: number) => { e.preventDefault(); setOverIdx(idx) }
+  const handleDrop      = (idx: number) => {
+    if (draggingIdx === null || draggingIdx === idx) return
+    const next = [...order]
+    const [moved] = next.splice(draggingIdx, 1)
+    next.splice(idx, 0, moved)
+    setOrder(next)
+    setDraggingIdx(null); setOverIdx(null)
+    onReorder(next)
+  }
+  const handleDragEnd = () => { setDraggingIdx(null); setOverIdx(null) }
+
+  return (
+    <div style={{
+      display:'flex', gap:5, marginBottom:12,
+      overflowX:'auto', paddingBottom:4, scrollbarWidth:'none',
+    }}>
+      {ordered.map((z, idx) => {
+        const cnt = mesas.filter(m => m.zona === z.tipo).length
+        const on  = zonaActiva === z.tipo
+        const isDrag = draggingIdx === idx
+        const isOver = overIdx === idx && draggingIdx !== idx
+        return (
+          <div
+            key={z.id}
+            draggable
+            onDragStart={() => handleDragStart(idx)}
+            onDragOver={e => handleDragOver(e, idx)}
+            onDrop={() => handleDrop(idx)}
+            onDragEnd={handleDragEnd}
+            onClick={() => onSelect(z.tipo)}
+            style={{
+              padding:'7px 13px', borderRadius:8, flexShrink:0,
+              border:`1px solid ${isOver ? C.red : on ? C.red : C.rule}`,
+              background: isOver ? C.redS+'88' : on ? C.redS : C.bone,
+              color: on ? C.red : C.ink3,
+              fontSize:12, fontFamily:SN, fontWeight: on ? 500 : 400,
+              cursor:'grab', userSelect:'none', transition:'all .1s',
+              opacity: isDrag ? .4 : 1,
+              display:'flex', alignItems:'center', gap:6,
+            }}
+          >
+            <span style={{ fontSize:9, color:C.ink4, opacity:.5, marginRight:-2 }}>⠿</span>
+            {z.nombre}
+            <span style={{ opacity:.6, fontFamily:SM, fontSize:10 }}>{cnt}</span>
+          </div>
+        )
+      })}
+      <div style={{ fontSize:9, color:C.ink4, fontFamily:SM, alignSelf:'center', marginLeft:4, opacity:.5, flexShrink:0 }}>
+        arrastra para reordenar
+      </div>
+    </div>
+  )
+}
+
 /* ─── Tab: Mesas ─── */
 type Zona = { id: string; nombre: string; tipo: string; prefijo: string; descripcion?: string; orden: number; activa: boolean }
 
@@ -669,18 +742,24 @@ function MesasTab() {
       {/* ══ VISTA PLANO ══════════════════════════════════════════ */}
       {vista === 'plano' && (
         <div>
-          {/* Tabs zonas — scroll horizontal en móvil */}
-          <div style={{ display:'flex', gap:6, marginBottom:12, overflowX:'auto', paddingBottom:4, scrollbarWidth:'none' }}>
-            {zonas.filter(z => z.activa).map(z => {
-              const cnt = mesas.filter(m => m.zona === z.tipo).length
-              return (
-                <button key={z.id} className={`zona-tab${zonaActiva===z.tipo?' on':''}`}
-                  onClick={() => { setZonaActiva(z.tipo); setSelectedId(null) }}>
-                  {z.nombre} <span style={{ opacity:.6, fontFamily:SM, fontSize:10 }}>{cnt}</span>
-                </button>
-              )
-            })}
-          </div>
+          {/* Tabs zonas — draggables para reordenar */}
+          <ZonaTabs
+            zonas={zonas.filter(z => z.activa)}
+            mesas={mesas}
+            zonaActiva={zonaActiva}
+            onSelect={tipo => { setZonaActiva(tipo); setSelectedId(null) }}
+            onReorder={async (ids) => {
+              const ses = localStorage.getItem('ia_rest_session') ?? ''
+              await Promise.all(ids.map((id, idx) =>
+                fetch('/api/owner/zonas', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', 'x-ia-session': ses },
+                  body: JSON.stringify({ id, orden: idx }),
+                })
+              ))
+              await load()
+            }}
+          />
 
           {/* Toolbar añadir + guardar */}
           <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap', alignItems:'center' }}>

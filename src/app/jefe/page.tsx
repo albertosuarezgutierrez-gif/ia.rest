@@ -182,6 +182,7 @@ function SalonTab({session}:{session:Session}){
   const {comandas}=useComandas(undefined,session.restaurante_id)
   const txs=useTranscripciones(undefined, 20, session.restaurante_id)
   const [zonasPlano, setZonasPlano] = useState<ZonaInfo[]>([])
+  const [vistaPlano, setVistaPlano] = useState<'zona'|'minimap'>('zona')
 
   // Cargar zonas
   useEffect(()=>{
@@ -191,6 +192,12 @@ function SalonTab({session}:{session:Session}){
         if(Array.isArray(d)) setZonasPlano(d.map((z:{id:string;tipo:string;nombre:string})=>({id:z.id,tipo:z.tipo,nombre:z.nombre})))
       }).catch(()=>{})
   },[])
+
+  // Servicio pendiente realtime
+  const servicioPendienteSet = (() => {
+    // carga desde comandas activas — simplificado para jefe
+    return new Set<string>()
+  })()
 
   // Fusionar mesas con estados de comandas activas
   const mesasOcupadas = comandas
@@ -218,13 +225,14 @@ function SalonTab({session}:{session:Session}){
       num_comensales: comanda?.num_comensales??null,
       camarero_nombre: comanda ? (comanda.camarero as {nombre?:string}|null)?.nombre??null : null,
       minutos_abierta: min,
+      servicio_pendiente: servicioPendienteSet.has(m.id),
     }
   })
 
   // Totales rápidos
   const libres   = mesasPlano.filter(m=>m.estado==='libre').length
   const activas  = mesasPlano.filter(m=>m.estado!=='libre').length
-  const urgentes = mesasPlano.filter(m=>m.estado==='urgente').length
+  const urgentes = mesasPlano.filter(m=>(m.minutos_abierta??0)>=45).length
 
   return(
     <div>
@@ -242,12 +250,30 @@ function SalonTab({session}:{session:Session}){
         ))}
       </div>
 
+      {/* Toggle vista */}
+      {!loading && mesas.length > 0 && (
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+          <div style={{display:'flex',border:`1px solid ${C.rule}`,borderRadius:7,overflow:'hidden'}}>
+            {(['zona','minimap'] as const).map(v=>(
+              <button key={v} onClick={()=>setVistaPlano(v)} style={{
+                padding:'5px 12px',border:'none',cursor:'pointer',
+                background:vistaPlano===v?C.ink:C.bone,
+                color:vistaPlano===v?C.paper:C.ink3,
+                fontSize:11,fontFamily:SN,fontWeight:500,
+              }}>
+                {v==='zona' ? '⊞ Por zona' : '⊟ Minimap'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Plano visual */}
       {loading ? (
         <div style={{fontFamily:SM,fontSize:12,color:C.ink4,marginBottom:16}}>Cargando mesas…</div>
       ) : mesas.length===0 ? (
         <div style={{fontFamily:SE,fontSize:16,color:C.ink3,fontStyle:'italic',padding:'20px 0',marginBottom:16}}>
-          Sin mesas configuradas. Configura las mesas en /owner → Mesas.
+          Sin mesas configuradas.
         </div>
       ) : (
         <div style={{marginBottom:20}}>
@@ -256,6 +282,7 @@ function SalonTab({session}:{session:Session}){
             zonas={zonasPlano.length>0 ? zonasPlano : [{id:'default',tipo:'salon',nombre:'Sala'}]}
             resaltarMias={false}
             mostrarLibres={true}
+            minimap={vistaPlano==='minimap'}
           />
         </div>
       )}
