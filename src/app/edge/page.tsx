@@ -12,6 +12,7 @@ import AlertaBanner from '@/components/AlertaBanner'
 import SugerenciaButton from '@/components/SugerenciaButton'
 import ComandaModModal, { ItemMod } from '@/components/ComandaModModal'
 import ComensalesModal from '@/components/edge/ComensalesModal'
+import PlanoSala, { MesaPlano, ZonaInfo } from '@/components/PlanoSala'
 
 /* ─── PALETA CREMA (light) ──────────────────────────────────── */
 const C = {
@@ -127,6 +128,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     preguntar_voz: boolean  // preguntar comensales al dictar por voz
   }>({ activo: false, precio: 1.50, nombre: 'Cubierto', skip: true, preguntar_voz: false })
   const [mesasPaxMap, setMesasPaxMap] = useState<Record<string, number>>({})
+  // Datos para el plano visual
+  const [mesasPlano, setMesasPlano] = useState<MesaPlano[]>([])
+  const [zonasPlano, setZonasPlano] = useState<ZonaInfo[]>([])
   // Guarda resultado de BRAIN mientras esperamos comensales por voz
   const [pendingVozComanda, setPendingVozComanda] = useState<{
     mesaId: string; mesaCodigo: string; paxYaConocido: number | null
@@ -183,8 +187,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       if (cfg.zonaAsignada) setZonaAsignada(cfg.zonaAsignada)
       if (cfg.fontBig !== undefined) setFontBig(cfg.fontBig)
     } catch {}
-    // Cargar config de servicio/cubierto
     const ses = localStorage.getItem('ia_rest_session') ?? ''
+    // Cargar config de servicio/cubierto
     fetch('/api/owner/config/servicio', { headers: { 'x-ia-session': ses } })
       .then(r => r.json())
       .then(d => {
@@ -197,6 +201,23 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         })
       })
       .catch(() => {})
+    // Cargar mesas y zonas para el plano visual
+    Promise.all([
+      fetch('/api/owner/mesas', { headers: { 'x-ia-session': ses } }).then(r => r.json()),
+      fetch('/api/owner/zonas', { headers: { 'x-ia-session': ses } }).then(r => r.json()),
+    ]).then(([dm, dz]) => {
+      if (dm.mesas) setMesasPlano(dm.mesas.map((m: {
+        id:string;codigo:string;capacidad:number;zona:string;
+        pos_x:number|null;pos_y:number|null;forma:string|null;estado:string;
+      }) => ({
+        ...m,
+        estado: (m.estado ?? 'libre') as MesaPlano['estado'],
+        es_mia: false,
+      })))
+      if (Array.isArray(dz)) setZonasPlano(dz.map((z: {id:string;tipo:string;nombre:string}) => ({
+        id: z.id, tipo: z.tipo, nombre: z.nombre,
+      })))
+    }).catch(() => {})
   }, [])
 
   const saveCfg = useCallback((patch: Record<string,unknown>) => {
@@ -206,6 +227,27 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     } catch {}
   }, [])
   void mesasPaxMap // usado en sessionStorage via ComensalesModal
+
+  // Sincronizar estados de mesas con comandas activas en tiempo real
+  useEffect(() => {
+    if (!mesasPlano.length) return
+    setMesasPlano(prev => prev.map(m => {
+      const comanda = mesasOcupadas[m.id]
+      if (!comanda) return { ...m, estado: 'libre' as const, num_comensales: null, es_mia: false, minutos_abierta: null }
+      const min = Math.floor((Date.now() - new Date(comanda.created_at).getTime()) / 60000)
+      const estado: MesaPlano['estado'] = comanda.tipo === 'cuenta' ? 'cuenta'
+        : comanda.estado === 'en_cocina' ? 'en_cocina'
+        : min > 60 ? 'urgente' : 'activa'
+      return {
+        ...m,
+        estado,
+        num_comensales: comanda.num_comensales ?? null,
+        es_mia: comanda.camarero_id === session.id,
+        minutos_abierta: min,
+      }
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comandas, session.id])
 
   useEffect(() => {
     if (screen !== 'speaking' || !brain) return
@@ -479,8 +521,24 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       {tab==='hablar' && (
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
-          {/* TODAS LAS MESAS OCUPADAS — cualquier camarero */}
-          {Object.values(mesasOcupadas).length > 0 && (
+          {/* PLANO VISUAL — sustituye al grid de chips */}
+          {zonasPlano.length > 0 && mesasPlano.length > 0 && (
+            <div style={{padding:'6px 16px 4px',flexShrink:0}}>
+              <PlanoSala
+                mesas={mesasPlano}
+                zonas={zonasPlano}
+                resaltarMias={true}
+                mostrarLibres={true}
+                mesaSeleccionada={mesaDetalle?.id ?? null}
+                onMesaTap={m => setMesaDetalle({
+                  id: m.id, codigo: m.codigo, capacidad: m.capacidad
+                })}
+              />
+            </div>
+          )}
+
+          {/* Fallback: chips si aún no hay datos del plano */}
+          {(zonasPlano.length === 0 || mesasPlano.length === 0) && Object.values(mesasOcupadas).length > 0 && (
             <div style={{padding:'6px 16px 2px',flexShrink:0}}>
               <div style={{fontSize:9,fontWeight:600,textTransform:'uppercase',letterSpacing:'1.2px',color:C.ink4,marginBottom:6}}>
                 Mesas activas — tap para ver

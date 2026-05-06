@@ -7,6 +7,7 @@ import { useAuth, Session } from '@/hooks/useAuth'
 import { useMesas, useComandas, useTranscripciones, useProductos86, useReloj } from '@/hooks/useRealtime'
 import Analytics from '@/components/Analytics'
 import SugerenciaButton from '@/components/SugerenciaButton'
+import PlanoSala, { MesaPlano, ZonaInfo } from '@/components/PlanoSala'
 
 const C = {
   paper:'#F6F1E7', paper2:'#EFE7D6', paper3:'#E5DAC2', bone:'#FBF8F1',
@@ -178,13 +179,52 @@ export default function JefeSalaPage() {
 // ─── SALON ────────────────────────────────────────────────────────────────────
 function SalonTab({session}:{session:Session}){
   const {mesas,loading}=useMesas(session.restaurante_id)
+  const {comandas}=useComandas(undefined,session.restaurante_id)
   const txs=useTranscripciones(undefined, 20, session.restaurante_id)
-  const [sel,setSel]=useState<string|null>(null)
+  const [zonasPlano, setZonasPlano] = useState<ZonaInfo[]>([])
+
+  // Cargar zonas
+  useEffect(()=>{
+    const ses = typeof window!=='undefined' ? localStorage.getItem('ia_rest_session')??'' : ''
+    fetch('/api/owner/zonas',{headers:{'x-ia-session':ses}})
+      .then(r=>r.json()).then(d=>{
+        if(Array.isArray(d)) setZonasPlano(d.map((z:{id:string;tipo:string;nombre:string})=>({id:z.id,tipo:z.tipo,nombre:z.nombre})))
+      }).catch(()=>{})
+  },[])
+
+  // Fusionar mesas con estados de comandas activas
+  const mesasOcupadas = comandas
+    .filter(c=>['nueva','en_cocina','lista'].includes(c.estado))
+    .reduce((acc:Record<string,typeof comandas[0]>,c)=>{
+      if(!acc[c.mesa_id]||new Date(c.created_at)>new Date(acc[c.mesa_id].created_at)) acc[c.mesa_id]=c
+      return acc
+    },{})
+
+  const mesasPlano: MesaPlano[] = mesas.map(m=>{
+    const comanda = mesasOcupadas[m.id]
+    const min = comanda ? Math.floor((Date.now()-new Date(comanda.created_at).getTime())/60000) : null
+    const estado: MesaPlano['estado'] = !comanda ? 'libre'
+      : comanda.tipo==='cuenta' ? 'cuenta'
+      : comanda.estado==='en_cocina' ? 'en_cocina'
+      : (min??0)>60 ? 'urgente' : 'activa'
+    return {
+      id:m.id, codigo:m.codigo,
+      capacidad:m.capacidad??4,
+      zona:(m as {zona?:string}).zona??'salon',
+      pos_x:(m as {pos_x?:number|null}).pos_x??null,
+      pos_y:(m as {pos_y?:number|null}).pos_y??null,
+      forma:(m as {forma?:string|null}).forma as MesaPlano['forma']??null,
+      estado,
+      num_comensales: comanda?.num_comensales??null,
+      camarero_nombre: comanda ? (comanda.camarero as {nombre?:string}|null)?.nombre??null : null,
+      minutos_abierta: min,
+    }
+  })
 
   // Totales rápidos
-  const libres   = mesas.filter(m=>m.estado==='libre').length
-  const activas  = mesas.filter(m=>m.estado!=='libre').length
-  const urgentes = mesas.filter(m=>m.estado==='urgente').length
+  const libres   = mesasPlano.filter(m=>m.estado==='libre').length
+  const activas  = mesasPlano.filter(m=>m.estado!=='libre').length
+  const urgentes = mesasPlano.filter(m=>m.estado==='urgente').length
 
   return(
     <div>
@@ -202,32 +242,24 @@ function SalonTab({session}:{session:Session}){
         ))}
       </div>
 
-      <div style={{fontFamily:SE,fontSize:22,fontWeight:500,color:C.ink,marginBottom:12}}>Salón</div>
+      {/* Plano visual */}
       {loading ? (
-        <div style={{fontFamily:SM,fontSize:12,color:C.ink4}}>Cargando mesas…</div>
+        <div style={{fontFamily:SM,fontSize:12,color:C.ink4,marginBottom:16}}>Cargando mesas…</div>
       ) : mesas.length===0 ? (
-        <div style={{fontFamily:SE,fontSize:16,color:C.ink3,fontStyle:'italic',padding:'20px 0'}}>
+        <div style={{fontFamily:SE,fontSize:16,color:C.ink3,fontStyle:'italic',padding:'20px 0',marginBottom:16}}>
           Sin mesas configuradas. Configura las mesas en /owner → Mesas.
         </div>
       ) : (
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:20}}>
-          {mesas.map(m=>{
-            const p=STATUS_PAL[m.estado]||STATUS_PAL.libre
-            const s=sel===m.id
-            return(
-              <button key={m.id} onClick={()=>setSel(s?null:m.id)}
-                style={{background:p.bg,border:`1px solid ${s?p.ac:C.rule}`,borderRadius:8,padding:'10px 8px',cursor:'pointer',boxShadow:s?`0 0 0 2px ${p.ac}`:'none',display:'flex',flexDirection:'column',gap:3,textAlign:'left',minHeight:64}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                  <span style={{fontFamily:SE,fontSize:18,fontWeight:500,color:p.fg,lineHeight:1}}>{m.codigo}</span>
-                  {m.estado!=='libre'&&<span style={{width:6,height:6,borderRadius:999,background:p.ac,flexShrink:0}}/>}
-                </div>
-                {m.camarero&&<div style={{fontFamily:SN,fontSize:9,color:p.fg,opacity:.75}}>{(m.camarero as any).nombre?.split(' ')[0]}</div>}
-                {m.ultima_comanda&&<div style={{fontFamily:SM,fontSize:9,color:edadColor(m.ultima_comanda)}}>{tiempoDesde(m.ultima_comanda)}</div>}
-              </button>
-            )
-          })}
+        <div style={{marginBottom:20}}>
+          <PlanoSala
+            mesas={mesasPlano}
+            zonas={zonasPlano.length>0 ? zonasPlano : [{id:'default',tipo:'salon',nombre:'Sala'}]}
+            resaltarMias={false}
+            mostrarLibres={true}
+          />
         </div>
       )}
+
       <div style={{fontFamily:SE,fontSize:18,fontWeight:500,color:C.ink,marginBottom:8}}>Transcripción en vivo</div>
       <TranscriptBox entries={txs}/>
     </div>
