@@ -76,13 +76,15 @@ const SCENARIOS=[
    brain:"Marcado. Bloqueo automático en M02. Que David lo confirme.",items:["⚠ Alérgica gluten","Sin pan · Sin rebozado"]},
 ];
 
-const PLANS=[
-  {id:"barra",name:"BARRA",price:59,featured:false,desc:"Bares y cafeterías",
-   features:["1 camarero con voz","Hasta 12 mesas","KDS en cocina","Impresoras ilimitadas","VeriFactu homologado","Alérgenos EU incluidos","Soporte email"]},
-  {id:"servicio",name:"SERVICIO",price:99,featured:true,desc:"Restaurante con sala completa",
-   features:["Hasta 4 camareros con voz","Mesas ilimitadas","KDS + Control Hub","Analytics ANALYST","Cobro Stripe + Bizum","VeriFactu homologado","Soporte WhatsApp · 24h"]},
-  {id:"casa",name:"CASA",price:169,featured:false,desc:"Grupos y varios locales",
-   features:["Camareros ilimitados","Hasta 3 locales","Secciones ilimitadas","API acceso","Hardware Bridge incluido","Onboarding personalizado","VeriFactu homologado"]},
+// Nuevo modelo per-seat: 59€ base + 20€/cam adicional (1-6) + 15€/cam (7+)
+function calcPrecioBase(n:number):number{
+  const extra=n<=1?0:Math.min(n-1,5)*20+Math.max(0,n-6)*15;
+  return 59+extra;
+}
+const PRICE_EJEMPLOS=[
+  {n:1,label:"Un bar",desc:"Cafetería o barra pequeña"},
+  {n:3,label:"Restaurante",desc:"Sala completa, turno de comida y cena"},
+  {n:6,label:"Casa grande",desc:"Varios salones o amplia terraza"},
 ];
 
 const FAQS=[
@@ -90,7 +92,7 @@ const FAQS=[
   {q:"¿Funciona con acento andaluz, catalán o de cualquier región?",a:"Sí. BRAIN usa Whisper entrenado con vocabulario hostelero real: 'marchar', '86', 'sin', 'para llevar', 'pon una de gambas'... Funciona con todos los acentos del español y aprende con cada servicio."},
   {q:"¿Cuándo es obligatorio VeriFactu en España?",a:"Para sociedades desde el 1 de enero de 2027; para autónomos desde el 1 de julio de 2027. La multa por software no homologado es de hasta 50.000 € por ejercicio. ia.rest incluye VeriFactu con hash SHA-256 en todos los planes, ya activo."},
   {q:"¿Puedo financiar ia.rest con el Kit Digital?",a:"Sí. Las subvenciones Kit Digital del Gobierno de España cubren herramientas de digitalización para pymes y autónomos. Una suscripción anual de ia.rest puede cofinanciarse con estas ayudas. Consúltanos y te orientamos."},
-  {q:"¿Hay comisión por cada cobro con tarjeta o Bizum?",a:"No. ia.rest cobra una cuota mensual fija y cero por transacción. Usas tu propio datáfono del banco o el lector Stripe Terminal. Bizum tampoco tiene comisión nuestra."},
+  {q:"¿Cómo funciona el precio? ¿Hay planes fijos?",a:"No. ia.rest usa tarificación por camarero activo: 59 €/mes por el local + 20 €/mes por cada camarero adicional (a partir del 7.º, 15 €). Un bar con 1 camarero paga 59 €/mes. Un restaurante con 3 camareros paga 99 €/mes. Solo pagas por los camareros que tengas activos en cada ciclo de facturación."},
   {q:"¿Cómo es el proceso de alta?",a:"Registro en 3 pasos (local, mesas, camareros) → verificación en minutos → empiezas. Sin llamadas, sin comerciales, sin instalador que venga a tu local."},
   {q:"¿Puedo cancelar cuando quiera?",a:"Sí. Sin permanencia ni penalización. Cancelas desde el panel y no se renueva. Datos exportables en formato estándar durante 30 días."},
 ];
@@ -195,6 +197,7 @@ export default function LandingPage() {
   const mob=useIsMobile();
   const tab=useIsTablet();
   const [annual,setAnnual]=useState(false);
+  const [numCams,setNumCams]=useState(3);
   const [email,setEmail]=useState("");
   const [done,setDone]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
@@ -444,48 +447,98 @@ export default function LandingPage() {
 
       {/* PRICING */}
       <section id="precios" style={{padding:mob?"52px 16px":"72px 24px"}}>
-        <div style={{maxWidth:1000,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:40}}>
+        <div style={{maxWidth:900,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:36}}>
             <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Precios</div>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(24px,7vw,34px)":"clamp(28px,4vw,40px)",fontStyle:"italic",fontWeight:700,color:T.tinta,marginBottom:20}}>
-              Sin comisiones.<br/>Sin sorpresas.
+            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(24px,7vw,34px)":"clamp(28px,4vw,40px)",fontStyle:"italic",fontWeight:700,color:T.tinta,marginBottom:10}}>
+              Pagas lo que usas.
             </h2>
+            <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?13:14,color:T.tintaMed,maxWidth:460,margin:"0 auto 28px"}}>
+              59 €/mes por el local · +20 € por camarero activo (a partir del 7.º, +15 €).<br/>Sin planes fijos. Sin comisiones por cobro.
+            </p>
+            {/* Toggle mensual/anual */}
             <div style={{display:"inline-flex",background:T.elev2,borderRadius:30,padding:3,gap:2}}>
               {["Mensual","Anual (−18%)"].map((l,i)=>(
                 <button key={l} onClick={()=>setAnnual(i===1)} style={{padding:"8px 16px",borderRadius:26,border:"none",cursor:"pointer",fontFamily:"Inter Tight,sans-serif",fontSize:12,fontWeight:600,background:(annual?i===1:i===0)?T.tinta:"transparent",color:(annual?i===1:i===0)?T.crema:T.tintaGris,transition:"all .2s"}}>{l}</button>
               ))}
             </div>
           </div>
-          <div style={{display:"flex",gap:16,flexDirection:tab?"column":"row",alignItems:"stretch"}}>
-            {PLANS.map(p=>{
-              const price=annual?Math.round(p.price*.82):p.price;
+
+          {/* CALCULADORA */}
+          <div style={{background:T.elev1,borderRadius:18,border:`1.5px solid ${T.reglas}`,padding:mob?"24px 18px":"36px 40px",maxWidth:640,margin:"0 auto 32px"}}>
+            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,letterSpacing:".15em",textTransform:"uppercase",color:T.tintaGris,marginBottom:16}}>¿Cuántos camareros?</div>
+            {/* Botones selector */}
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:28}}>
+              {[1,2,3,4,5,6,7,8].map(n=>{
+                const sel=numCams===n||(n===8&&numCams>=8);
+                return(
+                  <button key={n} onClick={()=>setNumCams(n)} style={{minWidth:44,padding:"10px 14px",borderRadius:10,border:`1.5px solid ${sel?T.verm:T.reglas}`,background:sel?T.verm:"transparent",color:sel?T.crema:T.tintaMed,fontFamily:"Inter Tight,sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .18s"}}>
+                    {n===8?"8+":n}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Precio grande */}
+            {(()=>{
+              const n=numCams;
+              const base=calcPrecioBase(n);
+              const total=annual?Math.round(base*.82):base;
+              const ahorro=annual?base-total:0;
               return(
-                <div key={p.id} className="plan-card" style={{background:p.featured?T.tinta:T.elev1,border:`1.5px solid ${p.featured?T.verm:T.reglas}`,borderRadius:14,padding:mob?"22px 18px":"28px 24px",flex:"1 1 0",position:"relative",boxShadow:p.featured?`0 8px 36px ${T.tinta}2A`:undefined}}>
-                  {p.featured&&<div style={{position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",background:T.verm,color:T.crema,fontSize:9,fontFamily:"Inter Tight,sans-serif",fontWeight:700,letterSpacing:".14em",padding:"4px 14px",borderRadius:20,textTransform:"uppercase",whiteSpace:"nowrap"}}>Más popular</div>}
-                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,letterSpacing:".2em",textTransform:"uppercase",color:p.featured?T.verm:T.tintaGris,marginBottom:3}}>Plan</div>
-                  <div style={{fontFamily:"Newsreader,serif",fontSize:mob?24:28,fontStyle:"italic",fontWeight:700,color:p.featured?T.crema:T.tinta,marginBottom:4}}>{p.name}</div>
-                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris,marginBottom:20}}>{p.desc}</div>
-                  <div style={{marginBottom:22}}>
-                    <span style={{fontFamily:"Newsreader,serif",fontSize:mob?36:42,fontWeight:700,fontStyle:"italic",color:p.featured?T.crema:T.tinta}}>{price}€</span>
-                    <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris}}>/mes</span>
-                    {annual&&<div style={{fontFamily:"Caveat,cursive",fontSize:12,color:T.marchar,marginTop:2}}>ahorras {p.price-price}€/mes</div>}
+                <div style={{display:"flex",alignItems:"flex-end",gap:12,flexWrap:"wrap"}}>
+                  <div>
+                    <span style={{fontFamily:"Newsreader,serif",fontSize:mob?52:64,fontWeight:700,fontStyle:"italic",color:T.tinta,lineHeight:1}}>{total}</span>
+                    <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:16,color:T.tintaGris,marginLeft:4}}>€/mes</span>
                   </div>
-                  <a href="/registro" className="cta" style={{width:"100%",marginBottom:20,fontSize:13,padding:13,background:p.featured?T.verm:"transparent",color:p.featured?T.crema:T.tinta,border:`1.5px solid ${p.featured?T.verm:T.reglas}`}}>
-                    Empezar gratis 14 días
-                  </a>
-                  <div style={{display:"flex",flexDirection:"column",gap:9}}>
-                    {p.features.map(f=>(
-                      <div key={f} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-                        <span style={{color:T.marchar,fontSize:13,flexShrink:0,marginTop:1}}>✓</span>
-                        <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:p.featured?"#C4B9A8":T.tintaMed,lineHeight:1.5}}>{f}</span>
-                      </div>
-                    ))}
+                  <div style={{paddingBottom:8}}>
+                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaMed,lineHeight:1.6}}>
+                      {n===1?"1 camarero incluido":`${n>7?"8+":n} camareros`}
+                      {n>1&&<span style={{color:T.tintaGris}}> · 59€ base + {n<=6?(n-1)*20:5*20+(n-6)*15}€ en camareros</span>}
+                    </div>
+                    {annual&&ahorro>0&&<div style={{fontFamily:"Caveat,cursive",fontSize:13,color:T.marchar,marginTop:2}}>ahorras {ahorro}€/mes con facturación anual</div>}
                   </div>
                 </div>
               );
+            })()}
+            {/* CTA */}
+            <a href="/registro" className="cta" style={{display:"block",textAlign:"center",marginTop:22,fontSize:13,padding:"13px 0"}}>
+              Empezar gratis 14 días →
+            </a>
+          </div>
+
+          {/* EJEMPLOS */}
+          <div style={{display:"flex",gap:12,flexDirection:tab?"column":"row"}}>
+            {PRICE_EJEMPLOS.map(({n,label,desc})=>{
+              const base=calcPrecioBase(n);
+              const total=annual?Math.round(base*.82):base;
+              const sel=numCams===n;
+              return(
+                <button key={n} onClick={()=>setNumCams(n)} className="plan-card" style={{flex:"1 1 0",background:sel?T.tinta:T.elev1,border:`1.5px solid ${sel?T.verm:T.reglas}`,borderRadius:12,padding:"18px 20px",textAlign:"left",cursor:"pointer",transition:"all .2s"}}>
+                  <div style={{fontFamily:"Newsreader,serif",fontSize:mob?18:20,fontStyle:"italic",fontWeight:700,color:sel?T.crema:T.tinta,marginBottom:3}}>{label}</div>
+                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:sel?"#C4B9A8":T.tintaGris,marginBottom:10}}>{desc}</div>
+                  <div>
+                    <span style={{fontFamily:"Newsreader,serif",fontSize:28,fontWeight:700,fontStyle:"italic",color:sel?T.crema:T.tinta}}>{total}</span>
+                    <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:sel?"#C4B9A8":T.tintaGris}}> €/mes · {n} cam{n>1?"arero":"arero"}</span>
+                  </div>
+                </button>
+              );
             })}
           </div>
-          <div style={{textAlign:"center",marginTop:24}}>
+
+          {/* FEATURES INCLUIDAS */}
+          <div style={{background:T.elev2,borderRadius:12,padding:mob?"18px":20,marginTop:24}}>
+            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",textTransform:"uppercase",color:T.tintaGris,marginBottom:12}}>Incluido en todos los locales</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:mob?"10px 16px":"8px 24px"}}>
+              {["KDS cocina","Control Hub sala","Impresoras ilimitadas","Mesas ilimitadas","VeriFactu SHA-256","Alérgenos EU","Cobro Stripe + Bizum","Soporte WhatsApp","Hardware Bridge"].map(f=>(
+                <div key={f} style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{color:T.marchar,fontSize:12}}>✓</span>
+                  <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaMed}}>{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{textAlign:"center",marginTop:20}}>
             <span style={{fontFamily:"Caveat,cursive",color:T.tintaGris,fontSize:15}}>14 días gratis · sin tarjeta · cancelas cuando quieras</span>
           </div>
         </div>
@@ -518,8 +571,8 @@ export default function LandingPage() {
             El próximo viernes<br/><span style={{color:T.verm}}>sin anotar nada.</span>
           </h2>
           <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?14:15,color:T.tintaGris,lineHeight:1.7,marginBottom:32}}>
-            14 días gratis con el plan SERVICIO completo. Sin tarjeta. Sin llamadas.<br/>
-            <span style={{fontFamily:"Caveat,cursive",fontSize:15,color:T.ambar}}>Luego desde 59 €/mes. Sin comisiones. Sin permanencia.</span>
+            14 días gratis con todas las funciones. Sin tarjeta. Sin llamadas.<br/>
+            <span style={{fontFamily:"Caveat,cursive",fontSize:15,color:T.ambar}}>Luego desde 59 €/mes. Pagas por camareros activos, no por funciones.</span>
           </p>
           {!done?(
             <div style={{display:"flex",gap:10,flexDirection:mob?"column":"row",maxWidth:420,margin:"0 auto"}}>
