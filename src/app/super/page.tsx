@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth, Session } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import SugerenciasPanel from '@/components/SugerenciasPanel'
+import SystemHealth from '@/components/SystemHealth'
 
 const C = {
   bg: '#F6F1E7', bg2: '#EFE7D6', bg3: '#E5DAC2', ink: '#1A1714',
@@ -63,7 +64,7 @@ export default function SuperPage() {
   const [form, setForm] = useState({ nombre: '', slug: '', codigo_acceso: '', plan: 'starter', ciudad: 'Madrid' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'sugerencias'|'ia_training'>('restaurantes')
+  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'sugerencias'|'ia_training'|'sistema'>('restaurantes')
   const [sugerencias, setSugerencias] = useState<any[]>([])
   const [loadingSug, setLoadingSug] = useState(false)
   const [filtroSug, setFiltroSug] = useState<string>('todas')
@@ -231,6 +232,7 @@ export default function SuperPage() {
             { id: 'clientes',     label: 'Clientes' },
             { id: 'sugerencias',  label: 'Sugerencias', badge: badgeSug },
             { id: 'ia_training',  label: 'IA Training' },
+            { id: 'sistema',      label: 'Sistema' },
           ] as any[]).map((t: any) => (
             <button key={t.id} onClick={() => setTabSuper(t.id as any)}
               style={{
@@ -647,6 +649,12 @@ export default function SuperPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {tabSuper === 'sistema' && (
+          <div style={{ padding: '24px 0' }}>
+            <SystemHealth session={session} />
           </div>
         )}
 
