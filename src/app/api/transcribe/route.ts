@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
       await supabase.from('alergeno_confirmaciones').insert(logs)
     }
 
-    return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId, alertas_86: alertas86, alertas_alergenos: alertasAlergenos })
+    return NextResponse.json({ ok: true, texto, brain: brainResult, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, comanda_id: comandaId, mesa_id: mesa?.id ?? null, alertas_86: alertas86, alertas_alergenos: alertasAlergenos })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const is401 = msg.includes('401') || (err as { status?: number })?.status === 401

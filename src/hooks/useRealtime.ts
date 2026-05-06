@@ -37,7 +37,7 @@ export function useComandas(turnoId?: string, restauranteId?: string) {
   const fetchComandasFn = useCallback(async () => {
     let query = supabase
       .from('comandas')
-      .select('*, mesa:mesas(id, codigo, zona), camarero:camareros(id, nombre), items:comanda_items(*)')
+      .select('*, mesa:mesas(id, codigo, zona, capacidad), camarero:camareros(id, nombre), items:comanda_items(*)')
       .in('estado', ['nueva', 'en_cocina'])
       .order('created_at', { ascending: true })
 

@@ -118,7 +118,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [pushMsg, setPushMsg]       = useState('')
   const [chatMsgs, setChatMsgs]     = useState<ChatMsg[]>([])
   // Mesa seleccionada para ver detalle
-  const [mesaDetalle, setMesaDetalle] = useState<{id:string;codigo:string}|null>(null)
+  const [mesaDetalle, setMesaDetalle] = useState<{id:string;codigo:string;capacidad?:number}|null>(null)
   const [comensalesModal, setComensalesModal] = useState<{
     mesaId: string; mesaCodigo: string; capacidad?: number
   } | null>(null)
@@ -275,8 +275,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
         // ── ¿Preguntar comensales? ─────────────────────────────
         // Solo si: config activo + config preguntar_voz + BRAIN no capturó pax + es primera comanda de la mesa
-        const paxEnVoz = d.brain?.num_comensales ?? null
-        const mesaIdRes = d.brain?.mesa_id ?? null  // si BRAIN devuelve mesa_id
+        const paxEnVoz  = d.brain?.num_comensales ?? null
+        const mesaIdRes = d.mesa_id ?? null  // mesa_id devuelto por transcribe
         const necesitaPax =
           servicioConfig.activo &&
           servicioConfig.preguntar_voz &&
@@ -496,7 +496,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                   const bg     = c.estado==='en_cocina'?C.ambS:C.grS
                   const pax    = c.num_comensales as number | null
                   return (
-                    <div key={c.mesa_id} onClick={()=>setMesaDetalle({id:c.mesa_id, codigo})}
+                    <div key={c.mesa_id} onClick={()=>setMesaDetalle({id:c.mesa_id, codigo, capacidad: (c.mesa as {capacidad?:number})?.capacidad})}
                       style={{background:bg,border:`1px solid ${col}55`,borderRadius:8,
                         padding:'6px 3px',textAlign:'center',cursor:'pointer',position:'relative',
                         transition:'transform .1s cubic-bezier(.34,1.56,.64,1)'}}>
@@ -535,7 +535,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                 const col    = c.estado==='en_cocina'?C.amb:c.estado==='lista'?C.gr:C.ink4
                 const bg     = c.estado==='en_cocina'?C.ambS:c.estado==='lista'?C.grS:C.bg2
                 return (
-                  <div key={c.id} onClick={()=>setMesaDetalle({id:c.mesa_id, codigo:mesa})}
+                  <div key={c.id} onClick={()=>setMesaDetalle({id:c.mesa_id, codigo:mesa, capacidad: (c.mesa as {capacidad?:number})?.capacidad})}
                     style={{background:bg,border:`1px solid ${col}44`,borderLeft:`3px solid ${col}`,borderRadius:8,padding:'7px 10px',display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
                     <div style={{fontFamily:SE,fontStyle:'italic',fontSize:19,fontWeight:600,color:col,lineHeight:1,minWidth:24,textAlign:'center'}}>
                       {parseInt(mesa.replace(/[^0-9]/g,''),10)||mesa}
@@ -689,6 +689,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         <MesaDetalleSheet
           mesaId={mesaDetalle.id}
           mesaCodigo={mesaDetalle.codigo}
+          capacidad={mesaDetalle.capacidad}
           session={session}
           onClose={()=>setMesaDetalle(null)}
           onPedirCuenta={(comandaId, mesa)=>{
@@ -699,6 +700,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           onAnadirPorVoz={(id, codigo, _comandaId)=>{
             setMesaDetalle(null); setTab('hablar')
             addMsg('sistema', `Añadiendo a ${codigo}. Mantén PTT.`, 'pregunta')
+          }}
+          onAbrirMesa={(mesaId, mesaCodigo, cap) => {
+            setMesaDetalle(null)
+            setComensalesModal({ mesaId, mesaCodigo, capacidad: cap })
           }}
         />
       )}

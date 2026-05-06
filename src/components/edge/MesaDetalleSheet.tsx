@@ -34,13 +34,15 @@ interface ComandaActiva {
 interface Props {
   mesaId: string | null
   mesaCodigo: string
+  capacidad?: number
   session: { id: string; nombre: string; rol: string }
   onClose: () => void
   onPedirCuenta: (comandaId: string, mesa: string) => void
   onAnadirPorVoz: (mesaId: string, mesaCodigo: string, comandaId: string) => void
+  onAbrirMesa?: (mesaId: string, mesaCodigo: string, capacidad?: number) => void
 }
 
-export default function MesaDetalleSheet({ mesaId, mesaCodigo, session, onClose, onPedirCuenta, onAnadirPorVoz }: Props) {
+export default function MesaDetalleSheet({ mesaId, mesaCodigo, capacidad, session, onClose, onPedirCuenta, onAnadirPorVoz, onAbrirMesa }: Props) {
   const [comanda, setComanda]   = useState<ComandaActiva | null>(null)
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
@@ -239,7 +241,21 @@ export default function MesaDetalleSheet({ mesaId, mesaCodigo, session, onClose,
           {!loading && !error && !comanda && (
             <div style={{padding:30,textAlign:'center'}}>
               <div style={{fontFamily:SE,fontStyle:'italic',fontSize:18,color:C.ink3}}>Mesa libre</div>
-              <div style={{fontSize:12,color:C.ink4,marginTop:6}}>Sin comanda activa</div>
+              <div style={{fontSize:12,color:C.ink4,marginTop:6,marginBottom:20}}>Sin comanda activa</div>
+              {onAbrirMesa && (
+                <button
+                  onClick={() => { onClose(); onAbrirMesa(mesaId!, mesaCodigo, capacidad) }}
+                  style={{
+                    padding:'12px 28px', borderRadius:10, border:'none',
+                    background:C.verm, color:'#fff',
+                    fontSize:14, fontWeight:500,
+                    fontFamily:"'Inter Tight',system-ui,sans-serif",
+                    cursor:'pointer',
+                  }}
+                >
+                  Abrir mesa
+                </button>
+              )}
             </div>
           )}
 
