@@ -19,6 +19,7 @@ const SE="'Newsreader',Georgia,serif"
 const SM="'JetBrains Mono',ui-monospace,monospace"
 
 interface MetodoPago { id:string; nombre:string; tipo:string; icono:string; color:string }
+interface ComandaItem { id:string; nombre:string; cantidad:number; precio_unitario:number|null; notas?:string|null }
 
 interface Props {
   comandaId: string
@@ -229,11 +230,22 @@ export default function CobrarSheet({ comandaId, mesaLabel, total, session, onCe
   const [error, setError]           = useState('')
   const [totalReal, setTotalReal]   = useState(total)
   const [entregadoFinal, setEntregadoFinal] = useState<number | null>(null)
+  const [items, setItems]           = useState<ComandaItem[]>([])
 
   const session_str = JSON.stringify(session)
 
   useEffect(() => {
     const headers = { 'x-ia-session': session_str }
+    // Cargar items de la comanda para el desglose
+    fetch(`/api/comanda/${comandaId}/item`, { headers })
+      .then(r => r.json())
+      .then(d => {
+        const its: ComandaItem[] = d.items ?? []
+        setItems(its)
+        const t = Math.round(its.reduce((s,i) => s + (i.precio_unitario ?? 0) * (i.cantidad ?? 1), 0) * 100) / 100
+        if (t > 0) setTotalReal(t)
+      })
+      .catch(() => {})
     fetch('/api/metodos-pago', { headers })
       .then(r => r.json())
       .then(d => {
@@ -324,6 +336,49 @@ export default function CobrarSheet({ comandaId, mesaLabel, total, session, onCe
         </div>
 
         <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const}}>
+
+          {/* ── DESGLOSE TICKET ─────────────────────────────── */}
+          {items.length > 0 && (
+            <div style={{padding:'12px 20px 0'}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:C.ink4,marginBottom:8}}>
+                Detalle
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:1}}>
+                {items.map((it, i) => {
+                  const subtotal = ((it.precio_unitario ?? 0) * it.cantidad)
+                  const esCubierto = it.nombre.toLowerCase().includes('cubierto') || it.nombre.toLowerCase().includes('servicio')
+                  return (
+                    <div key={i} style={{
+                      display:'flex', alignItems:'baseline', gap:8,
+                      padding:'7px 0',
+                      borderBottom:`1px solid ${C.rule}`,
+                      background: esCubierto ? `${C.amb}10` : 'transparent',
+                    }}>
+                      <span style={{
+                        fontFamily:SM, fontSize:13, fontWeight:700,
+                        color: esCubierto ? C.amb : C.verm,
+                        minWidth:20, textAlign:'right' as const,
+                      }}>{it.cantidad}×</span>
+                      <span style={{flex:1, fontSize:13, color:C.ink, fontWeight: esCubierto?500:400}}>
+                        {it.nombre}
+                        {it.notas && <span style={{fontSize:11,color:C.ink4,marginLeft:6,fontStyle:'italic'}}>{it.notas}</span>}
+                      </span>
+                      <span style={{fontFamily:SM, fontSize:12, color: esCubierto?C.amb:C.ink3, flexShrink:0}}>
+                        {subtotal > 0 ? `${subtotal.toFixed(2).replace('.',',')} €` : '—'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Total */}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0 4px'}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.ink}}>Total</span>
+                <span style={{fontFamily:SM,fontSize:18,fontWeight:700,color:C.verm}}>
+                  {totalReal.toFixed(2).replace('.',',')} €
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* MÉTODO DE PAGO */}
           <div style={{padding:'14px 20px 14px'}}>

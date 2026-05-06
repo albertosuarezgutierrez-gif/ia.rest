@@ -1,9 +1,24 @@
-// POST /api/comanda/[id]/item
-// Añade items a una comanda existente + registra en audit_log
+// GET + POST /api/comanda/[id]/item
+// GET  → lista items de la comanda (para desglose ticket)
+// POST → añade items a una comanda existente + registra en audit_log
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getRestauranteId, getSession } from '@/lib/session'
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: comanda_id } = await params
+  const supabase = createServerClient()
+  const rid = getRestauranteId(req)
+  const { data, error } = await supabase
+    .from('comanda_items')
+    .select('id, nombre, cantidad, precio_unitario, notas')
+    .eq('comanda_id', comanda_id)
+    .eq('restaurante_id', rid)
+    .order('created_at')
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ items: data ?? [] })
+}
 
 export async function POST(
   req: NextRequest,
