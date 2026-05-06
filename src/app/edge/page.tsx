@@ -730,44 +730,98 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         </div>
       )}
 
-      {/* ══ TAB: SALA — plano consulta rápida ══════════════════ */}
-      {tab==='sala' && (
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-          <div style={{padding:'8px 14px 4px',flexShrink:0,background:C.bg1,borderBottom:`1px solid ${C.rule}`,display:'flex',alignItems:'center',gap:10}}>
-            <div style={{fontFamily:SE,fontStyle:'italic',fontSize:16,color:C.ink}}>Sala</div>
-            <div style={{display:'flex',gap:10,marginLeft:'auto'}}>
-              {[
-                {l:'Libre',  v:mesasPlano.filter(m=>m.estado==='libre').length,         c:C.ink4},
-                {l:'Activa', v:mesasPlano.filter(m=>m.estado!=='libre').length,         c:C.gr},
-                {l:'Urgente',v:mesasPlano.filter(m=>(m.minutos_abierta??0)>=45).length, c:C.verm},
-              ].map(k=>(
-                <div key={k.l} style={{textAlign:'center'}}>
-                  <div style={{fontFamily:SM,fontSize:7,color:C.ink4,letterSpacing:'.07em'}}>{k.l.toUpperCase()}</div>
-                  <div style={{fontFamily:SE,fontStyle:'italic',fontSize:18,color:k.v>0&&k.l==='Urgente'?C.verm:k.c,lineHeight:1}}>{k.v}</div>
+      {/* ══ TAB: PEDIDOS — mis tickets activos ══════════════════ */}
+      {tab==='sala' && (() => {
+        // Mis comandas del turno ordenadas por estado (lista primero, luego cocina, luego resto)
+        const misCmds = comandas
+          .filter(c => c.camarero_id === session.id && ['nueva','en_cocina','lista'].includes(c.estado))
+          .sort((a,b) => {
+            const ord = {lista:0, en_cocina:1, nueva:2}
+            return (ord[a.estado as keyof typeof ord]??9) - (ord[b.estado as keyof typeof ord]??9)
+          })
+        const nCocina = misCmds.filter(c=>c.estado==='en_cocina').length
+        const nLista  = misCmds.filter(c=>c.estado==='lista').length
+
+        return (
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            {/* Header con KPIs */}
+            <div style={{padding:'8px 14px',flexShrink:0,background:C.bg1,borderBottom:`1px solid ${C.rule}`,display:'flex',alignItems:'center',gap:10}}>
+              <div style={{fontFamily:SE,fontStyle:'italic',fontSize:16,color:C.ink}}>Mis pedidos</div>
+              <div style={{display:'flex',gap:8,marginLeft:'auto',alignItems:'center'}}>
+                {nLista>0 && (
+                  <div style={{display:'flex',alignItems:'center',gap:4,background:C.grS,border:`1px solid ${C.gr}55`,borderRadius:8,padding:'3px 8px'}}>
+                    <div style={{width:6,height:6,borderRadius:'50%',background:C.gr}}/>
+                    <span style={{fontFamily:SM,fontSize:9,color:C.gr,fontWeight:700}}>{nLista} LISTA{nLista>1?'S':''}</span>
+                  </div>
+                )}
+                {nCocina>0 && (
+                  <div style={{display:'flex',alignItems:'center',gap:4,background:C.ambS,border:`1px solid ${C.amb}55`,borderRadius:8,padding:'3px 8px'}}>
+                    <div style={{width:6,height:6,borderRadius:'50%',background:C.amb}}/>
+                    <span style={{fontFamily:SM,fontSize:9,color:'#8A6010',fontWeight:700}}>{nCocina} COCINA</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Lista de comandas */}
+            <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const,padding:'10px 14px',display:'flex',flexDirection:'column',gap:10}}>
+              {misCmds.length === 0 && (
+                <div style={{textAlign:'center',padding:'40px 20px'}}>
+                  <div style={{fontFamily:SE,fontStyle:'italic',fontSize:18,color:C.ink4,marginBottom:6}}>Sin pedidos activos</div>
+                  <div style={{fontFamily:SN,fontSize:12,color:C.ink4}}>Las comandas del turno aparecerán aquí</div>
                 </div>
-              ))}
+              )}
+              {misCmds.map(c => {
+                const items  = (c.items || []) as {nombre:string;cantidad:number;notas?:string}[]
+                const mesa   = c.mesa?.codigo || '?'
+                const min    = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 60000)
+                const isLista   = c.estado === 'lista'
+                const isCocina  = c.estado === 'en_cocina'
+                const col    = isLista ? C.gr : isCocina ? C.amb : C.ink4
+                const bg     = isLista ? C.grS : isCocina ? C.ambS : C.bg2
+                const label  = isLista ? '✓ Lista para servir' : isCocina ? 'En cocina…' : 'Nueva'
+                return (
+                  <div key={c.id}
+                    onClick={()=>setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}
+                    style={{background:C.bg1,border:`1px solid ${col}44`,borderLeft:`3px solid ${col}`,borderRadius:10,overflow:'hidden',cursor:'pointer',boxShadow:'0 1px 4px rgba(26,23,20,.06)'}}>
+                    {/* Cabecera comanda */}
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px 7px',borderBottom:`1px solid ${C.rule}`}}>
+                      <div style={{fontFamily:SE,fontStyle:'italic',fontSize:22,fontWeight:500,color:col,lineHeight:1,minWidth:28}}>{mesa}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:SM,fontSize:9,color:col,textTransform:'uppercase',letterSpacing:'.07em',fontWeight:700}}>{label}</div>
+                        <div style={{fontFamily:SM,fontSize:9,color:C.ink4,marginTop:1}}>{min}m · {items.length} {items.length===1?'producto':'productos'}</div>
+                      </div>
+                      {isLista && (
+                        <div style={{background:C.gr,borderRadius:6,padding:'4px 8px',fontFamily:SM,fontSize:9,color:'#fff',fontWeight:700,animation:'urgPulse 1.5s ease-in-out infinite'}}>
+                          SERVIR
+                        </div>
+                      )}
+                      {isCocina && min >= 20 && (
+                        <div style={{background:C.ambS,border:`1px solid ${C.amb}66`,borderRadius:6,padding:'4px 8px',fontFamily:SM,fontSize:9,color:'#8A6010',fontWeight:700}}>
+                          {min}m ⏱
+                        </div>
+                      )}
+                    </div>
+                    {/* Items */}
+                    <div style={{padding:'6px 12px 8px',display:'flex',flexDirection:'column',gap:4}}>
+                      {items.map((it,i) => (
+                        <div key={i} style={{display:'flex',alignItems:'baseline',gap:8}}>
+                          <span style={{fontFamily:SE,fontStyle:'italic',fontSize:17,color:col,lineHeight:1,minWidth:18,textAlign:'center'}}>{it.cantidad}</span>
+                          <span style={{fontSize:13,color:C.ink,flex:1}}>{it.nombre}</span>
+                          {it.notas && <span style={{fontSize:11,color:C.ink4,fontStyle:'italic'}}>· {it.notas}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-          <div style={{flex:1,overflowY:'auto',padding:'8px 12px'}}>
-            {zonasPlano.length > 0 && mesasPlano.length > 0 ? (
-              <PlanoSala
-                mesas={mesasPlano}
-                zonas={zonasPlano}
-                resaltarMias={true}
-                mostrarLibres={true}
-                onMesaTap={m=>setMesaDetalle({id:m.id,codigo:m.codigo,capacidad:m.capacidad})}
-                onMesaDoubleTap={marcharRapido}
-              />
-            ) : (
-              <div style={{textAlign:'center',padding:'40px 20px',fontFamily:SE,fontStyle:'italic',fontSize:16,color:C.ink4}}>
-                El owner debe configurar el plano en /owner → Mesas
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ══ TAB: PENDIENTES ══════════════════════════════════════ */}
+
       {/* ══ TAB: CONFIG ══════════════════════════════════════════ */}
       {tab==='config' && (
         <ConfigScreen
@@ -862,7 +916,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         {([
           {id:'hablar', lbl:'Hablar', path:'M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v4'},
           {id:'manual', lbl:'Manual', path:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7M17.5 14v7'},
-          {id:'sala',   lbl:'Sala',   path:'M2 3h9v9H2zM13 3h9v9h-9zM2 14h9v9H2zM13 14h9v9h-9z'},
+          {id:'sala',   lbl:'Pedidos', path:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h4'},
           {id:'config', lbl:'Config', path:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'},
         ] as {id:Tab;lbl:string;path:string}[]).map(t => {
           const on = tab===t.id
