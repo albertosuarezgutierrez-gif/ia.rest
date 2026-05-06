@@ -4663,6 +4663,7 @@ function SuscripcionTab({ restauranteId, onSetupClick }: { restauranteId: string
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [billing, setBilling] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
+  const [portalLoading, setPortalLoading] = React.useState(false)
 
   React.useEffect(() => {
     fetch(`/api/owner/billing?restaurante_id=${restauranteId}`, { headers: sh() })
@@ -4670,6 +4671,17 @@ function SuscripcionTab({ restauranteId, onSetupClick }: { restauranteId: string
       .then(d => { setBilling(d.billing); setLoading(false) })
       .catch(() => setLoading(false))
   }, [restauranteId])
+
+  async function abrirPortal() {
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/owner/portal-stripe', { method: 'POST', headers: sh() })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+      else alert('No se pudo abrir el portal. Contacta por WhatsApp.')
+    } catch { alert('Error. Contacta por WhatsApp.') }
+    finally { setPortalLoading(false) }
+  }
 
   const STATUS_COLOR: Record<string, string> = {
     trial:   C.amber, active: '#3F7D44', expired: C.red,
@@ -4763,6 +4775,15 @@ function SuscripcionTab({ restauranteId, onSetupClick }: { restauranteId: string
       </div>
 
       {/* CTA según estado */}
+      {status === 'active' && billing.stripe_subscription_id && (
+        <button
+          onClick={abrirPortal}
+          disabled={portalLoading}
+          style={{ display: 'block', width: '100%', background: C.ink, color: C.paper, border: 'none', padding: '14px', borderRadius: 10, fontFamily: SN, fontSize: 14, fontWeight: 700, marginBottom: 12, cursor: portalLoading ? 'wait' : 'pointer' }}
+        >
+          {portalLoading ? 'Abriendo...' : 'Gestionar suscripción →'}
+        </button>
+      )}
       {(status === 'trial' || status === 'expired') && !billing.stripe_subscription_id && (
         <a
           href="https://wa.me/34637349990?text=Hola,%20quiero%20activar%20mi%20suscripci%C3%B3n%20de%20ia.rest"
@@ -4772,6 +4793,15 @@ function SuscripcionTab({ restauranteId, onSetupClick }: { restauranteId: string
         >
           Activar suscripción →
         </a>
+      )}
+      {(status === 'trial' || status === 'expired') && billing.stripe_subscription_id && (
+        <button
+          onClick={abrirPortal}
+          disabled={portalLoading}
+          style={{ display: 'block', width: '100%', background: C.red, color: '#fff', border: 'none', padding: '14px', borderRadius: 10, fontFamily: SN, fontSize: 14, fontWeight: 700, marginBottom: 12, cursor: portalLoading ? 'wait' : 'pointer' }}
+        >
+          {portalLoading ? 'Abriendo...' : 'Añadir método de pago →'}
+        </button>
       )}
 
       {/* Añadir usuarios */}
