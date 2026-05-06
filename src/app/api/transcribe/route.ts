@@ -155,7 +155,25 @@ export async function POST(req: NextRequest) {
             .select('servicio_activo,servicio_precio,servicio_nombre,servicio_auto')
             .eq('id', rid).single()
 
-          if (restCfg?.servicio_activo && restCfg?.servicio_auto) {
+          // Override por zona
+          const { data: mesaZonaServ } = await supabase
+            .from('mesas')
+            .select('zona_id, zonas(servicio_override, servicio_precio_zona, nombre)')
+            .eq('id', mesa.id).single()
+
+          const zonaServ = mesaZonaServ?.zonas as { servicio_override: boolean | null; servicio_precio_zona: number | null; nombre?: string } | null
+
+          const servicioActivoZona =
+            zonaServ?.servicio_override !== null && zonaServ?.servicio_override !== undefined
+              ? zonaServ.servicio_override
+              : restCfg?.servicio_activo ?? false
+
+          const servicioPrecioZona =
+            zonaServ?.servicio_precio_zona !== null && zonaServ?.servicio_precio_zona !== undefined
+              ? zonaServ.servicio_precio_zona
+              : Number(restCfg?.servicio_precio ?? 0)
+
+          if (servicioActivoZona && restCfg?.servicio_auto) {
             const pax = brainResult.num_comensales
             // Insertar línea de servicio al inicio de los items
             await supabase.from('comanda_items').insert({
@@ -164,7 +182,7 @@ export async function POST(req: NextRequest) {
               cantidad:       pax,
               notas:          null,
               producto_id:    null,
-              precio_unitario: Number(restCfg.servicio_precio),
+              precio_unitario: servicioPrecioZona,
               restaurante_id: rid,
             })
 

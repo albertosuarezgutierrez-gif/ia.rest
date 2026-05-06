@@ -40,9 +40,28 @@ export async function POST(req: NextRequest) {
       .select('servicio_activo,servicio_precio,servicio_nombre,servicio_auto')
       .eq('id', rid).single()
 
+    // Config de zona de la mesa (override por zona)
+    const { data: mesaZona } = await supabase
+      .from('mesas')
+      .select('zona_id, zonas(servicio_override, servicio_precio_zona)')
+      .eq('id', mesa_id).single()
+
+    const zonaData = mesaZona?.zonas as { servicio_override: boolean | null; servicio_precio_zona: number | null } | null
+
+    // Resolver activo y precio: zona tiene prioridad sobre global
+    const servicioActivoFinal =
+      zonaData?.servicio_override !== null && zonaData?.servicio_override !== undefined
+        ? zonaData.servicio_override          // zona override explícito
+        : rest?.servicio_activo ?? false      // hereda global
+
+    const servicioPrecioFinal =
+      zonaData?.servicio_precio_zona !== null && zonaData?.servicio_precio_zona !== undefined
+        ? zonaData.servicio_precio_zona       // precio propio de zona
+        : rest?.servicio_precio ?? 0          // hereda precio global
+
     const hacerServicio =
       esPrimera && incluir_servicio &&
-      rest?.servicio_activo && rest?.servicio_auto &&
+      servicioActivoFinal && rest?.servicio_auto &&
       num_comensales > 0
 
     // Crear comanda
@@ -82,7 +101,7 @@ export async function POST(req: NextRequest) {
         cantidad: num_comensales,
         notas: null,
         producto_id: null,
-        precio_unitario: rest.servicio_precio,
+        precio_unitario: servicioPrecioFinal,
         formato_id: null, formato_nombre: null, seccion_id: null,
         restaurante_id: rid,
       })

@@ -4094,6 +4094,135 @@ function CajaTab() {
   )
 }
 
+/* ─── Cubierto por zona ─── */
+function ZonaCubiertoOverride({ sesion, precioGlobal, activoGlobal }: {
+  sesion: Record<string,string>
+  precioGlobal: number
+  activoGlobal: boolean
+}) {
+  type ZonaRow = { id: string; nombre: string; tipo: string; servicio_override: boolean | null; servicio_precio_zona: number | null }
+  const [zonas, setZonas] = useState<ZonaRow[]>([])
+  const [saving, setSaving] = useState<string|null>(null)
+
+  useEffect(() => {
+    fetch('/api/owner/zonas', { headers: sesion })
+      .then(r => r.json())
+      .then(d => Array.isArray(d) && setZonas(d))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const update = async (id: string, patch: Partial<ZonaRow>) => {
+    setSaving(id)
+    setZonas(z => z.map(x => x.id === id ? { ...x, ...patch } : x))
+    await fetch('/api/owner/zonas', {
+      method: 'PUT', headers: sesion,
+      body: JSON.stringify({ id, ...patch }),
+    })
+    setSaving(null)
+  }
+
+  if (!zonas.length) return null
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 4 }}>
+        Cubierto por zona
+      </div>
+      <div style={{ fontSize: 12, color: C.ink3, marginBottom: 14 }}>
+        Cada zona puede anular la configuración global. Útil para barra (sin cubierto) o terraza (precio diferente).
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {zonas.map(z => {
+          // null = hereda global, true/false = override
+          const override   = z.servicio_override
+          const hereda     = override === null || override === undefined
+          const activoFinal = hereda ? activoGlobal : override
+          const precioFinal = z.servicio_precio_zona ?? precioGlobal
+
+          return (
+            <div key={z.id} style={{
+              background: C.bone, border: `1px solid ${C.rule}`,
+              borderRadius: 10, padding: '12px 14px',
+            }}>
+              {/* Fila nombre + estado */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: hereda ? 0 : 10 }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: C.ink }}>{z.nombre}</span>
+                  <span style={{
+                    marginLeft: 8, fontSize: 10, fontFamily: SM,
+                    color: hereda ? C.ink4 : activoFinal ? C.green : C.ink3,
+                    background: hereda ? C.bg2 : activoFinal ? `${C.green}18` : C.paper2,
+                    padding: '2px 7px', borderRadius: 6, letterSpacing: '.06em',
+                  }}>
+                    {hereda ? 'hereda global' : activoFinal ? 'con cubierto' : 'sin cubierto'}
+                  </span>
+                </div>
+                {/* Toggle override: null → false → true → null */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => update(z.id, { servicio_override: hereda ? false : override === false ? true : null })}
+                    disabled={saving === z.id}
+                    style={{
+                      padding: '5px 12px', borderRadius: 7, border: `1px solid ${C.rule}`,
+                      background: hereda ? C.ink : 'transparent',
+                      color: hereda ? '#fff' : C.ink3,
+                      fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: SN,
+                    }}>
+                    {hereda ? 'Global ✓' : 'Usar global'}
+                  </button>
+                  {!hereda && (
+                    <button
+                      onClick={() => update(z.id, { servicio_override: !override })}
+                      disabled={saving === z.id}
+                      style={{
+                        padding: '5px 12px', borderRadius: 7, border: `1px solid ${activoFinal ? C.green+'66' : C.rule}`,
+                        background: activoFinal ? `${C.green}18` : C.paper2,
+                        color: activoFinal ? C.green : C.ink3,
+                        fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: SN,
+                      }}>
+                      {activoFinal ? 'Con cubierto' : 'Sin cubierto'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Precio propio — solo visible si override activo */}
+              {!hereda && activoFinal && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: C.ink3, flex: 1 }}>
+                    Precio en esta zona
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="number" min="0" step="0.10"
+                      value={z.servicio_precio_zona ?? precioGlobal}
+                      onChange={e => setZonas(zs => zs.map(x => x.id === z.id ? { ...x, servicio_precio_zona: parseFloat(e.target.value) || null } : x))}
+                      onBlur={e => update(z.id, { servicio_precio_zona: parseFloat(e.target.value) || null })}
+                      style={{
+                        width: 72, padding: '6px 8px', borderRadius: 7,
+                        border: `1px solid ${C.rule}`, background: C.paper2,
+                        fontSize: 13, fontFamily: SM, color: C.ink,
+                        textAlign: 'right' as const, outline: 'none',
+                      }}
+                    />
+                    <span style={{ fontSize: 12, color: C.ink4 }}>€ / pax</span>
+                    {z.servicio_precio_zona !== null && (
+                      <button onClick={() => update(z.id, { servicio_precio_zona: null })}
+                        style={{ fontSize: 11, color: C.ink4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>
+                        Usar global ({precioGlobal}€)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Tab: Servicio / Cubierto ─── */
 function ServicioTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '', 'Content-Type': 'application/json' })
@@ -4282,13 +4411,8 @@ function ServicioTab() {
       )}
 
       {/* Nota zonas */}
-      <div style={{
-        fontSize:12, color:C.ink4, fontFamily:SN,
-        background:C.paper2, borderRadius:8, padding:'10px 14px', marginBottom:24,
-        borderLeft:`3px solid ${C.rule}`,
-      }}>
-        <strong style={{ color:C.ink3 }}>Override por zona:</strong> en Mesas → editar zona puedes desactivar el servicio para zonas específicas (ej: barra, terraza alta).
-      </div>
+      {/* ── Override por zona ───────────────────────────── */}
+      <ZonaCubiertoOverride sesion={sh()} precioGlobal={form.servicio_precio} activoGlobal={form.servicio_activo} />
 
       {/* Botón guardar */}
       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
