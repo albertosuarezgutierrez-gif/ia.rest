@@ -93,7 +93,8 @@ const FAQS=[
   {q:"¿Cuándo es obligatorio VeriFactu en España?",a:"Para sociedades desde el 1 de enero de 2027; para autónomos desde el 1 de julio de 2027. La multa por software no homologado es de hasta 50.000 € por ejercicio. ia.rest incluye VeriFactu con hash SHA-256 en todos los planes, ya activo."},
   {q:"¿Puedo financiar ia.rest con el Kit Digital?",a:"Sí. Las subvenciones Kit Digital del Gobierno de España cubren herramientas de digitalización para pymes y autónomos. Una suscripción anual de ia.rest puede cofinanciarse con estas ayudas. Consúltanos y te orientamos."},
   {q:"¿Cómo funciona el precio? ¿Hay planes fijos?",a:"No hay planes fijos. ia.rest usa tarificación por usuario activo: 59 €/mes por el local + 20 €/mes por cada usuario adicional (a partir del 7.º, 15 €). Cuenta como usuario cualquier persona que acceda al sistema: camarero, cocina o jefe de sala. El dueño no cuenta. Un bar con 1 camarero paga 59 €/mes. Un restaurante con 3 camareros + 2 cocina + 1 jefe de sala paga 159 €/mes — precio que Numier o Revo ni siquiera publican en su web."},
-  {q:"¿Cómo es el proceso de alta?",a:"Registro en 3 pasos (local, mesas, camareros) → verificación en minutos → empiezas. Sin llamadas, sin comerciales, sin instalador que venga a tu local."},
+  {q:"¿Puedo migrar desde mi TPV actual?",a:"Sí, y es más fácil de lo que parece. Si tienes carta en papel o en otro sistema, la importamos automáticamente desde una foto con IA — Claude lee la carta y carga todos los productos con nombre, precio y categoría en minutos. El alta completa (local, mesas, usuarios) lleva menos de 30 minutos. Sin que venga nadie a instalar nada."},
+  {q:"¿Funciona si tengo varios locales?",a:"Sí. ia.rest tiene gestión multicuenta nativa: desde un único acceso puedes ver y gestionar todos tus locales de forma independiente. Cada uno con su carta, sus mesas, su personal y su facturación. Muy útil si tienes 2 o 3 bares y quieres controlarlo todo desde el móvil."},
   {q:"¿Puedo cancelar cuando quiera?",a:"Sí. Sin permanencia ni penalización. Cancelas desde el panel y no se renueva. Datos exportables en formato estándar durante 30 días."},
 ];
 
@@ -256,7 +257,7 @@ export default function LandingPage() {
           <div style={{flex:"1 1 0",minWidth:0,textAlign:mob?"center":"left"}}>
             <div className="fu d1" style={{display:"inline-flex",alignItems:"center",gap:7,background:T.elev2,border:`1px solid ${T.reglas}`,borderRadius:20,padding:"5px 14px",marginBottom:20}}>
               <span style={{width:6,height:6,borderRadius:"50%",background:T.marchar,display:"inline-block",animation:"pulse 1.4s ease-out infinite"}}/>
-              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaMed,fontWeight:600}}>Bodega La Plaza · Sevilla · en directo</span>
+              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaMed,fontWeight:600}}>Bodega La Plaza · viernes 21:14 · en directo</span>
             </div>
             <h1 className="fu d2" style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(38px,11vw,52px)":"clamp(44px,5.5vw,68px)",fontStyle:"italic",fontWeight:700,color:T.tinta,lineHeight:1.06,marginBottom:16}}>
               Habla.<br/><span style={{color:T.verm}}>Cocina ya</span><br/>tiene el ticket.
@@ -339,6 +340,10 @@ export default function LandingPage() {
                 <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris}}>{l}</div>
               </div>
             ))}
+            <div style={{gridColumn:mob?"1 / -1":"1 / -1",background:T.crema,border:`1px solid ${T.reglas}`,borderRadius:10,padding:"12px 16px",display:"flex",gap:8,alignItems:"center",marginTop:4}}>
+              <span style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",color:T.marchar,flexShrink:0}}>+22% rotación</span>
+              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaGris,lineHeight:1.5}}>en una sala de 14 mesas a 35 € de ticket medio son <strong style={{color:T.tinta}}>~215 € más cada viernes noche</strong> — sin cambiar nada excepto la velocidad del servicio.</span>
+            </div>
           </div>
         </div>
       </section>
@@ -371,7 +376,7 @@ export default function LandingPage() {
               Todo lo que esperas. Y la voz que nadie más da.
             </h2>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":`repeat(4,1fr)`,gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":`repeat(5,1fr)`,gap:12}}>
             {[
               {icon:"🎤",label:"Comandas por voz",sub:"EAR + BRAIN nativos"},
               {icon:"⚖️",label:"VeriFactu SHA-256",sub:"Homologado AEAT"},
@@ -380,6 +385,8 @@ export default function LandingPage() {
               {icon:"💳",label:"Stripe + Bizum",sub:"Sin comisión nuestra"},
               {icon:"📱",label:"Sin app de tienda",sub:"PWA en cualquier Android"},
               {icon:"🔁",label:"Sin permanencia",sub:"Cancelas cuando quieras"},
+              {icon:"🏠",label:"Varios locales",sub:"Multicuenta nativa"},
+              {icon:"🚀",label:"Alta sin instalador",sub:"En 3 pasos, sin llamadas"},
               {icon:"🏷",label:"Kit Digital",sub:"Subvención compatible"},
             ].map(({icon,label,sub})=>(
               <div key={label} style={{background:T.crema,border:`1px solid ${T.reglas}`,borderRadius:10,padding:"14px 12px",textAlign:"center"}}>
@@ -418,6 +425,7 @@ export default function LandingPage() {
               </thead>
               <tbody>
                 {[
+                  ["Pedidos por <strong>voz con IA</strong>","✓ — el único a este precio","Bajo consulta — llama al comercial","✗","✗"],
                   ["Precio mensual base","59 €","Bajo consulta — llama al comercial","59 €+IVA/terminal","69,90 €+IVA/iPad"],
                   ["Comandas por voz con IA","✓","✗","✗","✗"],
                   ["VeriFactu homologado AEAT","✓","No mencionado","✗ no disponible","Según producto"],
@@ -425,6 +433,7 @@ export default function LandingPage() {
                   ["Sin comisión por cobro","✓","✓","✗ 1,25 %+0,05 €/op.","✓"],
                   ["Hardware propio obligatorio","✗ cualquier Android","✓ ecosistema Numier","Terminal Square","iPad obligatorio"],
                   ["Sin instalador en el local","✓ autoservicio","✗ comercial presencial","✓","✓"],
+                  ["Soporte incluido","✓ WhatsApp directo","Presencial (criticado en reseñas)","Email/chat","⚠ valorado negativamente"],
                   ["Contrato / permanencia","✗ sin permanencia","Habitual","✗ sin permanencia","Habitual"],
                   ["Trial sin tarjeta","✓ 14 días","30 sesiones demo","✓ 30 días","✓ 30 días"],
                 ].map(([feat,...cols],i)=>(
@@ -541,7 +550,7 @@ export default function LandingPage() {
           <div style={{background:T.elev2,borderRadius:12,padding:mob?"18px":20,marginTop:24}}>
             <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",textTransform:"uppercase",color:T.tintaGris,marginBottom:12}}>Incluido en todos los locales</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:mob?"10px 16px":"8px 24px"}}>
-              {["KDS cocina","Control Hub sala","Impresoras ilimitadas","Mesas ilimitadas","VeriFactu SHA-256","Alérgenos EU","Cobro Stripe + Bizum","Soporte WhatsApp","Hardware Bridge"].map(f=>(
+              {["KDS cocina","Control Hub sala","Impresoras ilimitadas","Mesas ilimitadas","VeriFactu SHA-256","Alérgenos EU","Cobro Stripe + Bizum","Varios locales","Alta sin instalador","Soporte WhatsApp"].map(f=>(
                 <div key={f} style={{display:"flex",gap:6,alignItems:"center"}}>
                   <span style={{color:T.marchar,fontSize:12}}>✓</span>
                   <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaMed}}>{f}</span>
