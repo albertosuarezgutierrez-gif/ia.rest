@@ -4634,7 +4634,7 @@ function SetupChecklist({ status, setTab, onDismiss }: {
           ¿Necesitas ayuda para configurarlo?
         </div>
         <a
-          href="https://wa.me/34612345678?text=Hola,%20acabo%20de%20registrarme%20en%20ia.rest%20y%20necesito%20ayuda%20para%20configurar%20mi%20restaurante"
+          href="https://wa.me/34637349990?text=Hola,%20acabo%20de%20registrarme%20en%20ia.rest%20y%20necesito%20ayuda%20para%20configurar%20mi%20restaurante"
           target="_blank"
           rel="noopener noreferrer"
           style={{
