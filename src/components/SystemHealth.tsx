@@ -4,7 +4,12 @@
 // Panel de salud del sistema para /super — monitorización de errores en tiempo real
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
+
+const createClientComponentClient = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // ── Paleta (igual que super/page.tsx) ────────────────────────────────────────
 const C = {
