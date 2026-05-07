@@ -327,9 +327,9 @@ function StepCarta({ session, onNext }: { session: any; onNext: () => void }) {
           style={{ background: 'none', border: `1px solid ${C.rule2}`, color: C.fg2, borderRadius: 8, padding: '10px 18px', cursor: 'pointer', fontFamily: SN, fontSize: 14 }}>
           ← Nueva foto
         </button>
-        <button onClick={guardar} disabled={phase === 'saving'}
+        <button onClick={guardar} disabled={(phase as string) === 'saving'}
           style={{ background: C.red, border: 'none', color: '#fff', borderRadius: 8, padding: '10px 24px', cursor: 'pointer', fontFamily: SN, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-          {phase === 'saving' ? 'Guardando…' : `Guardar ${productos.length} productos →`}
+          {(phase as string) === 'saving' ? 'Guardando…' : `Guardar ${productos.length} productos →`}
         </button>
       </div>
     </div>

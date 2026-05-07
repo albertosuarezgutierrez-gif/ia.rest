@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServerClient()
 
   // Pasar contexto de super_admin para que is_super_admin() y RLS funcionen
-  await supabase.rpc('set_config', { key: 'app.camarero_id', value: session.id, is_local: true }).catch(() => {})
+  try { await supabase.rpc('set_config', { key: 'app.camarero_id', value: session.id, is_local: true }) } catch { /* ignore */ }
 
   const { data, error } = await supabase.rpc('super_get_all_restaurantes')
 
