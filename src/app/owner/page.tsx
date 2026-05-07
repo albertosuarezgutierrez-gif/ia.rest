@@ -4836,6 +4836,19 @@ export default function OwnerPage() {
   useEffect(() => {
     if (!session) return
     const h = { 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' }
+    // Check onboarding status — redirect if not completed yet
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    const skipOnboarding = params.get('onboarding') === 'done'
+    if (!skipOnboarding) {
+      fetch('/api/owner/restaurante', { headers: h })
+        .then(r => r.json())
+        .then(d => {
+          if (d.restaurante && d.restaurante.onboarding_completado === false) {
+            window.location.href = '/onboarding'
+          }
+        })
+        .catch(() => {})
+    }
     Promise.all([
       fetch('/api/owner/camareros', { headers: h }).then(r => r.json()),
       fetch('/api/owner/carta',     { headers: h }).then(r => r.json()),
@@ -4896,6 +4909,12 @@ export default function OwnerPage() {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div className="owner-hdr-name" style={{ fontFamily: SN, fontSize: 13, color: C.ink2 }}>{session.nombre}</div>
+          <button onClick={() => window.location.href = '/onboarding'}
+            style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 4, padding: '6px 10px', cursor: 'pointer', color: C.ink3, display: 'flex', alignItems: 'center', gap: 6 }}
+            title="Guía de inicio">
+            <Icon d={ICONS.book} size={14}/>
+            <span style={{ fontFamily: SN, fontSize: 12, fontWeight: 600 }}>Guía</span>
+          </button>
           <SugerenciaButton session={session} tema="light" variant="inline" />
           <button onClick={logout} style={{ background: 'none', border: `1px solid ${C.rule}`,
             borderRadius: 4, padding: '6px 10px', cursor: 'pointer', color: C.ink3, display: 'flex', alignItems: 'center', gap: 6 }}>

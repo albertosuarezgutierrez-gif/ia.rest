@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('restaurantes')
-    .select('id, nombre, slug, nif, razon_social, direccion, ciudad, telefono, plan, activo, configuracion')
+    .select('id, nombre, slug, nif, razon_social, direccion, ciudad, telefono, plan, activo, configuracion, onboarding_completado')
     .eq('id', rid)
     .single()
 
@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json()
 
   // Solo campos editables por el owner — nunca id, plan, activo desde aquí
-  const allowed = ['nombre', 'nif', 'razon_social', 'direccion', 'ciudad', 'telefono', 'configuracion']
+  const allowed = ['nombre', 'nif', 'razon_social', 'direccion', 'ciudad', 'telefono', 'configuracion', 'onboarding_completado']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]
