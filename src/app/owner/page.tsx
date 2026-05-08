@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import Analytics from '@/components/Analytics'
 import SugerenciaButton from '@/components/SugerenciaButton'
 import { supabase } from '@/lib/supabase'
+import CartaPublicPanel from '@/components/owner/CartaPublicPanel'
 
 /* ─── Design Tokens ─── */
 const C = {
@@ -1624,6 +1625,7 @@ function CartaTab() {
   const [extracted, setExtracted] = useState<ProductoDraft[] | null>(null)
   const [extractErr, setExtractErr] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const [qrPanelOpen, setQrPanelOpen] = useState(false)
 
   const SECCIONES_DEFAULT = ['entrantes', 'principales', 'postres', 'bebidas', 'cafes', 'copas', 'otras']
 
@@ -1762,6 +1764,13 @@ function CartaTab() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Btn onClick={() => setQrPanelOpen(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h2v2h-2zM18 14h3M18 16v2M14 18h2v2M18 20h3v-2"/>
+            </svg>
+            QR y PDF
+          </Btn>
           <Btn onClick={() => { setView(view === 'escanear' ? 'lista' : 'escanear'); setExtracted(null); setImages([]) }}
             variant={view === 'escanear' ? 'primary' : 'default'}>
             <Icon d={ICONS.sparkle} size={14}/>Escanear carta
@@ -1995,6 +2004,8 @@ function CartaTab() {
           </div>
         </Modal>
       )}
+
+      {qrPanelOpen && <CartaPublicPanel onClose={() => setQrPanelOpen(false)} />}
     </div>
   )
 }
