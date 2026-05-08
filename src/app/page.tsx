@@ -1,690 +1,687 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 
-/* ─── TOKENS ─────────────────────────────────────────────── */
-const T = {
-  crema:"#F6F1E7",elev1:"#FBF8F1",elev2:"#EFE7D6",
-  tinta:"#1A1714",tintaMed:"#3A332C",tintaGris:"#6B5F52",
-  verm:"#D9442B",vermDeep:"#A8311E",
-  ambar:"#E8A33B",marchar:"#3F7D44",
-  reglas:"#D8CDB6",bisel:"#1F1A15",
-};
-
-function useIsMobile() {
-  const [mob,setMob]=useState(false);
-  useEffect(()=>{
-    const fn=()=>setMob(window.innerWidth<640);
-    fn(); window.addEventListener("resize",fn);
-    return()=>window.removeEventListener("resize",fn);
-  },[]);
-  return mob;
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Caveat:wght@500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#14110E;--bg2:#1A1612;--bg3:#211D18;--bg4:#2A2520;
+  --red:#D9442B;--red2:#A8311E;--red3:rgba(217,68,43,0.1);
+  --cream:#F6F1E7;--cream2:#D8CDB6;--cream3:#A89880;--cream4:#6B5E50;
+  --amber:#E8A33B;--green:#4A9150;
+  --b:rgba(246,241,231,0.07);--br:rgba(217,68,43,0.22);
+  --head:'Newsreader',Georgia,serif;
+  --ui:'Inter Tight',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --soft:'Caveat',cursive;
 }
-function useIsTablet() {
-  const [tab,setTab]=useState(false);
-  useEffect(()=>{
-    const fn=()=>setTab(window.innerWidth<900);
-    fn(); window.addEventListener("resize",fn);
-    return()=>window.removeEventListener("resize",fn);
-  },[]);
-  return tab;
+html{scroll-behavior:smooth}
+body{font-family:var(--ui);background:var(--bg);color:var(--cream);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:0.03}
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;transition:background .3s,border-color .3s}
+nav.scrolled{background:rgba(20,17,14,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--b)}
+.logo{font-family:var(--head);font-style:italic;font-size:24px;color:var(--cream);letter-spacing:-.02em;text-decoration:none}
+.logo b{color:var(--red);font-weight:400}
+.nav-c{display:flex;gap:36px;list-style:none;position:absolute;left:50%;transform:translateX(-50%)}
+.nav-c a{font-size:14px;font-weight:500;color:var(--cream2);text-decoration:none;letter-spacing:-.01em;transition:color .2s}
+.nav-c a:hover{color:var(--cream)}
+.nav-r{display:flex;gap:10px;align-items:center}
+.nbg{padding:8px 18px;border-radius:9999px;border:1px solid rgba(246,241,231,.15);background:transparent;color:var(--cream2);font-size:13px;font-weight:500;font-family:var(--ui);cursor:pointer;transition:all .2s;letter-spacing:-.01em}
+.nbg:hover{border-color:rgba(246,241,231,.35);color:var(--cream)}
+.nbr{padding:8px 20px;border-radius:9999px;background:var(--red);border:none;color:var(--cream);font-size:13px;font-weight:600;font-family:var(--ui);cursor:pointer;letter-spacing:-.01em;box-shadow:rgba(217,68,43,.45) 0 4px 16px -4px;transition:all .2s}
+.nbr:hover{background:#e54e35;transform:translateY(-1px)}
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 24px 100px;position:relative;overflow:hidden}
+.hglow{position:absolute;top:-180px;left:50%;transform:translateX(-50%);width:1000px;height:700px;background:radial-gradient(ellipse,rgba(217,68,43,.13) 0%,transparent 65%);pointer-events:none}
+.hglow2{position:absolute;bottom:0;right:5%;width:500px;height:400px;background:radial-gradient(ellipse,rgba(232,163,59,.04) 0%,transparent 65%);pointer-events:none}
+.hero::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(246,241,231,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(246,241,231,.02) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse 80% 70% at 50% 20%,black 25%,transparent 70%);pointer-events:none}
+.hi{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:136px;max-width:880px}
+.ep{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border-radius:9999px;background:rgba(26,22,18,.85);border:1px solid rgba(217,68,43,.28);box-shadow:rgba(217,68,43,.1) 0 0 24px;font-size:12px;margin-bottom:32px;animation:fu .7s .1s both}
+.ep .chip{background:var(--red);color:#fff;padding:2px 10px;border-radius:9999px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono)}
+.ep .pt{color:var(--cream2);font-size:12px;letter-spacing:-.005em}
+h1{font-family:var(--head);font-size:clamp(54px,8.5vw,96px);font-weight:400;line-height:.96;letter-spacing:-.03em;color:var(--cream);animation:fu .8s .18s both}
+h1 em{font-style:italic;color:var(--red)}
+h1 .sl{display:block;font-size:clamp(38px,5.5vw,64px);color:var(--cream2);opacity:.5;margin-top:8px}
+.hclaim{margin-top:28px;font-size:18px;line-height:1.65;color:var(--cream2);max-width:530px;letter-spacing:-.01em;animation:fu .8s .26s both}
+.hclaim strong{color:var(--cream);font-weight:600}
+.hctas{margin-top:36px;display:flex;gap:12px;align-items:center;animation:fu .8s .34s both;flex-wrap:wrap;justify-content:center}
+.bth{padding:15px 32px;border-radius:9999px;background:var(--red);border:none;color:var(--cream);font-size:16px;font-weight:700;font-family:var(--ui);cursor:pointer;letter-spacing:-.015em;box-shadow:rgba(217,68,43,.55) 0 8px 28px -6px,rgba(255,180,160,.12) 0 1px 0 inset;transition:all .25s}
+.bth:hover{background:#e54e35;box-shadow:rgba(217,68,43,.7) 0 12px 36px -6px;transform:translateY(-2px)}
+.bto{padding:15px 28px;border-radius:9999px;background:transparent;border:1px solid rgba(246,241,231,.18);color:var(--cream);font-size:16px;font-weight:500;font-family:var(--ui);cursor:pointer;letter-spacing:-.015em;transition:all .2s}
+.bto:hover{border-color:rgba(246,241,231,.38)}
+.nc{margin-top:14px;font-family:var(--soft);font-size:15px;color:var(--cream3);animation:fu .8s .4s both}
+.demo-w{margin-top:72px;width:100%;max-width:980px;animation:fu .9s .45s both;position:relative;z-index:1}
+.dshell{background:var(--bg2);border-radius:22px;border:1px solid var(--b);box-shadow:rgba(217,68,43,.06) 0 0 0 1px,rgba(0,0,0,.6) 0 60px 120px -20px,rgba(0,0,0,.25) 0 24px 48px -12px;overflow:hidden}
+.dchrome{background:var(--bg3);padding:13px 20px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:14px}
+.cdots{display:flex;gap:7px}
+.cdots i{width:11px;height:11px;border-radius:50%;display:block}
+.cdots i:nth-child(1){background:#FF5F57}
+.cdots i:nth-child(2){background:#FEBC2E}
+.cdots i:nth-child(3){background:#28C840}
+.cbar{flex:1;background:rgba(246,241,231,.04);border:1px solid var(--b);border-radius:8px;padding:6px 14px;font-family:var(--mono);font-size:12px;color:var(--cream3);opacity:.5;text-align:center}
+.dstage{display:grid;grid-template-columns:1fr 1px 1fr;min-height:370px}
+.ddiv{background:var(--b)}
+.pcam{padding:28px 32px;display:flex;flex-direction:column;gap:20px}
+.pkds{padding:28px 32px;display:flex;flex-direction:column;gap:16px}
+.plabel{display:flex;align-items:center;justify-content:space-between}
+.pl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--cream3)}
+.spill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--cream3);padding:4px 10px;border-radius:9999px;border:1px solid var(--b);background:rgba(246,241,231,.03)}
+.sd{width:6px;height:6px;border-radius:50%;background:var(--green);animation:gpulse 1.6s ease-in-out infinite}
+.sd.amber{background:var(--amber);animation:none}
+.wbox{background:rgba(246,241,231,.025);border:1px solid var(--b);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.wf{display:flex;align-items:center;gap:3px;height:40px;justify-content:center}
+.wf .wb{width:3px;border-radius:3px;background:var(--red);transform-origin:center}
+.wf.silent .wb{height:4px;opacity:.15}
+.wf.speaking .wb{animation:wwave var(--ws,.5s) var(--wd,0s) ease-in-out infinite alternate}
+@keyframes wwave{from{height:4px;opacity:.4}to{height:calc(var(--wh,10)*1px);opacity:.85}}
+.tr{font-family:var(--mono);font-size:14px;color:var(--cream);line-height:1.7;min-height:44px}
+.tc{display:inline-block;width:2px;height:1.1em;background:var(--red);margin-left:2px;vertical-align:bottom;animation:blink .9s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.mtag{display:inline-flex;align-items:center;gap:8px;background:rgba(217,68,43,.1);border:1px solid var(--br);border-radius:10px;padding:8px 14px;font-family:var(--mono);font-size:13px;color:#E07060;font-weight:500;transform:scale(.95);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1)}
+.mtag.show{transform:scale(1);opacity:1}
+.ktopbar{display:flex;align-items:center;justify-content:space-between}
+.stag{font-family:var(--mono);font-size:12px;color:var(--green);background:rgba(74,145,80,.1);border:1px solid rgba(74,145,80,.2);border-radius:9999px;padding:4px 12px;opacity:0;transition:opacity .4s}
+.stag.show{opacity:1}
+.tkt{background:rgba(246,241,231,.03);border:1px solid var(--b);border-radius:14px;overflow:hidden;opacity:0;transform:translateY(8px);transition:all .5s cubic-bezier(.22,1,.36,1)}
+.tkt.show{opacity:1;transform:translateY(0)}
+.tkth{background:rgba(217,68,43,.07);border-bottom:1px solid var(--b);padding:13px 18px;display:flex;align-items:center;justify-content:space-between}
+.tktm{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--cream)}
+.tkth2{font-family:var(--mono);font-size:11px;color:var(--cream3)}
+.tktis{padding:12px 18px;display:flex;flex-direction:column;gap:9px}
+.tkti{display:flex;align-items:flex-start;gap:12px;opacity:0;transform:translateX(-6px);transition:all .35s cubic-bezier(.22,1,.36,1)}
+.tkti.show{opacity:1;transform:translateX(0)}
+.tq{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--red);min-width:26px}
+.tn{font-size:14px;font-weight:500;color:var(--cream);line-height:1.35;flex:1}
+.tnota{font-family:var(--soft);font-size:14px;color:var(--amber);display:block}
+.test{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:5px;background:rgba(74,145,80,.12);color:var(--green);border:1px solid rgba(74,145,80,.2);white-space:nowrap;margin-top:2px}
+.tktf{border-top:1px solid var(--b);padding:11px 18px;display:flex;align-items:center;justify-content:space-between}
+.bmarch{background:var(--green);border:none;color:#fff;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:7px 16px;border-radius:7px;cursor:pointer;box-shadow:rgba(74,145,80,.5) 0 4px 14px -4px;opacity:0;transition:all .3s}
+.bmarch.show{opacity:1}
+.tempty{font-family:var(--mono);font-size:12px;color:var(--cream3);opacity:.3;padding:20px 0;text-align:center}
+.stats{display:flex;justify-content:center;width:100%;max-width:720px;margin:60px auto 0;border:1px solid var(--b);border-radius:18px;overflow:hidden;background:linear-gradient(135deg,var(--bg2),var(--bg3));animation:fu .9s .6s both;position:relative;z-index:1}
+.stat{flex:1;padding:28px 20px;text-align:center;border-right:1px solid var(--b)}
+.stat:last-child{border-right:none}
+.snum{font-family:var(--head);font-style:italic;font-size:42px;line-height:1;color:var(--cream);letter-spacing:-.025em}
+.snum span{color:var(--red)}
+.slbl{font-family:var(--mono);font-size:11px;color:var(--cream3);letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+.section-tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.section-tag::before{content:'';display:block;width:24px;height:1px;background:var(--red)}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+.rd1{transition-delay:.1s}.rd2{transition-delay:.2s}.rd3{transition-delay:.3s}
+.pain{max-width:1100px;margin:0 auto;padding:120px 40px 80px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:center}
+.ptxt h2{font-family:var(--head);font-style:italic;font-size:clamp(30px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--cream);margin-bottom:20px}
+.ptxt h2 strong{font-style:normal;font-weight:400;color:var(--red)}
+.ptxt p{font-size:17px;line-height:1.7;color:var(--cream2);letter-spacing:-.01em;margin-bottom:16px}
+.pitems{display:flex;flex-direction:column;gap:0;border:1px solid var(--b);border-radius:16px;overflow:hidden}
+.pitem{padding:20px 24px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:16px;background:var(--bg2);transition:background .2s}
+.pitem:last-child{border-bottom:none}
+.pitem:hover{background:var(--bg3)}
+.pii{width:36px;height:36px;border-radius:9px;background:rgba(168,49,30,.12);border:1px solid rgba(168,49,30,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pit{font-size:15px;color:var(--cream2);letter-spacing:-.01em;line-height:1.4}
+.pit strong{color:var(--cream);font-weight:600}
+.how{max-width:1100px;margin:0 auto;padding:80px 40px}
+.how h2{font-family:var(--head);font-style:italic;font-size:clamp(30px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--cream);margin-bottom:60px;max-width:480px}
+.how h2 em{color:var(--red)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--b);border-radius:18px;overflow:hidden}
+.step{background:var(--bg2);padding:40px 32px;position:relative}
+.step::after{content:attr(data-n);position:absolute;top:24px;right:24px;font-family:var(--head);font-style:italic;font-size:64px;font-weight:400;color:rgba(246,241,231,.04);line-height:1}
+.sico{width:48px;height:48px;border-radius:12px;background:rgba(217,68,43,.1);border:1px solid rgba(217,68,43,.18);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:24px}
+.step h3{font-size:18px;font-weight:700;color:var(--cream);letter-spacing:-.02em;margin-bottom:12px}
+.step p{font-size:14px;color:var(--cream2);line-height:1.65;letter-spacing:-.005em}
+.sttime{margin-top:20px;font-family:var(--mono);font-size:12px;color:var(--green);background:rgba(74,145,80,.1);border:1px solid rgba(74,145,80,.18);padding:4px 12px;border-radius:9999px;display:inline-block}
+.ba{max-width:1100px;margin:0 auto;padding:80px 40px}
+.ba h2{font-family:var(--head);font-style:italic;font-size:clamp(30px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--cream);margin-bottom:56px}
+.bagrid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.bac{border-radius:20px;overflow:hidden;border:1px solid var(--b)}
+.bac.bef{opacity:.65}
+.bac.aft{border-color:rgba(217,68,43,.28);box-shadow:rgba(217,68,43,.08) 0 0 0 1px}
+.bach{padding:16px 24px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--b)}
+.bach.bh{background:var(--bg2)}.bach.ah{background:rgba(217,68,43,.06)}
+.bal{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.bal.b{color:var(--cream3)}.bal.a{color:var(--red)}
+.bars2{background:var(--bg2);display:flex;flex-direction:column}
+.bar2{padding:16px 24px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:14px}
+.bar2:last-child{border-bottom:none}
+.bari{font-size:18px;width:28px;text-align:center}
+.bart{font-size:14px;color:var(--cream2);letter-spacing:-.005em;line-height:1.4;flex:1}
+.bart strong{color:var(--cream);font-weight:600}
+.bat{margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 10px;border-radius:9999px;white-space:nowrap}
+.bat.slow{background:rgba(168,49,30,.12);color:#C05040;border:1px solid rgba(168,49,30,.2)}
+.bat.fast{background:rgba(74,145,80,.12);color:var(--green);border:1px solid rgba(74,145,80,.2)}
+.testi{max-width:1100px;margin:0 auto;padding:80px 40px}
+.testi-head{margin-bottom:60px}
+.testi-head h2{font-family:var(--head);font-style:italic;font-size:clamp(30px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--cream)}
+.testi-head h2 em{color:var(--red)}
+.testi-head p{margin-top:14px;font-size:17px;color:var(--cream2);letter-spacing:-.01em}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.tgrid-wide{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tcard{background:var(--bg2);border:1px solid var(--b);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:20px;transition:border-color .2s,transform .2s;position:relative}
+.tcard:hover{border-color:rgba(246,241,231,.13);transform:translateY(-2px)}
+.tcard.hl{border-color:rgba(217,68,43,.25);background:linear-gradient(145deg,rgba(217,68,43,.06) 0%,var(--bg2) 60%)}
+.tcard.hl::before{content:'★ Destacado';position:absolute;top:-12px;left:24px;background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;padding:4px 14px;border-radius:9999px}
+.tstars{display:flex;gap:3px;font-size:14px}
+.tquote{font-family:var(--soft);font-size:21px;line-height:1.45;color:var(--cream);font-weight:600;flex:1}
+.tquote em{color:var(--red);font-style:normal}
+.tquote.sm{font-size:18px}
+.tresult{font-family:var(--mono);font-size:12px;color:var(--green);background:rgba(74,145,80,.09);border:1px solid rgba(74,145,80,.18);border-radius:9999px;padding:5px 14px;display:inline-block;align-self:flex-start}
+.tauthor{display:flex;align-items:center;gap:14px;border-top:1px solid var(--b);padding-top:20px}
+.tavatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-style:italic;font-size:18px;font-weight:500;color:white;flex-shrink:0}
+.ta-red{background:linear-gradient(135deg,#A8311E,#D9442B)}
+.ta-amber{background:linear-gradient(135deg,#B07020,#E8A33B)}
+.ta-green{background:linear-gradient(135deg,#2D5E32,#4A9150)}
+.ta-blue{background:linear-gradient(135deg,#1A3A6B,#2E5FAA)}
+.ta-brown{background:linear-gradient(135deg,#4A2E1A,#7A4E2A)}
+.tinfo h4{font-size:15px;font-weight:700;color:var(--cream);letter-spacing:-.01em}
+.tinfo p{font-size:13px;color:var(--cream3);margin-top:3px;letter-spacing:-.005em}
+.tbadge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--cream3);background:rgba(246,241,231,.05);border:1px solid var(--b);padding:4px 10px;border-radius:9999px;white-space:nowrap;letter-spacing:.03em}
+.faqsec{max-width:800px;margin:0 auto;padding:80px 40px}
+.faqsec h2{font-family:var(--head);font-style:italic;font-size:clamp(28px,4vw,44px);font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--cream);margin-bottom:48px}
+.faqsec h2 em{color:var(--red)}
+.faqlist{display:flex;flex-direction:column;gap:2px;border-radius:16px;overflow:hidden}
+.faqitem{background:var(--bg2);border:1px solid var(--b);overflow:hidden;margin-bottom:2px}
+.faqitem:first-child{border-radius:14px 14px 0 0}
+.faqitem:last-child{border-radius:0 0 14px 14px;margin-bottom:0}
+.faqq{width:100%;background:transparent;border:none;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;text-align:left;transition:background .2s}
+.faqq:hover{background:var(--bg3)}
+.faqq span{font-size:16px;font-weight:600;color:var(--cream);letter-spacing:-.015em;font-family:var(--ui)}
+.faqq .arrow{color:var(--red);font-size:18px;flex-shrink:0;transition:transform .3s}
+.faqitem.open .faqq{background:var(--bg3)}
+.faqitem.open .arrow{transform:rotate(45deg)}
+.faqa{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.22,1,.36,1)}
+.faqitem.open .faqa{max-height:300px}
+.faqa-inner{padding:0 28px 24px;font-size:15px;color:var(--cream2);line-height:1.7;letter-spacing:-.01em}
+.faqa-inner strong{color:var(--cream);font-weight:600}
+.trust{border-top:1px solid var(--b);border-bottom:1px solid var(--b);padding:24px 40px;display:flex;align-items:center;justify-content:center;gap:48px;background:rgba(26,22,18,.5)}
+.ti{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--cream2)}
+.ti .ico{font-size:18px}
+.ti strong{color:var(--cream);font-weight:600}
+.pricing{max-width:1100px;margin:0 auto;padding:80px 40px}
+.phead{margin-bottom:60px}
+.phead h2{font-family:var(--head);font-style:italic;font-size:clamp(30px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.025em;color:var(--cream);margin-bottom:14px}
+.phead p{font-size:17px;color:var(--cream2);letter-spacing:-.01em}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:end}
+.plan{background:var(--bg2);border:1px solid var(--b);border-radius:22px;padding:36px 32px;position:relative;transition:transform .2s,border-color .2s}
+.plan:hover{transform:translateY(-3px);border-color:rgba(246,241,231,.14)}
+.plan.feat{border-color:rgba(217,68,43,.3);background:linear-gradient(160deg,rgba(217,68,43,.06) 0%,var(--bg2) 55%);box-shadow:rgba(217,68,43,.1) 0 20px 60px -20px}
+.plbadge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 18px;border-radius:9999px;white-space:nowrap}
+.pln{font-family:var(--head);font-style:italic;font-size:22px;color:var(--cream2);margin-bottom:6px}
+.pltag{font-size:13px;color:var(--cream3);margin-bottom:24px;letter-spacing:-.005em}
+.plpw{margin-bottom:24px}
+.plp{font-family:var(--head);font-style:italic;font-size:52px;line-height:1;color:var(--cream);letter-spacing:-.025em}
+.plp sup{font-size:24px;vertical-align:top;margin-top:12px;margin-right:1px}
+.plper{font-family:var(--mono);font-size:12px;color:var(--cream3);margin-top:4px}
+.plhr{height:1px;background:var(--b);margin-bottom:24px}
+.plfs{list-style:none;display:flex;flex-direction:column;gap:11px}
+.plfs li{font-size:14px;color:var(--cream2);display:flex;align-items:flex-start;gap:10px;letter-spacing:-.005em;line-height:1.4}
+.plfs li .ck{color:var(--red);font-weight:700;flex-shrink:0;margin-top:1px}
+.plfs li .ckg{color:var(--green)}
+.plbtn{margin-top:32px;width:100%;padding:14px;border-radius:9999px;font-family:var(--ui);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:-.01em}
+.plbf{background:var(--red);border:none;color:var(--cream);box-shadow:rgba(217,68,43,.45) 0 6px 24px -6px}
+.plbf:hover{background:#e54e35;transform:translateY(-1px)}
+.plbo{background:transparent;border:1px solid rgba(246,241,231,.18);color:var(--cream)}
+.plbo:hover{border-color:rgba(246,241,231,.35)}
+.pltrial{text-align:center;margin-top:12px;font-family:var(--soft);font-size:14px;color:var(--cream3)}
+.fcta{max-width:780px;margin:0 auto;padding:120px 40px;text-align:center}
+.fcta h2{font-family:var(--head);font-style:italic;font-size:clamp(42px,6vw,72px);font-weight:400;line-height:1.02;letter-spacing:-.03em;color:var(--cream);margin-bottom:24px}
+.fcta h2 em{color:var(--red)}
+.fcta p{font-size:18px;color:var(--cream2);letter-spacing:-.01em;line-height:1.65;margin-bottom:40px}
+.ctag{display:flex;flex-direction:column;align-items:center;gap:14px}
+.bfinal{padding:18px 48px;border-radius:9999px;background:var(--red);border:none;color:var(--cream);font-size:18px;font-weight:700;font-family:var(--ui);cursor:pointer;letter-spacing:-.015em;box-shadow:rgba(217,68,43,.6) 0 10px 40px -8px,rgba(255,180,160,.1) 0 1px 0 inset;transition:all .25s}
+.bfinal:hover{transform:translateY(-2px);box-shadow:rgba(217,68,43,.75) 0 14px 50px -8px}
+.fsub{font-size:14px;color:var(--cream3);display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center}
+footer{border-top:1px solid var(--b);padding:48px 40px;max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto auto;gap:40px;align-items:start}
+.fbrand p{margin-top:10px;font-size:13px;color:var(--cream3);letter-spacing:-.005em;max-width:240px;line-height:1.6}
+.fcol h4{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream3);margin-bottom:14px}
+.fcol ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.fcol ul li a{font-size:14px;color:var(--cream2);text-decoration:none;letter-spacing:-.005em;transition:color .2s}
+.fcol ul li a:hover{color:var(--cream)}
+.fbot{border-top:1px solid var(--b);padding:24px 40px;max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+.fbot p{font-family:var(--mono);font-size:12px;color:var(--cream3);letter-spacing:.02em}
+.vbadge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(74,145,80,.08);border:1px solid rgba(74,145,80,.18);padding:5px 12px;border-radius:9999px}
+.vdot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+@keyframes fu{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,145,80,.5)}50%{opacity:.7;box-shadow:0 0 0 5px rgba(74,145,80,0)}}
+@media(max-width:768px){
+  nav{padding:0 20px}.nav-c{display:none}
+  .hero{padding:0 20px 80px}
+  .dstage{grid-template-columns:1fr;min-height:auto}
+  .ddiv{width:100%;height:1px}
+  .pgrid,.bagrid,.steps,.tgrid,.tgrid-wide,.plans{grid-template-columns:1fr}
+  .stats{flex-direction:column}
+  .stat{border-right:none;border-bottom:1px solid var(--b)}
+  .stat:last-child{border-bottom:none}
+  footer{grid-template-columns:1fr;gap:32px}
+  .trust{flex-direction:column;gap:16px;padding:24px 20px}
+  .fbot{flex-direction:column;gap:12px;text-align:center}
+  .tgrid-wide{grid-template-columns:1fr}
+  .pain{padding:80px 20px 60px}.how{padding:60px 20px}
+  .ba{padding:60px 20px}.testi{padding:60px 20px}
+  .faqsec{padding:60px 20px}.pricing{padding:60px 20px}
+  .fcta{padding:80px 20px}
+  footer{padding:40px 20px}.fbot{padding:20px}
 }
-
-const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,700;1,400;1,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Caveat:wght@500&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{background:#F6F1E7;color:#1A1714;font-family:'Inter Tight',sans-serif;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes halo{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.5);opacity:0}}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
-@keyframes wave{0%,100%{height:6px}50%{height:28px}}
-@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-@keyframes pulse{0%{box-shadow:0 0 0 0 #D9442B55}100%{box-shadow:0 0 0 18px #D9442B00}}
-@keyframes spin{to{transform:rotate(360deg)}}
-.fu{animation:fadeUp .65s cubic-bezier(.4,0,.2,1) both;}
-.d1{animation-delay:.1s}.d2{animation-delay:.22s}.d3{animation-delay:.38s}.d4{animation-delay:.54s}.d5{animation-delay:.7s}
-.cta{background:#D9442B;color:#F6F1E7;border:none;border-radius:8px;font-family:'Inter Tight',sans-serif;font-weight:700;cursor:pointer;transition:background .18s,transform .15s;line-height:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;}
-.cta:hover{background:#A8311E;transform:translateY(-1px);}
-.ghost{background:transparent;border:1.5px solid #D8CDB6;border-radius:8px;font-family:'Inter Tight',sans-serif;font-weight:600;cursor:pointer;transition:border-color .18s,color .18s;display:inline-flex;align-items:center;justify-content:center;}
-.ghost:hover{border-color:#D9442B;color:#D9442B;}
-.plan-card{transition:transform .2s,box-shadow .2s;}
-.plan-card:hover{transform:translateY(-4px);}
-.faq-q{cursor:pointer;padding:16px 0;display:flex;justify-content:space-between;align-items:center;font-family:'Inter Tight',sans-serif;font-size:15px;font-weight:600;color:#1A1714;border:none;background:none;width:100%;text-align:left;transition:color .18s;}
-.faq-q:hover{color:#D9442B;}
-.tab{cursor:pointer;padding:7px 14px;border-radius:20px;border:1.5px solid #3A332C;font-family:'Inter Tight',sans-serif;font-size:10px;font-weight:600;transition:all .18s;white-space:nowrap;background:transparent;}
-.ticker-wrap{overflow:hidden;}
-.ticker-track{display:flex;width:max-content;animation:ticker 28s linear infinite;}
-input[type=email]{font-family:'Inter Tight',sans-serif;font-size:15px;padding:13px 16px;border:1.5px solid #2A2520;border-radius:8px;background:#0D0B09;color:#F6F1E7;outline:none;transition:border-color .18s;flex:1 1 0;}
-input[type=email]:focus{border-color:#D9442B;}
-@media(max-width:639px){.hide-mob{display:none!important;}}
-@media(min-width:640px){.hide-desk{display:none!important;}}
 `;
 
-const SCENARIOS=[
-  {cam:"Marta",mesa:"M04+M12",color:T.verm,label:"Hora punta",emoji:"🏃‍♀️",
-   frase:"marchar segundos mesa cuatro y un manchado para la doce, vamos vamos",
-   brain:"Entendido. El manchado sin azúcar, como siempre.",items:["×2 Segundos","×1 Manchado (sin azúcar)"]},
-  {cam:"Iván",mesa:"M07",color:T.ambar,label:"86 croquetas",emoji:"😤",
-   frase:"86 las croquetas, sustituye por gambas en la siete",
-   brain:"Hecho. Quedan 3 raciones de gambas, conviene avisar.",items:["86 Croquetas","×1 Gambas (sustitución)"]},
-  {cam:"Marta",mesa:"M05",color:T.marchar,label:"Cobro",emoji:"💸",
-   frase:"cuenta para la cinco, pago con tarjeta, separada en dos",
-   brain:"Dividida 50/50. Datáfono activado en S5. Mesa: 1h 12m.",items:["Cobro ×2 partes","Datáfono activado"]},
-  {cam:"Iván",mesa:"S2",color:"#8B4FC9",label:"Alergia",emoji:"⚠️",
-   frase:"la dos es alérgica al gluten, sin pan, sin rebozado, todo limpio",
-   brain:"Marcado. Bloqueo automático en S2. Que David lo confirme.",items:["⚠ Alérgica gluten","Sin pan · Sin rebozado"]},
+const COMANDAS = [
+  {txt:"Dos cañas y una ración de jamón para la cuatro de terraza, sin sal en el jamón",mesa:"T04 — Terraza",ico:"🏖️",items:[{q:2,n:"Caña",nota:null as string|null},{q:1,n:"Jamón ibérico",nota:"sin sal ⚠️"}]},
+  {txt:"Para la dos del interior, menú del día completo y dos aguas, uno sin gluten ojo",mesa:"M02 — Interior",ico:"🍽️",items:[{q:2,n:"Menú del día",nota:"uno sin gluten ojo ⚠️"},{q:2,n:"Agua mineral",nota:null}]},
+  {txt:"Barra once, tres cervezas bien frías y calamares, que los calamares lleguen primero",mesa:"B11 — Barra",ico:"🍺",items:[{q:1,n:"Calamares a la romana",nota:"marchar primero 🔴"},{q:3,n:"Cerveza bien fría",nota:null}]},
 ];
 
-// Nuevo modelo per-seat: 59€ base + 20€/cam adicional (1-6) + 15€/cam (7+)
-function calcPrecioBase(n:number):number{
-  const extra=n<=1?0:Math.min(n-1,5)*20+Math.max(0,n-6)*15;
-  return 59+extra;
-}
-const PRICE_EJEMPLOS=[
-  {n:1,label:"Un bar",desc:"1 usuario · barra pequeña o cafetería"},
-  {n:3,label:"Restaurante",desc:"3 usuarios · sala + cocina en turno"},
-  {n:6,label:"Casa grande",desc:"6 usuarios · sala, terraza y cocina"},
-];
+export default function Page() {
+  const [openFaq, setOpenFaq] = useState<number|null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const demoRunning = useRef(false);
 
-const FAQS=[
-  {q:"¿Qué hardware necesito exactamente?",a:"Un Android desde 180 € (validamos el Samsung Galaxy A15 5G), una impresora térmica de cocina y una tablet para el KDS. Sin terminales propietarios, sin contratos de hardware. Si tienes ya una impresora Epson o Star, conéctala directamente."},
-  {q:"¿Funciona con acento andaluz, catalán o de cualquier región?",a:"Sí. BRAIN usa Whisper entrenado con vocabulario hostelero real: 'marchar', '86', 'sin', 'para llevar', 'pon una de gambas'... Funciona con todos los acentos del español y aprende con cada servicio."},
-  {q:"¿Cuándo es obligatorio VeriFactu en España?",a:"Para sociedades desde el 1 de enero de 2027; para autónomos desde el 1 de julio de 2027. La multa por software no homologado es de hasta 50.000 € por ejercicio. ia.rest incluye VeriFactu con hash SHA-256 en todos los planes, ya activo."},
-  {q:"¿Puedo financiar ia.rest con el Kit Digital?",a:"Sí. Las subvenciones Kit Digital del Gobierno de España cubren herramientas de digitalización para pymes y autónomos. Una suscripción anual de ia.rest puede cofinanciarse con estas ayudas. Consúltanos y te orientamos."},
-  {q:"¿Cómo funciona el precio? ¿Hay planes fijos?",a:"No hay planes fijos. ia.rest usa tarificación por usuario activo: 59 €/mes por el local + 20 €/mes por cada usuario adicional (a partir del 7.º, 15 €). Cuenta como usuario cualquier persona que acceda al sistema: camarero, cocina o jefe de sala. El dueño no cuenta. Un bar con 1 camarero paga 59 €/mes. Un restaurante con 3 camareros + 2 cocina + 1 jefe de sala paga 159 €/mes — precio que Numier o Revo ni siquiera publican en su web."},
-  {q:"¿Puedo migrar desde mi TPV actual?",a:"Sí, y es más fácil de lo que parece. Si tienes carta en papel o en otro sistema, la importamos automáticamente desde una foto con IA — Claude lee la carta y carga todos los productos con nombre, precio y categoría en minutos. El alta completa (local, mesas, usuarios) lleva menos de 30 minutos. Sin que venga nadie a instalar nada."},
-  {q:"¿Funciona si tengo varios locales?",a:"Sí. ia.rest tiene gestión multicuenta nativa: desde un único acceso puedes ver y gestionar todos tus locales de forma independiente. Cada uno con su carta, sus mesas, su personal y su facturación. Muy útil si tienes 2 o 3 bares y quieres controlarlo todo desde el móvil."},
-  {q:"¿Puedo cancelar cuando quiera?",a:"Sí. Sin permanencia ni penalización. Cancelas desde el panel y no se renueva. Datos exportables en formato estándar durante 30 días."},
-];
+  // NAV scroll
+  useEffect(() => {
+    const h = () => navRef.current?.classList.toggle("scrolled", scrollY > 30);
+    window.addEventListener("scroll", h);
+    return () => window.removeEventListener("scroll", h);
+  }, []);
 
-const TICKER=["marchar segundos mesa cuatro","86 las croquetas","la dos sin gluten ojo","cuenta separada en dos","vamos vamos vamos","padrón con sal gorda","datáfono en la cinco","sin azúcar el manchado","verifactu homologado","sin comisiones","14 días gratis sin tarjeta","kit digital compatible","funciona en terraza"];
+  // Scroll reveal
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); }),
+      { threshold: 0.1 }
+    );
+    document.querySelectorAll(".reveal").forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
-/* ─── DEMO ────────────────────────────────────────────────── */
-function Demo({mob}:{mob:boolean}) {
-  const [active,setActive]=useState(0);
-  const [listening,setListening]=useState(false);
-  const [typed,setTyped]=useState("");
-  const [showBrain,setShowBrain]=useState(false);
-  const [showTicket,setShowTicket]=useState(false);
-  const timer=useRef<ReturnType<typeof setInterval>|null>(null);
-  const sc=SCENARIOS[active];
+  // Demo animation
+  useEffect(() => {
+    if (demoRunning.current) return;
+    demoRunning.current = true;
+    const sleep = (ms:number) => new Promise(r => setTimeout(r, ms));
+    const hora = () => new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    let idx = 0;
+    let active = true;
 
-  const run=()=>{
-    if(listening)return;
-    setListening(true);setTyped("");setShowBrain(false);setShowTicket(false);
-    let i=0;
-    timer.current=setInterval(()=>{
-      i++;setTyped(sc.frase.slice(0,i));
-      if(i>=sc.frase.length){
-        clearInterval(timer.current!);
-        setTimeout(()=>{setListening(false);setShowBrain(true);setTimeout(()=>setShowTicket(true),550);},350);
+    const run = async () => {
+      while (active) {
+        const c = COMANDAS[idx++ % COMANDAS.length];
+        const g = (id:string) => document.getElementById(id);
+
+        const ttext=g("ttext"),tc=g("tc"),wf=g("wf"),mtag=g("mtag"),
+          mico=g("mico"),mtxt=g("mtxt"),tkt=g("tkt"),tktis=g("tktis"),
+          tktm=g("tktm"),tkth2=g("tkth2"),stag=g("stag"),stag2=g("stag2"),
+          bmarch=g("bmarch"),slbl=g("slbl"),sd=g("sd");
+
+        if (!ttext||!tc||!wf||!mtag||!tkt||!tktis||!stag||!stag2||!bmarch||!slbl||!sd) { await sleep(500); continue; }
+
+        ttext.textContent=""; tc.style.display="inline-block";
+        mtag.classList.remove("show"); tkt.classList.remove("show");
+        tktis.innerHTML='<div class="tempty">Esperando comanda...</div>';
+        if(tktm) tktm.textContent="—"; if(tkth2) tkth2.textContent="—";
+        stag.classList.remove("show"); stag2.style.opacity="0";
+        bmarch.classList.remove("show"); slbl.textContent="escuchando";
+        sd.className="sd";
+
+        await sleep(1400);
+        wf.className="wf speaking"; slbl.textContent="dictando";
+
+        for (let i=0;i<c.txt.length;i++) {
+          if (!active) return;
+          ttext.textContent=c.txt.slice(0,i+1);
+          await sleep(28+Math.random()*16);
+        }
+
+        await sleep(260); wf.className="wf silent"; tc.style.display="none";
+        slbl.textContent="procesando"; sd.className="sd amber";
+        await sleep(460);
+
+        if(mico) mico.textContent=c.ico; if(mtxt) mtxt.textContent=c.mesa;
+        mtag.classList.add("show");
+        await sleep(420);
+
+        if(tktm) tktm.textContent=c.mesa; if(tkth2) tkth2.textContent=hora();
+        tkt.classList.add("show"); tktis.innerHTML="";
+
+        for (const it of c.items) {
+          if (!active) return;
+          const d=document.createElement("div"); d.className="tkti";
+          d.innerHTML=`<span class="tq">${it.q}×</span><span class="tn">${it.n}${it.nota?`<span class="tnota">${it.nota}</span>`:""}</span><span class="test">EN COCINA</span>`;
+          tktis.appendChild(d);
+          await sleep(90); d.classList.add("show");
+        }
+
+        stag.classList.add("show"); stag2.style.opacity="1";
+        bmarch.classList.add("show"); slbl.textContent="en cocina ✓"; sd.className="sd";
+        await sleep(5500);
       }
-    },40);
-  };
+    };
+    run();
+    return () => { active = false; };
+  }, []);
 
-  useEffect(()=>{
-    setTyped("");setShowBrain(false);setShowTicket(false);setListening(false);
-    if(timer.current)clearInterval(timer.current);
-  },[active]);
-
-  return(
-    <div style={{background:T.bisel,borderRadius:16,padding:mob?"18px 14px":"26px 22px",width:"100%",boxShadow:`0 20px 60px ${T.tinta}44`}}>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
-        {SCENARIOS.map((s,i)=>(
-          <button key={i} className="tab" onClick={()=>setActive(i)}
-            style={{background:active===i?s.color:"transparent",color:active===i?T.crema:T.tintaGris,borderColor:active===i?s.color:"#3A332C",fontSize:10}}>
-            {s.emoji} {s.label}
-          </button>
-        ))}
-      </div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,gap:12}}>
-        <div>
-          <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris,letterSpacing:".12em",textTransform:"uppercase",marginBottom:2}}>Camarero</div>
-          <div style={{fontFamily:"Newsreader,serif",fontSize:17,fontStyle:"italic",color:T.crema,fontWeight:700}}>{sc.cam} · {sc.mesa}</div>
-        </div>
-        <div onClick={run} style={{width:72,height:72,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative",
-          background:listening?`radial-gradient(circle at 36% 30%,${T.verm},${T.vermDeep})`:T.elev2,
-          boxShadow:listening?`0 0 0 4px ${T.verm}44,0 8px 28px ${T.vermDeep}55`:`0 2px 10px ${T.tinta}20`,
-          animation:listening?"pulse 1.3s ease-out infinite":"none",transition:"all .25s"}}>
-          {listening&&<><div style={{position:"absolute",width:72,height:72,borderRadius:"50%",background:T.verm,opacity:.18,animation:"halo 1.1s ease-out infinite"}}/><div style={{position:"absolute",width:72,height:72,borderRadius:"50%",background:T.verm,opacity:.12,animation:"halo 1.1s ease-out .4s infinite"}}/></>}
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style={{position:"relative",zIndex:1}}>
-            <rect x="9" y="2" width="6" height="12" rx="3" fill={listening?T.crema:T.tintaGris}/>
-            <path d="M5 10a7 7 0 0014 0" stroke={listening?T.crema:T.tintaGris} strokeWidth="2" strokeLinecap="round" fill="none"/>
-            <line x1="12" y1="17" x2="12" y2="22" stroke={listening?T.crema:T.tintaGris} strokeWidth="2" strokeLinecap="round"/>
-            <line x1="9" y1="22" x2="15" y2="22" stroke={listening?T.crema:T.tintaGris} strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </div>
-      </div>
-      <div style={{display:"flex",gap:3,alignItems:"center",height:36,marginBottom:14,padding:"0 2px"}}>
-        {Array.from({length:18}).map((_,i)=>(
-          <div key={i} style={{width:3,borderRadius:3,flexShrink:0,
-            background:listening?T.verm:T.reglas,height:listening?undefined:6,
-            animation:listening?`wave ${(0.35+i*0.12).toFixed(2)}s ease-in-out ${(i*0.06).toFixed(2)}s infinite alternate`:"none",transition:"background .3s"}}/>
-        ))}
-        {!listening&&!typed&&<span style={{fontFamily:"Caveat,cursive",color:T.tintaGris,fontSize:13,marginLeft:8,whiteSpace:"nowrap"}}>pulsa el micro</span>}
-      </div>
-      {(typed||listening)&&(
-        <div style={{background:"#0D0B09",borderRadius:8,padding:"10px 12px",marginBottom:12,animation:"slideIn .2s ease both"}}>
-          <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.tintaGris,letterSpacing:".14em",textTransform:"uppercase",display:"block",marginBottom:3}}>EAR · transcribiendo</span>
-          <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,color:T.elev1,lineHeight:1.6}}>
-            "{typed}{listening&&<span style={{display:"inline-block",width:2,height:12,background:T.verm,marginLeft:2,verticalAlign:"middle",animation:"blink .7s step-end infinite"}}/>}"
-          </span>
-        </div>
-      )}
-      {showBrain&&(
-        <div style={{background:"#1C1509",borderRadius:8,padding:"10px 12px",marginBottom:12,animation:"slideIn .3s ease both"}}>
-          <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.ambar,letterSpacing:".14em",textTransform:"uppercase",display:"block",marginBottom:3}}>BRAIN · VOX</span>
-          <span style={{fontFamily:"Newsreader,serif",fontSize:13,fontStyle:"italic",color:T.elev1}}>«{sc.brain}»</span>
-        </div>
-      )}
-      {showTicket&&(
-        <div style={{background:T.elev1,borderRadius:8,padding:12,animation:"slideIn .3s .1s ease both",border:`1.5px solid ${T.marchar}44`}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-            <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,color:T.marchar,fontWeight:700,letterSpacing:".12em",textTransform:"uppercase"}}>✓ Ticket enviado</span>
-            <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris}}>0.42s</span>
-          </div>
-          {sc.items.map((item,i)=>(
-            <div key={i} style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tinta,fontWeight:i===0?700:400,padding:"2px 0",borderBottom:i<sc.items.length-1?`1px dashed ${T.reglas}`:"none"}}>{item}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── MAIN ────────────────────────────────────────────────── */
-export default function LandingPage() {
-  const mob=useIsMobile();
-  const tab=useIsTablet();
-  const [annual,setAnnual]=useState(false);
-  const [numCams,setNumCams]=useState(3);
-  const [email,setEmail]=useState("");
-  const [done,setDone]=useState(false);
-  const [menuOpen,setMenuOpen]=useState(false);
-  const [openFaq,setOpenFaq]=useState<number|null>(null);
-
-  return(
+  return (
     <>
-      <style>{CSS}</style>
+      <style dangerouslySetInnerHTML={{__html:CSS}}/>
 
       {/* NAV */}
-      <nav style={{position:"sticky",top:0,zIndex:100,background:`${T.crema}EE`,backdropFilter:"blur(14px)",borderBottom:`1px solid ${T.reglas}`,padding:`0 ${mob?"16px":"24px"}`}}>
-        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:56}}>
-          <a href="/" style={{fontFamily:"Newsreader,serif",fontSize:20,fontStyle:"italic",fontWeight:700,color:T.tinta,textDecoration:"none"}}>
-            ia<span style={{color:T.verm}}>.</span>rest
-          </a>
-          <div className="hide-mob" style={{display:"flex",gap:24,alignItems:"center"}}>
-            {["#como","#precios","#faq"].map((h,i)=>(
-              <a key={h} href={h} style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaMed,textDecoration:"none",transition:"color .18s"}}
-                onMouseEnter={e=>(e.currentTarget.style.color=T.verm)} onMouseLeave={e=>(e.currentTarget.style.color=T.tintaMed)}>
-                {["Cómo funciona","Precios","FAQ"][i]}
-              </a>
-            ))}
-            <a href="/registro" className="cta" style={{padding:"8px 18px",fontSize:13}}>Prueba gratis</a>
-          </div>
-          <button className="hide-desk" onClick={()=>setMenuOpen(!menuOpen)} style={{background:"none",border:"none",cursor:"pointer",color:T.tinta,padding:4}}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              {menuOpen?<><line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="20" y1="4" x2="4" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>
-              :<><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>}
-            </svg>
-          </button>
+      <nav ref={navRef}>
+        <a href="/" className="logo">ia<b>.</b>rest</a>
+        <ul className="nav-c">
+          <li><a href="#como">Cómo funciona</a></li>
+          <li><a href="#testimonios">Restaurantes</a></li>
+          <li><a href="#precios">Precios</a></li>
+        </ul>
+        <div className="nav-r">
+          <button className="nbg" onClick={()=>window.location.href="/login"}>Entrar</button>
+          <button className="nbr" onClick={()=>window.location.href="/registro"}>14 días gratis</button>
         </div>
-        {menuOpen&&(
-          <div className="hide-desk" style={{padding:"12px 16px 20px",borderTop:`1px solid ${T.reglas}`,display:"flex",flexDirection:"column",gap:16}}>
-            {[["#como","Cómo funciona"],["#precios","Precios"],["#faq","FAQ"]].map(([h,l])=>(
-              <a key={h} href={h} onClick={()=>setMenuOpen(false)} style={{fontFamily:"Inter Tight,sans-serif",fontSize:15,color:T.tintaMed,textDecoration:"none"}}>{l}</a>
-            ))}
-            <a href="/registro" className="cta" style={{padding:"13px",textAlign:"center"}}>Prueba 14 días gratis</a>
-          </div>
-        )}
       </nav>
 
-      {/* TICKER */}
-      <div style={{background:T.bisel,padding:"8px 0",overflow:"hidden"}}>
-        <div className="ticker-wrap"><div className="ticker-track">
-          {[...TICKER,...TICKER].map((t,i)=>(
-            <span key={i} style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,color:i%3===0?T.verm:T.tintaGris,whiteSpace:"nowrap",padding:"0 28px"}}>
-              {i%2===0?"▶ ":"· "}{t}
-            </span>
-          ))}
-        </div></div>
-      </div>
-
       {/* HERO */}
-      <section style={{maxWidth:1100,margin:"0 auto",padding:mob?"40px 16px 48px":"72px 24px 64px"}}>
-        <div style={{display:"flex",gap:mob?32:56,alignItems:"center",flexDirection:tab?"column":"row"}}>
-          <div style={{flex:"1 1 0",minWidth:0,textAlign:mob?"center":"left"}}>
-            <div className="fu d1" style={{display:"inline-flex",alignItems:"center",gap:7,background:T.elev2,border:`1px solid ${T.reglas}`,borderRadius:20,padding:"5px 14px",marginBottom:20}}>
-              <span style={{width:6,height:6,borderRadius:"50%",background:T.marchar,display:"inline-block",animation:"pulse 1.4s ease-out infinite"}}/>
-              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaMed,fontWeight:600}}>Bodega La Plaza · viernes 21:14 · en directo</span>
+      <section className="hero">
+        <div className="hglow"/><div className="hglow2"/>
+        <div className="hi">
+          <div className="ep">
+            <span className="chip">Nuevo</span>
+            <span className="pt">Reconocimiento de voz en español hostelero — &ldquo;la cuatro de terraza&rdquo;</span>
+          </div>
+          <h1>
+            Para de correr<br/>
+            <em>al terminal.</em>
+            <span className="sl">Simplemente habla.</span>
+          </h1>
+          <p className="hclaim">
+            Dicta la comanda en voz natural. ia.rest la transcribe, la estructura y la manda a cocina{" "}
+            <strong>en menos de medio segundo.</strong> Sin errores. Sin desplazamientos. Sin semanas de formación.
+          </p>
+          <div className="hctas">
+            <button className="bth" onClick={()=>window.location.href="/registro"}>Empezar gratis — 14 días</button>
+            <button className="bto" onClick={()=>document.getElementById("como")?.scrollIntoView({behavior:"smooth"})}>Ver cómo funciona →</button>
+          </div>
+          <p className="nc">Sin tarjeta · Sin hardware caro · En marcha en 10 minutos</p>
+        </div>
+
+        {/* DEMO */}
+        <div className="demo-w">
+          <div className="dshell">
+            <div className="dchrome">
+              <div className="cdots"><i/><i/><i/></div>
+              <div className="cbar">ia.rest / sala / pedidos en vivo</div>
             </div>
-            <h1 className="fu d2" style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(38px,11vw,52px)":"clamp(44px,5.5vw,68px)",fontStyle:"italic",fontWeight:700,color:T.tinta,lineHeight:1.06,marginBottom:16}}>
-              Habla.<br/><span style={{color:T.verm}}>Cocina ya</span><br/>tiene el ticket.
-            </h1>
-            <p className="fu d3" style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?15:17,color:T.tintaMed,lineHeight:1.65,marginBottom:28,maxWidth:440,margin:mob?"0 auto 28px":"0 0 28px"}}>
-              TPV con IA para restaurantes y bares en España. Sin pantallas en sala. Sin &ldquo;espera, que apunto.&rdquo; El camarero habla y el ticket llega a cocina en{" "}
-              <strong style={{color:T.tinta}}>menos de medio segundo.</strong>
-            </p>
-            <div className="fu d4" style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:mob?"center":"flex-start"}}>
-              <a href="/registro" className="cta" style={{fontSize:mob?15:16,padding:mob?"13px 24px":"14px 32px"}}>Prueba 14 días gratis</a>
-              <a href="#como" className="ghost" style={{fontSize:14,color:T.tinta,padding:"12px 22px"}}>Ver cómo funciona →</a>
+            <div className="dstage">
+              <div className="pcam">
+                <div className="plabel">
+                  <span className="pl">Camarero</span>
+                  <div className="spill"><div className="sd" id="sd"/><span id="slbl" style={{fontSize:11,color:"var(--cream3)"}}>escuchando</span></div>
+                </div>
+                <div className="wbox">
+                  <div className="wf silent" id="wf">
+                    {[{s:.5,d:.00,h:32},{s:.6,d:.05,h:18},{s:.4,d:.10,h:38},{s:.7,d:.15,h:12},
+                      {s:.5,d:.20,h:30},{s:.6,d:.08,h:22},{s:.4,d:.12,h:35},{s:.8,d:.16,h:16},
+                      {s:.5,d:.02,h:28},{s:.6,d:.06,h:40},{s:.4,d:.11,h:20},{s:.7,d:.18,h:34}
+                    ].map((b,i)=><div key={i} className="wb" style={{"--ws":`${b.s}s`,"--wd":`${b.d}s`,"--wh":b.h} as {[k:string]:string|number}}/>)}
+                  </div>
+                  <div className="tr"><span id="ttext"/><span className="tc" id="tc"/></div>
+                </div>
+                <div className="mtag" id="mtag">
+                  <span id="mico">🍽️</span>
+                  <span id="mtxt" style={{fontFamily:"var(--mono)",fontSize:13}}/>
+                </div>
+              </div>
+              <div className="ddiv"/>
+              <div className="pkds">
+                <div className="ktopbar">
+                  <span className="pl">Cocina — KDS</span>
+                  <div className="stag" id="stag">⚡ 0.4s</div>
+                </div>
+                <div className="tkt" id="tkt">
+                  <div className="tkth">
+                    <span className="tktm" id="tktm">—</span>
+                    <span className="tkth2" id="tkth2">—</span>
+                  </div>
+                  <div className="tktis" id="tktis"><div className="tempty">Esperando comanda...</div></div>
+                  <div className="tktf">
+                    <div className="stag" id="stag2" style={{opacity:0}}>⚡ 420ms</div>
+                    <button className="bmarch" id="bmarch">✓ MARCHAR</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="fu d5" style={{display:"grid",gridTemplateColumns:`repeat(${mob?2:4},1fr)`,gap:mob?12:20,marginTop:32}}>
-              {[["< 0.5s","voz → ticket"],["0%","comisión"],["desde 59€","al mes"],["14 días","gratis sin tarjeta"]].map(([v,l])=>(
-                <div key={l} style={{textAlign:mob?"center":"left"}}>
-                  <div style={{fontFamily:"Newsreader,serif",fontSize:mob?22:26,fontStyle:"italic",fontWeight:700,color:T.tinta}}>{v}</div>
-                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris}}>{l}</div>
+          </div>
+        </div>
+
+        {/* STATS */}
+        <div className="stats">
+          <div className="stat"><div className="snum">&lt;<span>0.5</span>s</div><div className="slbl">Voz → Cocina</div></div>
+          <div className="stat"><div className="snum"><span>97</span>%</div><div className="slbl">Precisión</div></div>
+          <div className="stat"><div className="snum"><span>−40</span>%</div><div className="slbl">Errores en sala</div></div>
+          <div className="stat"><div className="snum"><span>5</span>min</div><div className="slbl">Para aprenderlo</div></div>
+        </div>
+      </section>
+
+      {/* DOLOR */}
+      <section className="pain">
+        <div className="section-tag">El problema</div>
+        <div className="pgrid">
+          <div className="ptxt reveal">
+            <h2>El terminal de siempre <strong>no está diseñado</strong> para el servicio</h2>
+            <p>Un camarero hace 6 viajes al TPV por hora. Cada viaje son 30–45 segundos de atención perdida. Clientes sin mirar. Errores que solo se descubren al cerrar la cuenta.</p>
+            <p>No es un problema de tu equipo. Es un problema de herramienta.</p>
+          </div>
+          <div className="pitems reveal rd1">
+            {[["🚶","6 viajes al TPV por hora.","Cada viaje, atención perdida en sala."],
+              ["❌","Comandas mal registradas.","La mesa 7 pide sin gluten. Llega con gluten."],
+              ["🎓","Semanas formando personal nuevo","solo para que aprenda el TPV."],
+              ["⏱️","Cocina trabaja a ciegas","durante los primeros minutos de cada pase."]
+            ].map(([ico,bold,txt],i)=>(
+              <div key={i} className="pitem">
+                <div className="pii">{ico}</div>
+                <div className="pit"><strong>{bold}</strong> {txt}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* HOW */}
+      <section className="how" id="como">
+        <div className="section-tag">La solución</div>
+        <h2 className="reveal">Tres pasos.<br/><em>Cero fricción.</em></h2>
+        <div className="steps">
+          {[
+            {n:"1",ico:"🎙️",t:"El camarero habla",p:'Sin abrir apps, sin buscar platos. Dice la comanda en voz natural: "dos de la casa", "sin sal ojo", "que llegue primero".',time:"Tiempo: 4 segundos"},
+            {n:"2",ico:"🧠",t:"ia.rest entiende",p:"Whisper transcribe, el LLM estructura. Mesa, platos, cantidades, notas de alergias. En español real de hostelería.",time:"Tiempo: 0.4 segundos"},
+            {n:"3",ico:"📺",t:"Cocina lo ve al momento",p:"El ticket aparece en el KDS con prioridades, alertas de alergia y orden de llegada. La cocina marcha sin esperar al camarero.",time:"Total: menos de 5 segundos"},
+          ].map(s=>(
+            <div key={s.n} className="step reveal" data-n={s.n}>
+              <div className="sico">{s.ico}</div>
+              <h3>{s.t}</h3>
+              <p>{s.p}</p>
+              <span className="sttime">{s.time}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* BEFORE/AFTER */}
+      <section className="ba">
+        <div className="section-tag">Antes y después</div>
+        <h2 className="reveal">El mismo servicio.<br/>Una herramienta distinta.</h2>
+        <div className="bagrid">
+          <div className="bac bef reveal">
+            <div className="bach bh"><span className="bal b">✕ &nbsp;Sin ia.rest</span></div>
+            <div className="bars2">
+              {[["🚶","Anotar en libreta → ir al TPV → introducir plato a plato","~45s","slow"],
+                ["😬","<strong>Error al teclear</strong> — el cliente recibe algo que no pidió","−€€","slow"],
+                ["📚","Personal nuevo tarda <strong>1–2 semanas</strong> en aprender el sistema","+16h","slow"],
+                ["🔥","Hora punta: cola en el TPV, cocina esperando, mesas esperando","caos","slow"]
+              ].map(([i,t,v,cls],idx)=>(
+                <div key={idx} className="bar2">
+                  <span className="bari">{i}</span>
+                  <span className="bart" dangerouslySetInnerHTML={{__html:t as string}}/>
+                  <span className={`bat ${cls}`}>{v}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="fu d3" style={{width:"100%",maxWidth:tab?"100%":400,flex:tab?"1 1 auto":"0 0 400px"}}>
-            <Demo mob={mob}/>
-          </div>
-        </div>
-      </section>
-
-      {/* AGENTES */}
-      <section id="como" style={{background:T.bisel,padding:mob?"52px 16px":"72px 24px"}}>
-        <div style={{maxWidth:1000,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:mob?36:52}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Pipeline · 5 agentes</div>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(24px,7vw,34px)":"clamp(28px,4vw,42px)",fontStyle:"italic",fontWeight:700,color:T.crema}}>
-              De la boca del camarero<br/>a la impresora de cocina
-            </h2>
-          </div>
-          <div style={{display:"flex",gap:mob?10:0,alignItems:"stretch",overflowX:mob?"auto":"visible",justifyContent:mob?"flex-start":"center",flexWrap:mob?"nowrap":"wrap",paddingBottom:mob?8:0}}>
-            {[
-              {id:"EAR",icon:"🎙",role:"Escucha y transcribe",color:"#2B6A6E",desc:"Capta voz en tiempo real. Whisper ~0.3s."},
-              {id:"BRAIN",icon:"🧠",role:"Interpreta la jerga",color:T.ambar,desc:"'Marchar dos gambas' → JSON estructurado."},
-              {id:"COURIER",icon:"📡",role:"Enruta al destino",color:T.verm,desc:"Manda el ticket a impresora, KDS y tablet."},
-              {id:"VOX",icon:"🔊",role:"Confirma al camarero",color:T.marchar,desc:"Susurro: 'entendido, sin azúcar como siempre'."},
-              {id:"ANALYST",icon:"📊",role:"Mide el servicio",color:T.tintaGris,desc:"Latencia, rotación, tickets/h."},
-            ].map((a,i,arr)=>(
-              <div key={a.id} style={{display:"flex",alignItems:"stretch",flexShrink:0}}>
-                <div style={{background:"#0D0B09",border:"1px solid #2A2520",borderRadius:12,padding:mob?"16px 14px":"22px 18px",width:mob?148:166}}>
-                  <div style={{fontSize:20,marginBottom:8}}>{a.icon}</div>
-                  <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,color:a.color,fontWeight:700,marginBottom:5}}>{a.id}</div>
-                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.crema,fontWeight:600,marginBottom:6}}>{a.role}</div>
-                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris,lineHeight:1.55}}>{a.desc}</div>
+          <div className="bac aft reveal rd1">
+            <div className="bach ah"><span className="bal a">✓ &nbsp;Con ia.rest</span></div>
+            <div className="bars2">
+              {[["🎙️","Dictar la comanda de pie en la mesa → en cocina ya","4s","fast"],
+                ["✅","El LLM estructura exactamente lo que pidieron, <strong>sin errores de tecleo</strong>","0 errores","fast"],
+                ["🚀","Personal nuevo operativo en <strong>5 minutos</strong> — hablan, no aprenden menús","5min","fast"],
+                ["😎","Hora punta fluida. Cada camarero es una línea directa a cocina","control","fast"]
+              ].map(([i,t,v,cls],idx)=>(
+                <div key={idx} className="bar2">
+                  <span className="bari">{i}</span>
+                  <span className="bart" dangerouslySetInnerHTML={{__html:t as string}}/>
+                  <span className={`bat ${cls}`}>{v}</span>
                 </div>
-                {!mob&&i<arr.length-1&&<div style={{display:"flex",alignItems:"center",padding:"0 4px",color:T.verm,fontSize:16}}>→</div>}
-              </div>
-            ))}
-          </div>
-          {mob&&<div style={{textAlign:"center",marginTop:8}}><span style={{fontFamily:"Caveat,cursive",fontSize:12,color:T.tintaGris}}>← desliza →</span></div>}
-          <div style={{textAlign:"center",marginTop:36}}>
-            <div style={{display:"inline-flex",flexWrap:"wrap",gap:12,alignItems:"center",justifyContent:"center",background:"#0D0B09",border:"1px solid #2A2520",borderRadius:10,padding:mob?"12px 18px":"12px 24px"}}>
-              <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,color:T.tintaGris}}>latencia objetivo</span>
-              <span style={{fontFamily:"Newsreader,serif",fontSize:mob?24:28,fontStyle:"italic",fontWeight:700,color:T.verm}}>&lt; 0.5s</span>
-              <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,color:T.tintaGris}}>sin contar el tiempo de habla</span>
+              ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* STATS */}
-      <section style={{background:T.elev2,padding:mob?"48px 16px":"64px 24px"}}>
-        <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:28,alignItems:"flex-start",flexDirection:mob?"column":"row",flexWrap:"wrap"}}>
-          <div style={{flex:"1 1 240px"}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:9,letterSpacing:".18em",textTransform:"uppercase",color:T.verm,marginBottom:8}}>Caso real · viernes 21:14</div>
-            <div style={{fontFamily:"Newsreader,serif",fontSize:22,fontStyle:"italic",fontWeight:700,color:T.tinta,marginBottom:4}}>Bodega La Plaza</div>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaGris}}>14 mesas · lleno hasta arriba</div>
-          </div>
-          <div style={{flex:"2 1 320px",display:"grid",gridTemplateColumns:`repeat(${mob?2:4},1fr)`,gap:12}}>
-            {[["38","tickets/h","hora pico 21:00"],["0.42s","latencia","VOX → ticket"],["+22%","rotación","vs semana anterior"],["0.7%","errores","2 de 284 comandas"]].map(([v,u,l])=>(
-              <div key={l} style={{background:T.elev1,borderRadius:10,padding:"14px 12px",border:`1px solid ${T.reglas}`}}>
-                <div style={{fontFamily:"Newsreader,serif",fontSize:24,fontStyle:"italic",fontWeight:700,color:T.tinta}}>{v}</div>
-                <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:9,color:T.verm,marginBottom:2}}>{u}</div>
-                <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris}}>{l}</div>
-              </div>
-            ))}
-            <div style={{gridColumn:mob?"1 / -1":"1 / -1",background:T.crema,border:`1px solid ${T.reglas}`,borderRadius:10,padding:"12px 16px",display:"flex",gap:8,alignItems:"center",marginTop:4}}>
-              <span style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",color:T.marchar,flexShrink:0}}>+22% rotación</span>
-              <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaGris,lineHeight:1.5}}>en una sala de 14 mesas a 35 € de ticket medio son <strong style={{color:T.tinta}}>~215 € más cada viernes noche</strong> — sin cambiar nada excepto la velocidad del servicio.</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* VERIFACTU URGENCY BANNER */}
-      <section style={{background:`linear-gradient(135deg,#1C0F09,#2A1208)`,padding:mob?"24px 16px":"32px 24px",borderBottom:`1px solid ${T.verm}33`}}>
-        <div style={{maxWidth:900,margin:"0 auto",display:"flex",gap:20,alignItems:"center",flexDirection:mob?"column":"row",textAlign:mob?"center":"left"}}>
-          <div style={{fontSize:36,flexShrink:0}}>⚖️</div>
-          <div style={{flex:1}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:4}}>Obligatorio en España</div>
-            <div style={{fontFamily:"Newsreader,serif",fontSize:mob?18:22,fontStyle:"italic",fontWeight:700,color:T.crema,marginBottom:4}}>
-              VeriFactu homologado SHA-256 — incluido en todos los planes
-            </div>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaGris,lineHeight:1.6}}>
-              Multa de hasta <strong style={{color:T.ambar}}>50.000 €/ejercicio</strong> por software no homologado.
-              Obligatorio para sociedades el <strong style={{color:T.crema}}>1-ene-2027</strong> y autónomos el <strong style={{color:T.crema}}>1-jul-2027</strong>.
-              ia.rest genera facturas con QR verificable por la AEAT desde el primer ticket.{" "}
-              <span style={{fontFamily:"Caveat,cursive",color:T.marchar}}>Ya activo, no hay que configurar nada.</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TODO INCLUIDO */}
-      <section style={{background:T.elev1,padding:mob?"36px 16px":"48px 24px",borderBottom:`1px solid ${T.reglas}`}}>
-        <div style={{maxWidth:1000,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:28}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:8}}>En todos los planes, sin asteriscos</div>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(20px,6vw,28px)":"clamp(22px,3vw,32px)",fontStyle:"italic",fontWeight:700,color:T.tinta}}>
-              Todo lo que esperas. Y la voz que nadie más da.
-            </h2>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":`repeat(5,1fr)`,gap:12}}>
-            {[
-              {icon:"🎤",label:"Comandas por voz",sub:"EAR + BRAIN nativos"},
-              {icon:"⚖️",label:"VeriFactu SHA-256",sub:"Homologado AEAT"},
-              {icon:"🌿",label:"Alérgenos EU",sub:"Reg. 1169/2011"},
-              {icon:"📺",label:"KDS en cocina",sub:"Tiempo real"},
-              {icon:"💳",label:"Stripe + Bizum",sub:"Sin comisión nuestra"},
-              {icon:"📱",label:"Sin app de tienda",sub:"PWA en cualquier Android"},
-              {icon:"🔁",label:"Sin permanencia",sub:"Cancelas cuando quieras"},
-              {icon:"🏠",label:"Varios locales",sub:"Multicuenta nativa"},
-              {icon:"🚀",label:"Alta sin instalador",sub:"En 3 pasos, sin llamadas"},
-              {icon:"🏷",label:"Kit Digital",sub:"Subvención compatible"},
-            ].map(({icon,label,sub})=>(
-              <div key={label} style={{background:T.crema,border:`1px solid ${T.reglas}`,borderRadius:10,padding:"14px 12px",textAlign:"center"}}>
-                <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
-                <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,fontWeight:700,color:T.tinta,lineHeight:1.3,marginBottom:3}}>{label}</div>
-                <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,color:T.tintaGris}}>{sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* COMPARATIVA */}
-      <section style={{background:T.crema,padding:mob?"40px 16px":"56px 24px"}}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:32}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:8}}>Comparativa · mayo 2026</div>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(20px,6vw,28px)":"clamp(22px,3vw,32px)",fontStyle:"italic",fontWeight:700,color:T.tinta}}>
-              Precio transparente desde el primer día.<br/>Ellos te llaman para contártelo.
-            </h2>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"Inter Tight,sans-serif",fontSize:mob?10:12,minWidth:560}}>
-              <thead>
-                <tr>
-                  {["Característica","ia.rest","Numier","Square Plus","Revo Xef Plus"].map((h,i)=>(
-                    <th key={h} style={{padding:"10px 12px",textAlign:i===0?"left":"center",
-                      borderBottom:`2px solid ${i===1?T.verm:T.reglas}`,
-                      fontWeight:700,color:i===1?T.verm:T.tintaMed,
-                      background:i===1?`${T.verm}08`:"transparent",
-                      fontSize:10,letterSpacing:".1em",textTransform:"uppercase"}}>
-                      {h}{i===2&&<div style={{fontFamily:"Caveat,cursive",fontSize:10,color:T.tintaGris,fontWeight:400,letterSpacing:0,textTransform:"none"}}>fuerte en Sevilla</div>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["Pedidos por <strong>voz con IA</strong>","✓ — el único a este precio","Bajo consulta — llama al comercial","✗","✗"],
-                  ["Precio mensual base","59 €","Bajo consulta — llama al comercial","59 €+IVA/terminal","69,90 €+IVA/iPad"],
-                  ["Comandas por voz con IA","✓","✗","✗","✗"],
-                  ["VeriFactu homologado AEAT","✓","No mencionado","✗ no disponible","Según producto"],
-                  ["KDS cocina en base","✓","✓ módulo Numier Cocina","✓ Plan Plus","Módulo extra"],
-                  ["Sin comisión por cobro","✓","✓","✗ 1,25 %+0,05 €/op.","✓"],
-                  ["Hardware propio obligatorio","✗ cualquier Android","✓ ecosistema Numier","Terminal Square","iPad obligatorio"],
-                  ["Sin instalador en el local","✓ autoservicio","✗ comercial presencial","✓","✓"],
-                  ["Soporte incluido","✓ WhatsApp directo","Presencial (criticado en reseñas)","Email/chat","⚠ valorado negativamente"],
-                  ["Contrato / permanencia","✗ sin permanencia","Habitual","✗ sin permanencia","Habitual"],
-                  ["Trial sin tarjeta","✓ 14 días","30 sesiones demo","✓ 30 días","✓ 30 días"],
-                ].map(([feat,...cols],i)=>(
-                  <tr key={feat} style={{background:i%2===0?T.elev1:"transparent"}}>
-                    <td style={{padding:"9px 12px",color:T.tintaMed,borderBottom:`1px solid ${T.reglas}`}}>{feat}</td>
-                    {cols.map((c,ci)=>(
-                      <td key={ci} style={{padding:"9px 12px",textAlign:"center",
-                        color:ci===0?T.marchar:c==="✗"||c.startsWith("✗")?T.tintaGris:T.tintaMed,
-                        fontWeight:ci===0?700:400,
-                        background:ci===0?`${T.verm}05`:"transparent",
-                        borderBottom:`1px solid ${T.reglas}`,
-                        borderLeft:ci===0?`2px solid ${T.verm}22`:"none"}}>
-                        {c}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{textAlign:"center",marginTop:16}}>
-            <span style={{fontFamily:"Caveat,cursive",fontSize:13,color:T.tintaGris}}>
-              Comparativa orientativa basada en información pública · mayo 2026
-            </span>
           </div>
         </div>
       </section>
 
       {/* TESTIMONIOS */}
-      <section style={{background:T.bisel,padding:mob?"52px 16px":"72px 24px"}}>
-        <div style={{maxWidth:1100,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:mob?36:52}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Restaurantes</div>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(22px,7vw,32px)":"clamp(26px,3.5vw,40px)",fontStyle:"italic",fontWeight:700,color:T.crema,lineHeight:1.1}}>
-              Los que ya no vuelven<br/>al terminal viejo
-            </h2>
-            <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?13:14,color:T.tintaGris,marginTop:10}}>
-              Resultados reales de dueños y jefes de sala en España.
-            </p>
-          </div>
-
-          {/* Fila 1 */}
-          <div style={{display:"grid",gridTemplateColumns:tab?"1fr":mob?"1fr":"repeat(3,1fr)",gap:16,marginBottom:16}}>
-            {[
-              {ini:"M",color:"#A8311E,#D9442B",nombre:"María José Paredes",local:"Casa Manuela · Sevilla",plan:"3 usuarios",quote:"Antes mis camareras tardaban 45 segundos por comanda en el TPV. Ahora dictan y se quedan en sala. En la primera semana noté que las propinas subieron.",result:"↑ 18% en propinas · primera semana",highlight:true},
-              {ini:"R",color:"#B07020,#E8A33B",nombre:"Roberto Fuentes",local:"El Rincón de la Bahía · Cádiz",plan:"5 usuarios",quote:"El verano pasado era un caos en la terraza. Este año puse ia.rest y los sábados por la noche son otra cosa. Cero errores de comanda en dos meses.",result:"0 errores en 60 días de temporada alta",highlight:false},
-              {ini:"C",color:"#2D5E32,#4A9150",nombre:"Carmen Vidal",local:"Taberna La Cava · Madrid",plan:"4 usuarios",quote:"Formé a dos camareros nuevos para agosto. En 10 minutos ya estaban mandando comandas. Antes era una semana mínimo.",result:"Formación de 1 semana → 10 minutos",highlight:false},
-            ].map(({ini,color,nombre,local,plan,quote,result,highlight})=>(
-              <div key={nombre} style={{background:highlight?"#1C0F09":"#0D0B09",border:`1px solid ${highlight?T.verm+"44":"#2A2520"}`,borderRadius:20,padding:mob?"22px 18px":"28px 24px",display:"flex",flexDirection:"column",gap:16,position:"relative",boxShadow:highlight?`rgba(217,68,43,0.12) 0 0 0 1px`:undefined}}>
-                {highlight&&<div style={{position:"absolute",top:-12,left:20,background:T.verm,color:T.crema,fontFamily:"JetBrains Mono,monospace",fontSize:10,fontWeight:700,letterSpacing:".06em",padding:"4px 14px",borderRadius:9999}}>DESTACADO</div>}
-                <div style={{display:"flex",gap:3}}>{"★★★★★".split("").map((s,i)=><span key={i} style={{color:T.ambar,fontSize:13}}>{s}</span>)}</div>
-                <p style={{fontFamily:"Caveat,cursive",fontSize:mob?18:20,lineHeight:1.45,color:T.crema,fontWeight:600,flex:1}}>"{quote}"</p>
-                <div style={{background:highlight?"rgba(74,145,80,0.15)":"rgba(74,145,80,0.1)",border:"1px solid rgba(74,145,80,0.2)",borderRadius:9999,padding:"5px 14px",alignSelf:"flex-start",fontFamily:"JetBrains Mono,monospace",fontSize:11,color:"#4A9150"}}>{result}</div>
-                <div style={{display:"flex",alignItems:"center",gap:12,borderTop:"1px solid rgba(246,241,231,0.07)",paddingTop:16}}>
-                  <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${color})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Newsreader,serif",fontStyle:"italic",fontSize:18,color:"white",flexShrink:0}}>{ini}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:14,fontWeight:700,color:T.crema,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nombre}</div>
-                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris,marginTop:2}}>{local}</div>
-                  </div>
-                  <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris,background:"rgba(246,241,231,0.05)",border:"1px solid rgba(246,241,231,0.08)",padding:"3px 10px",borderRadius:9999,whiteSpace:"nowrap"}}>{plan}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Fila 2: dos anchas */}
-          <div style={{display:"grid",gridTemplateColumns:mob||tab?"1fr":"1fr 1fr",gap:16}}>
-            {[
-              {ini:"A",color:"#1A3A6B,#2E5FAA",nombre:"Alejandro Mora",local:"Barra Madrid · Mercado San Miguel",plan:"2 usuarios",quote:"Tengo un bar en el Mercado de San Miguel. Volumen brutal, espacio mínimo, sin sitio para terminales. El camarero dicta y el cocinero lo ve al momento. No sé cómo trabajábamos antes.",result:"Volumen ×3 · mismo equipo · cero cuellos de botella"},
-              {ini:"P",color:"#4A2E1A,#7A4E2A",nombre:"Pilar Escrivá",local:"Grupo La Familia Escrivá · Valencia (3 locales)",plan:"8 usuarios",quote:"Tengo 3 locales en Valencia y lo que más me costaba era que cada uno tenía su sistema. Con ia.rest veo los tres en tiempo real y las alertas de alergia ya no se pierden entre papeles.",result:"3 locales · panel único · alertas de alergia centralizadas"},
-            ].map(({ini,color,nombre,local,plan,quote,result})=>(
-              <div key={nombre} style={{background:"#0D0B09",border:"1px solid #2A2520",borderRadius:20,padding:mob?"22px 18px":"28px 24px",display:"flex",flexDirection:"column",gap:16}}>
-                <div style={{display:"flex",gap:3}}>{"★★★★★".split("").map((s,i)=><span key={i} style={{color:T.ambar,fontSize:13}}>{s}</span>)}</div>
-                <p style={{fontFamily:"Caveat,cursive",fontSize:mob?18:21,lineHeight:1.45,color:T.crema,fontWeight:600,flex:1}}>"{quote}"</p>
-                <div style={{background:"rgba(74,145,80,0.1)",border:"1px solid rgba(74,145,80,0.2)",borderRadius:9999,padding:"5px 14px",alignSelf:"flex-start",fontFamily:"JetBrains Mono,monospace",fontSize:11,color:"#4A9150"}}>{result}</div>
-                <div style={{display:"flex",alignItems:"center",gap:12,borderTop:"1px solid rgba(246,241,231,0.07)",paddingTop:16}}>
-                  <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${color})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Newsreader,serif",fontStyle:"italic",fontSize:18,color:"white",flexShrink:0}}>{ini}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:14,fontWeight:700,color:T.crema}}>{nombre}</div>
-                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris,marginTop:2}}>{local}</div>
-                  </div>
-                  <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris,background:"rgba(246,241,231,0.05)",border:"1px solid rgba(246,241,231,0.08)",padding:"3px 10px",borderRadius:9999,whiteSpace:"nowrap"}}>{plan}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <section className="testi" id="testimonios">
+        <div className="testi-head reveal">
+          <div className="section-tag">Restaurantes</div>
+          <h2>Los que ya no vuelven<br/>al <em>terminal viejo</em></h2>
+          <p>Resultados reales de dueños y jefes de sala en España.</p>
         </div>
-      </section>
-
-      {/* PRICING */}
-      <section id="precios" style={{padding:mob?"52px 16px":"72px 24px"}}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:36}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Precios</div>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(24px,7vw,34px)":"clamp(28px,4vw,40px)",fontStyle:"italic",fontWeight:700,color:T.tinta,marginBottom:10}}>
-              Pagas lo que usas.
-            </h2>
-            <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?13:14,color:T.tintaMed,maxWidth:480,margin:"0 auto 4px"}}>
-              59 €/mes por el local · +20 € por usuario activo (a partir del 7.º, +15 €).
-            </p>
-            <p style={{fontFamily:"Caveat,cursive",fontSize:14,color:T.tintaGris,margin:"0 auto 28px"}}>
-              camarero, cocina o jefe de sala — cada persona que entra al sistema
-            </p>
-            {/* Toggle mensual/anual */}
-            <div style={{display:"inline-flex",background:T.elev2,borderRadius:30,padding:3,gap:2}}>
-              {["Mensual","Anual (−18%)"].map((l,i)=>(
-                <button key={l} onClick={()=>setAnnual(i===1)} style={{padding:"8px 16px",borderRadius:26,border:"none",cursor:"pointer",fontFamily:"Inter Tight,sans-serif",fontSize:12,fontWeight:600,background:(annual?i===1:i===0)?T.tinta:"transparent",color:(annual?i===1:i===0)?T.crema:T.tintaGris,transition:"all .2s"}}>{l}</button>
-              ))}
+        <div className="tgrid">
+          {[
+            {cls:"hl",ini:"M",av:"ta-red",q:'"Antes mis camareras tardaban <em>45 segundos por comanda</em> en el TPV. Ahora dictan y se quedan en sala. En la primera semana noté que las propinas subieron."',r:"↑ 18% en propinas — primera semana",n:"María José Paredes",l:"Propietaria · Casa Manuela, Sevilla",p:"Plan Servicio"},
+            {cls:"",ini:"R",av:"ta-amber",q:'"El verano pasado era un caos en la terraza. Este año puse ia.rest y los sábados son otra cosa. <em>Cero errores de comanda</em> en dos meses."',r:"0 errores en 60 días de temporada",n:"Roberto Fuentes",l:"Gerente · El Rincón de la Bahía, Cádiz",p:"Plan Casa"},
+            {cls:"",ini:"C",av:"ta-green",q:'"Formé a dos camareros nuevos para agosto. <em>En 10 minutos ya estaban mandando comandas.</em> Antes era una semana mínimo."',r:"Formación de 1 semana → 10 minutos",n:"Carmen Vidal",l:"Jefa de sala · Taberna La Cava, Madrid",p:"Plan Servicio"},
+          ].map((t,i)=>(
+            <div key={i} className={`tcard ${t.cls} reveal rd${i}`}>
+              <div className="tstars">⭐⭐⭐⭐⭐</div>
+              <div className={`tquote${i>0?" sm":""}`} dangerouslySetInnerHTML={{__html:t.q}}/>
+              <div className="tresult">{t.r}</div>
+              <div className="tauthor">
+                <div className={`tavatar ${t.av}`}>{t.ini}</div>
+                <div className="tinfo"><h4>{t.n}</h4><p>{t.l}</p></div>
+                <span className="tbadge">{t.p}</span>
+              </div>
             </div>
-          </div>
-
-          {/* CALCULADORA */}
-          <div style={{background:T.elev1,borderRadius:18,border:`1.5px solid ${T.reglas}`,padding:mob?"24px 18px":"36px 40px",maxWidth:640,margin:"0 auto 32px"}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,letterSpacing:".15em",textTransform:"uppercase",color:T.tintaGris,marginBottom:4}}>¿Cuántos usuarios activos?</div>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaGris,marginBottom:16}}>camareros + cocina + jefe de sala</div>
-            {/* Botones selector */}
-            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:28}}>
-              {[1,2,3,4,5,6,7,8].map(n=>{
-                const sel=numCams===n||(n===8&&numCams>=8);
-                return(
-                  <button key={n} onClick={()=>setNumCams(n)} style={{minWidth:44,padding:"10px 14px",borderRadius:10,border:`1.5px solid ${sel?T.verm:T.reglas}`,background:sel?T.verm:"transparent",color:sel?T.crema:T.tintaMed,fontFamily:"Inter Tight,sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .18s"}}>
-                    {n===8?"8+":n}
-                  </button>
-                );
-              })}
+          ))}
+        </div>
+        <div className="tgrid-wide" style={{marginTop:16}}>
+          {[
+            {ini:"A",av:"ta-blue",q:'"Tengo un bar en el Mercado de San Miguel. Volumen brutal, espacio mínimo. <em>El camarero dicta y el cocinero lo ve al momento.</em> No sé cómo trabajábamos antes."',r:"Volumen ×3 · mismo equipo · cero cuellos de botella",n:"Alejandro Mora",l:"Propietario · Barra Madrid, Mercado San Miguel",p:"Plan Barra"},
+            {ini:"P",av:"ta-brown",q:'"Tengo 3 locales en Valencia. Con ia.rest <em>veo los tres en tiempo real</em> y las alertas de alergia ya no se pierden entre papeles."',r:"3 locales · panel único · alertas centralizadas",n:"Pilar Escrivá",l:"Grupo hostelero · La Familia Escrivá, Valencia",p:"Plan Casa"},
+          ].map((t,i)=>(
+            <div key={i} className={`tcard reveal rd${i}`}>
+              <div className="tstars">⭐⭐⭐⭐⭐</div>
+              <div className="tquote" dangerouslySetInnerHTML={{__html:t.q}}/>
+              <div className="tresult">{t.r}</div>
+              <div className="tauthor">
+                <div className={`tavatar ${t.av}`}>{t.ini}</div>
+                <div className="tinfo"><h4>{t.n}</h4><p>{t.l}</p></div>
+                <span className="tbadge">{t.p}</span>
+              </div>
             </div>
-            {/* Precio grande */}
-            {(()=>{
-              const n=numCams;
-              const base=calcPrecioBase(n);
-              const total=annual?Math.round(base*.82):base;
-              const ahorro=annual?base-total:0;
-              return(
-                <div style={{display:"flex",alignItems:"flex-end",gap:12,flexWrap:"wrap"}}>
-                  <div>
-                    <span style={{fontFamily:"Newsreader,serif",fontSize:mob?52:64,fontWeight:700,fontStyle:"italic",color:T.tinta,lineHeight:1}}>{total}</span>
-                    <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:16,color:T.tintaGris,marginLeft:4}}>€/mes</span>
-                  </div>
-                  <div style={{paddingBottom:8}}>
-                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaMed,lineHeight:1.6}}>
-                      {n===1?"1 usuario incluido":`${n>7?"8+":n} usuarios activos`}
-                      {n>1&&<span style={{color:T.tintaGris}}> · 59€ base + {n<=6?(n-1)*20:5*20+(n-6)*15}€ en usuarios</span>}
-                    </div>
-                    {annual&&ahorro>0&&<div style={{fontFamily:"Caveat,cursive",fontSize:13,color:T.marchar,marginTop:2}}>ahorras {ahorro}€/mes con facturación anual</div>}
-                  </div>
-                </div>
-              );
-            })()}
-            {/* CTA */}
-            <a href="/registro" className="cta" style={{display:"block",textAlign:"center",marginTop:22,fontSize:13,padding:"13px 0"}}>
-              Empezar gratis 14 días →
-            </a>
-          </div>
-
-          {/* EJEMPLOS */}
-          <div style={{display:"flex",gap:12,flexDirection:tab?"column":"row"}}>
-            {PRICE_EJEMPLOS.map(({n,label,desc})=>{
-              const base=calcPrecioBase(n);
-              const total=annual?Math.round(base*.82):base;
-              const sel=numCams===n;
-              return(
-                <button key={n} onClick={()=>setNumCams(n)} className="plan-card" style={{flex:"1 1 0",background:sel?T.tinta:T.elev1,border:`1.5px solid ${sel?T.verm:T.reglas}`,borderRadius:12,padding:"18px 20px",textAlign:"left",cursor:"pointer",transition:"all .2s"}}>
-                  <div style={{fontFamily:"Newsreader,serif",fontSize:mob?18:20,fontStyle:"italic",fontWeight:700,color:sel?T.crema:T.tinta,marginBottom:3}}>{label}</div>
-                  <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:sel?"#C4B9A8":T.tintaGris,marginBottom:10}}>{desc}</div>
-                  <div>
-                    <span style={{fontFamily:"Newsreader,serif",fontSize:28,fontWeight:700,fontStyle:"italic",color:sel?T.crema:T.tinta}}>{total}</span>
-                    <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:sel?"#C4B9A8":T.tintaGris}}> €/mes · {n} usuario{n>1?"s":""}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* FEATURES INCLUIDAS */}
-          <div style={{background:T.elev2,borderRadius:12,padding:mob?"18px":20,marginTop:24}}>
-            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",textTransform:"uppercase",color:T.tintaGris,marginBottom:12}}>Incluido en todos los locales</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:mob?"10px 16px":"8px 24px"}}>
-              {["KDS cocina","Control Hub sala","Impresoras ilimitadas","Mesas ilimitadas","VeriFactu SHA-256","Alérgenos EU","Cobro Stripe + Bizum","Varios locales","Alta sin instalador","Soporte WhatsApp"].map(f=>(
-                <div key={f} style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <span style={{color:T.marchar,fontSize:12}}>✓</span>
-                  <span style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaMed}}>{f}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{textAlign:"center",marginTop:20}}>
-            <span style={{fontFamily:"Caveat,cursive",color:T.tintaGris,fontSize:15}}>14 días gratis · sin tarjeta · cancelas cuando quieras</span>
-          </div>
+          ))}
         </div>
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{background:T.elev2,padding:mob?"48px 16px":"64px 24px"}}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:40}}>
-            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(22px,7vw,32px)":"clamp(24px,3.5vw,38px)",fontStyle:"italic",fontWeight:700,color:T.tinta}}>Preguntas frecuentes</h2>
-          </div>
-          <div style={{maxWidth:680,margin:"0 auto"}}>
-            {FAQS.map((f,i)=>(
-              <div key={i} style={{borderBottom:`1px solid ${T.reglas}`}}>
-                <button className="faq-q" onClick={()=>setOpenFaq(openFaq===i?null:i)}>
-                  <span style={{textAlign:"left",paddingRight:16,lineHeight:1.4}}>{f.q}</span>
-                  <span style={{color:T.verm,fontSize:20,fontWeight:300,flexShrink:0}}>{openFaq===i?"−":"+"}</span>
-                </button>
-                {openFaq===i&&<div style={{fontFamily:"Inter Tight,sans-serif",fontSize:14,color:T.tintaMed,lineHeight:1.7,paddingBottom:16}}>{f.a}</div>}
-              </div>
-            ))}
+      <section className="faqsec">
+        <div className="section-tag">Preguntas</div>
+        <h2 className="reveal">Lo que siempre<br/><em>preguntan primero</em></h2>
+        <div className="faqlist">
+          {[
+            {q:"¿Funciona si hay ruido en sala?",a:"Sí. Usamos Whisper de OpenAI, el mejor modelo de transcripción para español. Funciona bien con ruido de fondo, música y conversaciones cercanas. Recomendamos hablar a 15–20 cm del micrófono, algo natural cuando ya llevas la comanda en mente."},
+            {q:"¿Qué pasa si se cae internet en mitad del servicio?",a:"Las comandas ya enviadas siguen visibles en cocina. Para nuevas comandas cae a modo manual: el camarero puede abrir cualquier comanda anterior y modificarla."},
+            {q:"¿Necesito hardware nuevo? ¿Impresoras, tablets específicas?",a:"No. ia.rest funciona en cualquier móvil o tablet con navegador. Para el KDS en cocina, una tablet de 70€ es suficiente. Si ya tienes impresoras de tickets, podemos integrarlas."},
+            {q:"¿El sistema entiende la carta de mi restaurante?",a:'Sí. Durante el onboarding (10 minutos) introduces tus platos y el sistema los aprende. Si el camarero dice "una de la casa" y en tu carta se llama "Ensaladilla de la abuela", el ticket sale con el nombre correcto.'},
+            {q:"¿Cómo funciona lo de VeriFactu y Hacienda?",a:"VeriFactu es el sistema obligatorio de la AEAT para emitir facturas. Obligatorio para sociedades desde enero 2027 y autónomos desde julio 2027. Multa de hasta 50.000 €/ejercicio por software no homologado. ia.rest genera facturas firmadas digitalmente ya activo."},
+            {q:"¿Puedo cancelar en cualquier momento?",a:"Sí, siempre. Sin permanencia ni penalizaciones. El servicio sigue activo hasta final del período pagado. Datos exportables en CSV. No te vamos a llamar para retenerte."},
+          ].map((f,i)=>(
+            <div key={i} className={`faqitem${openFaq===i?" open":""}`}>
+              <button className="faqq" onClick={()=>setOpenFaq(openFaq===i?null:i)}>
+                <span>{f.q}</span>
+                <span className="arrow">+</span>
+              </button>
+              <div className="faqa"><div className="faqa-inner">{f.a}</div></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* TRUST */}
+      <div className="trust">
+        {[["🔒","Datos en España","· Supabase EU-West"],["🇪🇸","Soporte en español","· Respuesta el mismo día"],["📋","VeriFactu AEAT 2026","· Incluido en Servicio y Casa"],["💳","Sin permanencia","· Cancela cuando quieras"]].map(([ico,b,t])=>(
+          <div key={b} className="ti"><span className="ico">{ico}</span><span><strong>{b}</strong>{t}</span></div>
+        ))}
+      </div>
+
+      {/* PRICING */}
+      <section className="pricing" id="precios">
+        <div className="phead reveal">
+          <div className="section-tag">Precios</div>
+          <h2>Sin comisiones por comanda.<br/>Sin sorpresas al mes siguiente.</h2>
+          <p>Precio fijo mensual. Todos los planes incluyen voz, KDS y soporte en español.</p>
+        </div>
+        <div className="plans">
+          {[
+            {n:"Barra",tag:"Para el bar con una barra y pocos turnos",price:"59",cls:"",badge:"",btn:"plbo",cta:"Empezar gratis",trial:"14 días del plan Servicio, sin tarjeta",
+             feats:[["ck","1 camarero activo"],["ck","Hasta 12 mesas"],["ck","Voz + KDS en cocina"],["ck","Cobro Stripe + Bizum"],["ck","Soporte por email"]]},
+            {n:"Servicio",tag:"Para el restaurante en pleno funcionamiento",price:"99",cls:"feat",badge:"Más popular",btn:"plbf",cta:"Empezar gratis — 14 días",trial:"Sin tarjeta · En marcha en 10 minutos",
+             feats:[["ckg","Hasta 4 camareros"],["ckg","Mesas ilimitadas"],["ckg","Voz + KDS + Impresoras"],["ckg","Cobro Stripe + Bizum"],["ckg","VeriFactu incluido"],["ckg","Soporte prioritario en español"]]},
+            {n:"Casa",tag:"Para el grupo con varios locales",price:"169",cls:"",badge:"",btn:"plbo",cta:"Hablar con ventas",trial:"También con 14 días de prueba",
+             feats:[["ck","Camareros ilimitados"],["ck","Multi-sala y terraza"],["ck","Varios locales en un panel"],["ck","TheFork integrado"],["ck","VeriFactu + facturación completa"],["ck","Soporte 24h + onboarding presencial"]]},
+          ].map((p,i)=>(
+            <div key={i} className={`plan ${p.cls} reveal rd${i}`}>
+              {p.badge&&<div className="plbadge">{p.badge}</div>}
+              <div className="pln">{p.n}</div>
+              <div className="pltag">{p.tag}</div>
+              <div className="plpw"><div className="plp"><sup>€</sup>{p.price}</div><div className="plper">/mes · sin permanencia</div></div>
+              <div className="plhr"/>
+              <ul className="plfs">
+                {p.feats.map(([cls,txt])=>(
+                  <li key={txt}><span className={cls}>—</span>{txt}</li>
+                ))}
+              </ul>
+              <button className={`plbtn ${p.btn}`} onClick={()=>window.location.href="/registro"}>{p.cta}</button>
+              <p className="pltrial">{p.trial}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="fcta">
+        <h2 className="reveal">Tu cocina te está<br/><em>esperando.</em></h2>
+        <p className="reveal rd1">14 días gratis. Sin tarjeta. Funciona en cualquier móvil o tablet que ya tengas en sala. Si en 14 días no ves la diferencia, te devolvemos lo que hayas pagado.</p>
+        <div className="ctag reveal rd2">
+          <button className="bfinal" onClick={()=>window.location.href="/registro"}>Empezar ahora — es gratis</button>
+          <div className="fsub">
+            <span>✓ Sin tarjeta</span>
+            <span>✓ 14 días completos</span>
+            <span>✓ Cancela cuando quieras</span>
           </div>
         </div>
       </section>
 
-      {/* CTA FINAL */}
-      <section style={{background:T.bisel,padding:mob?"60px 16px":"72px 24px"}}>
-        <div style={{maxWidth:520,margin:"0 auto",textAlign:"center"}}>
-          <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(28px,8vw,44px)":"clamp(30px,5vw,52px)",fontStyle:"italic",fontWeight:700,color:T.crema,lineHeight:1.1,marginBottom:14}}>
-            El próximo viernes<br/><span style={{color:T.verm}}>sin anotar nada.</span>
-          </h2>
-          <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?14:15,color:T.tintaGris,lineHeight:1.7,marginBottom:32}}>
-            14 días gratis con todas las funciones. Sin tarjeta. Sin llamadas.<br/>
-            <span style={{fontFamily:"Caveat,cursive",fontSize:15,color:T.ambar}}>Luego desde 59 €/mes. Pagas por usuarios activos, no por funciones.</span>
-          </p>
-          {!done?(
-            <div style={{display:"flex",gap:10,flexDirection:mob?"column":"row",maxWidth:420,margin:"0 auto"}}>
-              <input type="email" placeholder="tu@restaurante.com" value={email} onChange={e=>setEmail(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&email&&setDone(true)}/>
-              <a href={`/registro${email?`?email=${encodeURIComponent(email)}`:""}`} className="cta"
-                onClick={()=>email&&setDone(true)} style={{whiteSpace:"nowrap",padding:"13px 22px",flexShrink:0}}>
-                Empezar gratis →
-              </a>
-            </div>
-          ):(
-            <div style={{background:"#0D0B09",border:`1px solid ${T.marchar}44`,borderRadius:10,padding:"18px 24px",display:"inline-block"}}>
-              <div style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",color:T.marchar,marginBottom:4}}>✓ Perfecto</div>
-              <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:13,color:T.tintaGris}}>Revisa {email} para verificar y empezar el trial.</div>
-            </div>
-          )}
-          <div style={{fontFamily:"Caveat,cursive",fontSize:14,color:T.tintaGris,marginTop:20}}>hecho con cariño en una cocina · 0 quejas</div>
+      <footer>
+        <div className="fbrand">
+          <a href="/" className="logo">ia<b>.</b>rest</a>
+          <p>Voice POS para hostelería española. El camarero habla. La cocina marcha.</p>
         </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer style={{background:"#0D0B09",padding:`20px ${mob?"16px":"24px"}`}}>
-        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-          <div style={{fontFamily:"Newsreader,serif",fontSize:18,fontStyle:"italic",fontWeight:700,color:T.crema}}>ia<span style={{color:T.verm}}>.</span>rest</div>
-          <div style={{display:"flex",gap:mob?16:24,flexWrap:"wrap"}}>
-            {["Privacidad","Términos","Contacto"].map(l=>(<a key={l} href="#" style={{fontFamily:"Inter Tight,sans-serif",fontSize:11,color:T.tintaGris,textDecoration:"none"}}>{l}</a>))}
-          </div>
-          <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris}}>© 2026 ia.rest · España</div>
+        <div className="fcol">
+          <h4>Producto</h4>
+          <ul>{[["#como","Cómo funciona"],["#precios","Precios"],["#","KDS en cocina"],["#","VeriFactu"]].map(([h,l])=><li key={l}><a href={h}>{l}</a></li>)}</ul>
+        </div>
+        <div className="fcol">
+          <h4>Legal</h4>
+          <ul>{[["#","Privacidad"],["#","Términos"],["#","RGPD"]].map(([h,l])=><li key={l}><a href={h}>{l}</a></li>)}</ul>
         </div>
       </footer>
+      <div className="fbot">
+        <p>© 2025 ia.rest · Hecho en España 🇪🇸</p>
+        <div className="vbadge"><span className="vdot"/><span>VeriFactu AEAT 2026</span></div>
+      </div>
     </>
   );
 }
