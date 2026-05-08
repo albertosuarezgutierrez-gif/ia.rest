@@ -4921,6 +4921,7 @@ export default function OwnerPage() {
             {[
               { href:'/manuals/manual_camarero.pdf', label:'Camarero' },
               { href:'/manuals/manual_cocina.pdf',   label:'Cocina'   },
+              { href:'/manuals/manual_owner.pdf',   label:'Owner'    },
             ].map(m => (
               <a key={m.href} href={m.href} download title={`Manual ${m.label}`}
                 style={{ background:'none', border:`1px solid ${C.rule}`, borderRadius:4,
