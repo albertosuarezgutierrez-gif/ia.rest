@@ -452,9 +452,9 @@ function KDSInner() {
           </div>
           <span style={{ fontFamily:SM, fontSize:16, fontWeight:700, color:K.fg }}>{time.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>
           <SugerenciaButton session={session} tema="dark" variant="inline" />
-          <a href="/manuals/manual_cocina.pdf" download title="Descargar manual de cocina"
-            style={{ cursor:'pointer', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', background:'transparent', border:`1px solid ${K.rule}`, borderRadius:6, color:K.fg3, fontSize:13, flexShrink:0, textDecoration:'none' }}>
-            📄
+          <a href="/manuals/manual_cocina.pdf" download title="Manual de cocina"
+            style={{ cursor:'pointer', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', background:'transparent', border:`1px solid ${K.rule}`, borderRadius:6, color:K.fg3, flexShrink:0, textDecoration:'none' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16v-8M9 13l3 3 3-3"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
           </a>
           <button
             onClick={() => { localStorage.removeItem('ia_rest_session'); localStorage.removeItem('ia_kds_token'); window.location.href = '/login' }}
