@@ -462,6 +462,67 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* TESTIMONIOS */}
+      <section style={{background:T.bisel,padding:mob?"52px 16px":"72px 24px"}}>
+        <div style={{maxWidth:1100,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:mob?36:52}}>
+            <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:10,letterSpacing:".2em",color:T.verm,textTransform:"uppercase",marginBottom:10}}>Restaurantes</div>
+            <h2 style={{fontFamily:"Newsreader,serif",fontSize:mob?"clamp(22px,7vw,32px)":"clamp(26px,3.5vw,40px)",fontStyle:"italic",fontWeight:700,color:T.crema,lineHeight:1.1}}>
+              Los que ya no vuelven<br/>al terminal viejo
+            </h2>
+            <p style={{fontFamily:"Inter Tight,sans-serif",fontSize:mob?13:14,color:T.tintaGris,marginTop:10}}>
+              Resultados reales de dueños y jefes de sala en España.
+            </p>
+          </div>
+
+          {/* Fila 1 */}
+          <div style={{display:"grid",gridTemplateColumns:tab?"1fr":mob?"1fr":"repeat(3,1fr)",gap:16,marginBottom:16}}>
+            {[
+              {ini:"M",color:"#A8311E,#D9442B",nombre:"María José Paredes",local:"Casa Manuela · Sevilla",plan:"3 usuarios",quote:"Antes mis camareras tardaban 45 segundos por comanda en el TPV. Ahora dictan y se quedan en sala. En la primera semana noté que las propinas subieron.",result:"↑ 18% en propinas · primera semana",highlight:true},
+              {ini:"R",color:"#B07020,#E8A33B",nombre:"Roberto Fuentes",local:"El Rincón de la Bahía · Cádiz",plan:"5 usuarios",quote:"El verano pasado era un caos en la terraza. Este año puse ia.rest y los sábados por la noche son otra cosa. Cero errores de comanda en dos meses.",result:"0 errores en 60 días de temporada alta",highlight:false},
+              {ini:"C",color:"#2D5E32,#4A9150",nombre:"Carmen Vidal",local:"Taberna La Cava · Madrid",plan:"4 usuarios",quote:"Formé a dos camareros nuevos para agosto. En 10 minutos ya estaban mandando comandas. Antes era una semana mínimo.",result:"Formación de 1 semana → 10 minutos",highlight:false},
+            ].map(({ini,color,nombre,local,plan,quote,result,highlight})=>(
+              <div key={nombre} style={{background:highlight?"#1C0F09":T.bg3||"#0D0B09",border:`1px solid ${highlight?T.verm+"44":"#2A2520"}`,borderRadius:20,padding:mob?"22px 18px":"28px 24px",display:"flex",flexDirection:"column",gap:16,position:"relative",boxShadow:highlight?`rgba(217,68,43,0.12) 0 0 0 1px`:undefined}}>
+                {highlight&&<div style={{position:"absolute",top:-12,left:20,background:T.verm,color:T.crema,fontFamily:"JetBrains Mono,monospace",fontSize:10,fontWeight:700,letterSpacing:".06em",padding:"4px 14px",borderRadius:9999}}>DESTACADO</div>}
+                <div style={{display:"flex",gap:3}}>{"★★★★★".split("").map((s,i)=><span key={i} style={{color:T.ambar,fontSize:13}}>{s}</span>)}</div>
+                <p style={{fontFamily:"Caveat,cursive",fontSize:mob?18:20,lineHeight:1.45,color:T.crema,fontWeight:600,flex:1}}>"{quote}"</p>
+                <div style={{background:highlight?"rgba(74,145,80,0.15)":"rgba(74,145,80,0.1)",border:"1px solid rgba(74,145,80,0.2)",borderRadius:9999,padding:"5px 14px",alignSelf:"flex-start",fontFamily:"JetBrains Mono,monospace",fontSize:11,color:"#4A9150"}}>{result}</div>
+                <div style={{display:"flex",alignItems:"center",gap:12,borderTop:"1px solid rgba(246,241,231,0.07)",paddingTop:16}}>
+                  <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${color})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Newsreader,serif",fontStyle:"italic",fontSize:18,color:"white",flexShrink:0}}>{ini}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:14,fontWeight:700,color:T.crema,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nombre}</div>
+                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris,marginTop:2}}>{local}</div>
+                  </div>
+                  <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris,background:"rgba(246,241,231,0.05)",border:"1px solid rgba(246,241,231,0.08)",padding:"3px 10px",borderRadius:9999,whiteSpace:"nowrap"}}>{plan}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Fila 2: dos anchas */}
+          <div style={{display:"grid",gridTemplateColumns:mob||tab?"1fr":"1fr 1fr",gap:16}}>
+            {[
+              {ini:"A",color:"#1A3A6B,#2E5FAA",nombre:"Alejandro Mora",local:"Barra Madrid · Mercado San Miguel",plan:"2 usuarios",quote:"Tengo un bar en el Mercado de San Miguel. Volumen brutal, espacio mínimo, sin sitio para terminales. El camarero dicta y el cocinero lo ve al momento. No sé cómo trabajábamos antes.",result:"Volumen ×3 · mismo equipo · cero cuellos de botella"},
+              {ini:"P",color:"#4A2E1A,#7A4E2A",nombre:"Pilar Escrivá",local:"Grupo La Familia Escrivá · Valencia (3 locales)",plan:"8 usuarios",quote:"Tengo 3 locales en Valencia y lo que más me costaba era que cada uno tenía su sistema. Con ia.rest veo los tres en tiempo real y las alertas de alergia ya no se pierden entre papeles.",result:"3 locales · panel único · alertas de alergia centralizadas"},
+            ].map(({ini,color,nombre,local,plan,quote,result})=>(
+              <div key={nombre} style={{background:"#0D0B09",border:"1px solid #2A2520",borderRadius:20,padding:mob?"22px 18px":"28px 24px",display:"flex",flexDirection:"column",gap:16}}>
+                <div style={{display:"flex",gap:3}}>{"★★★★★".split("").map((s,i)=><span key={i} style={{color:T.ambar,fontSize:13}}>{s}</span>)}</div>
+                <p style={{fontFamily:"Caveat,cursive",fontSize:mob?18:21,lineHeight:1.45,color:T.crema,fontWeight:600,flex:1}}>"{quote}"</p>
+                <div style={{background:"rgba(74,145,80,0.1)",border:"1px solid rgba(74,145,80,0.2)",borderRadius:9999,padding:"5px 14px",alignSelf:"flex-start",fontFamily:"JetBrains Mono,monospace",fontSize:11,color:"#4A9150"}}>{result}</div>
+                <div style={{display:"flex",alignItems:"center",gap:12,borderTop:"1px solid rgba(246,241,231,0.07)",paddingTop:16}}>
+                  <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${color})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Newsreader,serif",fontStyle:"italic",fontSize:18,color:"white",flexShrink:0}}>{ini}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:14,fontWeight:700,color:T.crema}}>{nombre}</div>
+                    <div style={{fontFamily:"Inter Tight,sans-serif",fontSize:12,color:T.tintaGris,marginTop:2}}>{local}</div>
+                  </div>
+                  <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:T.tintaGris,background:"rgba(246,241,231,0.05)",border:"1px solid rgba(246,241,231,0.08)",padding:"3px 10px",borderRadius:9999,whiteSpace:"nowrap"}}>{plan}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* PRICING */}
       <section id="precios" style={{padding:mob?"52px 16px":"72px 24px"}}>
         <div style={{maxWidth:900,margin:"0 auto"}}>
