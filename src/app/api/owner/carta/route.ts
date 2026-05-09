@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const url = new URL(req.url)
   if (url.searchParams.get('action') === 'extract') return handleExtract(req)
+  if (url.searchParams.get('action') === 'bulk') return POST_BULK(req)
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
   const { nombre, descripcion, precio, categoria, activo, orden } = await req.json()
@@ -48,22 +49,31 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ producto: data })
 }
 
+// POST ?action=bulk — inserción masiva desde onboarding (incluye alérgenos)
+export async function POST_BULK(req: NextRequest) {
+  const supabase = createServerClient()
+  const rid = getRestauranteId(req)
+  const { productos } = await req.json()
+  if (!Array.isArray(productos) || productos.length === 0)
+    return NextResponse.json({ error: 'Sin productos' }, { status: 400 })
+  const rows = productos.map((p: Record<string, unknown>, i: number) => ({
+    nombre: p.nombre, descripcion: p.descripcion || null,
+    precio: p.precio ?? null, categoria: p.categoria || 'Sin categoría',
+    alergenos: Array.isArray(p.alergenos) ? p.alergenos : [],
+    activo: true, orden: i, restaurante_id: rid,
+  }))
+  const { data, error } = await supabase.from('productos').insert(rows).select()
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ productos: data })
+}
+
 export async function DELETE(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
   const url = new URL(req.url)
+  // Mantener bulk por retrocompatibilidad (ahora lo usa POST pero algunos clientes viejos pueden llamar a DELETE)
   if (url.searchParams.get('action') === 'bulk') {
-    const { productos } = await req.json()
-    if (!Array.isArray(productos) || productos.length === 0)
-      return NextResponse.json({ error: 'Sin productos' }, { status: 400 })
-    const rows = productos.map((p: Record<string, unknown>, i: number) => ({
-      nombre: p.nombre, descripcion: p.descripcion || null,
-      precio: p.precio ?? null, categoria: p.categoria || 'Sin categoría',
-      activo: true, orden: i, restaurante_id: rid,
-    }))
-    const { data, error } = await supabase.from('productos').insert(rows).select()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ productos: data })
+    return POST_BULK(req)
   }
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })

@@ -16,14 +16,25 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { nombre, seccion_id, cloud_device_id, modelo } = await req.json()
-  if (!nombre || !seccion_id || !cloud_device_id)
-    return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
-  const { data, error } = await sb()
-    .from('impresoras')
-    .insert({ nombre, seccion_id, cloud_device_id: cloud_device_id.trim().toUpperCase(),
-      modelo: modelo || null, connection_type: 'epson_epos', activa: true, configurada: true })
-    .select().single()
+  const { nombre, seccion_id, cloud_device_id, ip_address, port, connection_type, modelo } = await req.json()
+  if (!nombre || !seccion_id) return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
+
+  const isTCP = connection_type === 'tcp' || (!cloud_device_id && ip_address)
+  if (isTCP && !ip_address) return NextResponse.json({ error: 'IP requerida para ESC/POS TCP' }, { status: 400 })
+  if (!isTCP && !cloud_device_id) return NextResponse.json({ error: 'Device ID requerido para CloudPRNT' }, { status: 400 })
+
+  const row: Record<string, unknown> = {
+    nombre, seccion_id, modelo: modelo || null, activa: true, configurada: true,
+    connection_type: isTCP ? 'tcp' : 'epson_epos',
+  }
+  if (isTCP) {
+    row.ip_address = ip_address.trim()
+    row.port = port ? Number(port) : 9100
+  } else {
+    row.cloud_device_id = cloud_device_id.trim().toUpperCase()
+  }
+
+  const { data, error } = await sb().from('impresoras').insert(row).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ impresora: data })
 }

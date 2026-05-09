@@ -191,7 +191,7 @@ function StepCarta({ session, onNext }: { session: any; onNext: () => void }) {
     setError('')
     try {
       const r = await fetch('/api/owner/carta?action=bulk', {
-        method: 'DELETE',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...sh() },
         body: JSON.stringify({ productos }),
       })
@@ -752,11 +752,14 @@ function StepSecciones({ onNext }: { onNext: () => void }) {
 /* ══════════════════════════════════════════════════════════
    STEP 5 — IMPRESORAS
 ══════════════════════════════════════════════════════════ */
+type ImpresoraItem = { nombre: string; seccion_id: string; tipo: 'cloudprnt' | 'escpos'; cloud_device_id: string; ip_address: string; port: string; _id: number }
+
 function StepImpresoras({ onNext }: { onNext: () => void }) {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [secciones, setSecciones] = useState<{ id: string; nombre: string }[]>([])
-  const [form, setForm] = useState({ nombre: 'Impresora cocina', cloud_device_id: '', seccion_id: '' })
-  const [impresoras, setImpresoras] = useState<{ nombre: string; seccion_id: string; cloud_device_id: string; _id: number }[]>([])
+  const [tipo, setTipo] = useState<'cloudprnt' | 'escpos'>('cloudprnt')
+  const [form, setForm] = useState({ nombre: 'Impresora cocina', cloud_device_id: '', ip_address: '', port: '9100', seccion_id: '' })
+  const [impresoras, setImpresoras] = useState<ImpresoraItem[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -770,11 +773,11 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
   }, [])
 
   const añadir = () => {
-    if (!form.nombre.trim() || !form.cloud_device_id.trim() || !form.seccion_id) {
-      setError('Rellena todos los campos'); return
-    }
-    setImpresoras(ps => [...ps, { ...form, cloud_device_id: form.cloud_device_id.trim().toUpperCase(), _id: Date.now() }])
-    setForm(f => ({ ...f, nombre: '', cloud_device_id: '' }))
+    if (!form.nombre.trim() || !form.seccion_id) { setError('Nombre y sección son obligatorios'); return }
+    if (tipo === 'cloudprnt' && !form.cloud_device_id.trim()) { setError('Introduce el Device ID'); return }
+    if (tipo === 'escpos' && !form.ip_address.trim()) { setError('Introduce la dirección IP'); return }
+    setImpresoras(ps => [...ps, { ...form, tipo, cloud_device_id: form.cloud_device_id.trim().toUpperCase(), ip_address: form.ip_address.trim(), _id: Date.now() }])
+    setForm(f => ({ ...f, nombre: '', cloud_device_id: '', ip_address: '', port: '9100' }))
     setError('')
   }
 
@@ -782,10 +785,13 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
     setSaving(true); setError('')
     try {
       for (const p of impresoras) {
+        const body = p.tipo === 'cloudprnt'
+          ? { nombre: p.nombre, seccion_id: p.seccion_id, cloud_device_id: p.cloud_device_id, connection_type: 'cloudprnt' }
+          : { nombre: p.nombre, seccion_id: p.seccion_id, cloud_device_id: `ESC_${p.ip_address.replace(/\./g,'_')}_${p.port}`, ip_address: p.ip_address, port: parseInt(p.port) || 9100, connection_type: 'tcp' }
         const r = await fetch('/api/owner/impresoras', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...sh() },
-          body: JSON.stringify({ nombre: p.nombre, seccion_id: p.seccion_id, cloud_device_id: p.cloud_device_id }),
+          body: JSON.stringify(body),
         })
         if (!r.ok) throw new Error((await r.json()).error || 'Error')
       }
@@ -815,7 +821,7 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
         <p style={{ fontFamily: SC, fontSize: 15, color: C.fg3, margin: '0 0 6px' }}>
           💡 CloudPRNT: el Device ID aparece en el menú de red de la impresora · ESC/POS: necesitas el bridge local corriendo en la red del restaurante
         </p>
-        <p style={{ fontFamily: SN, fontSize: 11, color: C.fg4, margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontFamily: SN, fontSize: 11, color: C.fg3, margin: 0, lineHeight: 1.5 }}>
           Compatibilidad garantizada: Star TSP143IIILAN · Star TSP143IIIW · Epson TM-T20III LAN · impresoras ESC/POS TCP genéricas. Otras marcas/modelos pueden funcionar pero sin garantía oficial.
         </p>
       </div>
@@ -831,6 +837,16 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
       {/* Formulario */}
       {secciones.length > 0 && (
         <>
+          {/* Toggle tipo */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {(['cloudprnt', 'escpos'] as const).map(t => (
+              <button key={t} onClick={() => { setTipo(t); setError('') }}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `1px solid ${tipo === t ? C.red : C.rule2}`, background: tipo === t ? `${C.red}18` : C.e2, color: tipo === t ? C.red : C.fg3, fontFamily: SN, fontSize: 13, fontWeight: tipo === t ? 700 : 400, cursor: 'pointer', transition: 'all .15s' }}>
+                {t === 'cloudprnt' ? '★ Star CloudPRNT' : '⚡ ESC/POS TCP (red local)'}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'grid', gap: 10, marginBottom: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
@@ -847,18 +863,39 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
                 </select>
               </div>
             </div>
-            <div>
-              <label style={{ fontFamily: SN, fontSize: 12, color: C.fg3, display: 'block', marginBottom: 5 }}>Device ID CloudPRNT</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input value={form.cloud_device_id} onChange={e => setForm(f => ({ ...f, cloud_device_id: e.target.value.toUpperCase() }))}
-                  placeholder="00:11:62:XX:XX:XX"
-                  style={{ flex: 1, background: C.e2, border: `1px solid ${error ? '#F07060' : C.rule2}`, color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none', letterSpacing: 1 }}/>
-                <button onClick={añadir}
-                  style={{ background: C.e2, border: `1px solid ${C.rule2}`, color: C.fg2, borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontFamily: SN, fontSize: 13, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Icon d={ICONS.plus} size={14}/> Añadir
-                </button>
+
+            {tipo === 'cloudprnt' && (
+              <div>
+                <label style={{ fontFamily: SN, fontSize: 12, color: C.fg3, display: 'block', marginBottom: 5 }}>Device ID (MAC de la impresora)</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={form.cloud_device_id} onChange={e => setForm(f => ({ ...f, cloud_device_id: e.target.value.toUpperCase() }))}
+                    placeholder="00:11:62:XX:XX:XX"
+                    style={{ flex: 1, background: C.e2, border: `1px solid ${error ? '#F07060' : C.rule2}`, color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none', letterSpacing: 1 }}/>
+                  <button onClick={añadir} style={{ background: C.e2, border: `1px solid ${C.rule2}`, color: C.fg2, borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontFamily: SN, fontSize: 13, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Icon d={ICONS.plus} size={14}/> Añadir
+                  </button>
+                </div>
+                <p style={{ fontFamily: SC, fontSize: 13, color: C.fg3, margin: '5px 0 0' }}>Menú de red de la impresora → CloudPRNT → Device ID</p>
               </div>
-            </div>
+            )}
+
+            {tipo === 'escpos' && (
+              <div>
+                <label style={{ fontFamily: SN, fontSize: 12, color: C.fg3, display: 'block', marginBottom: 5 }}>IP y puerto de la impresora</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={form.ip_address} onChange={e => setForm(f => ({ ...f, ip_address: e.target.value }))}
+                    placeholder="192.168.1.100"
+                    style={{ flex: 1, background: C.e2, border: `1px solid ${error ? '#F07060' : C.rule2}`, color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none' }}/>
+                  <input value={form.port} onChange={e => setForm(f => ({ ...f, port: e.target.value.replace(/\D/g,'') }))}
+                    placeholder="9100" maxLength={5}
+                    style={{ width: 76, background: C.e2, border: `1px solid ${C.rule2}`, color: C.fg, borderRadius: 8, padding: '9px 10px', fontFamily: SM, fontSize: 14, outline: 'none', textAlign: 'center' }}/>
+                  <button onClick={añadir} style={{ background: C.e2, border: `1px solid ${C.rule2}`, color: C.fg2, borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontFamily: SN, fontSize: 13, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Icon d={ICONS.plus} size={14}/> Añadir
+                  </button>
+                </div>
+                <p style={{ fontFamily: SC, fontSize: 13, color: C.fg3, margin: '5px 0 0' }}>Requiere el bridge ia-rest-bridge.js corriendo en la red del restaurante</p>
+              </div>
+            )}
           </div>
           {error && <p style={{ fontFamily: SN, fontSize: 12, color: '#F07060', margin: '0 0 12px' }}>⚠ {error}</p>}
         </>
@@ -880,7 +917,9 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
               <div style={{ color: C.fg3 }}><Icon d={ICONS.printer} size={16}/></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontFamily: SN, fontSize: 14, color: C.fg, fontWeight: 600 }}>{p.nombre}</span>
-                <span style={{ fontFamily: SM, fontSize: 11, color: C.fg3, marginLeft: 10 }}>{p.cloud_device_id}</span>
+                <span style={{ fontFamily: SM, fontSize: 11, color: C.fg3, marginLeft: 10 }}>
+                  {p.tipo === 'escpos' ? `${p.ip_address}:${p.port}` : p.cloud_device_id}
+                </span>
               </div>
               <span style={{ fontFamily: SN, fontSize: 12, color: C.fg3 }}>
                 {secciones.find(s => s.id === p.seccion_id)?.nombre ?? p.seccion_id}
