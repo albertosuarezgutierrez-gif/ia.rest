@@ -30,7 +30,7 @@ export function useServiceWorkerUpdate() {
 
     const interval = setInterval(() => {
       navigator.serviceWorker.ready.then(reg => reg.update())
-    }, 30 * 60 * 1000)
+    }, 5 * 60 * 1000) // cada 5 minutos
     return () => clearInterval(interval)
   }, [])
 
