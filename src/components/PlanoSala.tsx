@@ -432,13 +432,15 @@ export default function PlanoSala({
           const on  = zonaActiva === z.tipo
           return (
             <button key={z.id} onClick={() => setZonaActiva(z.tipo)} style={{
-              padding: '6px 12px', borderRadius: 8, flexShrink: 0,
-              border: `1px solid ${on ? '#D9442B' : '#D8CDB6'}`,
-              background: on ? '#F4D8CF' : '#FBF8F1',
-              color: on ? '#D9442B' : '#9A8D7C',
+              padding: '6px 14px', borderRadius: 9999, flexShrink: 0,
+              border: 'none',
+              boxShadow: on ? 'none' : 'rgba(184,169,139,0.45) 0px 0px 0px 1px',
+              background: on ? '#D9442B' : 'transparent',
+              color: on ? '#F6F1E7' : '#9A8D7C',
               fontSize: 11, fontFamily: "'Inter Tight',system-ui,sans-serif",
-              fontWeight: on ? 500 : 400, cursor: 'pointer',
+              fontWeight: on ? 600 : 400, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'all .15s',
             }}>
               {z.nombre}
               {cnt.urgentes > 0 && (
