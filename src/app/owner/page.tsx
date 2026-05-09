@@ -31,6 +31,12 @@ type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesa
 type Impresora = { id: string; nombre: string; seccion_id: string; cloud_device_id: string | null; modelo: string | null; activa: boolean; ultimo_ping: string | null; configurada: boolean; connection_type: string; ip_address: string | null; port: number | null; impresora_fallback_id: string | null }
 type BridgeToken = { id: string; token: string; nombre: string; activo: boolean; ultimo_ping: string | null }
 type PrintJob = { id: string; status: string; seccion_id: string; created_at: string; sent_at: string | null; acked_at: string | null; attempts: number; error_msg: string | null; impresoras?: { nombre: string } }
+type Reserva = {
+  id: string; nombre_cliente: string; telefono: string | null
+  num_personas: number; fecha_reserva: string; hora_reserva: string
+  duracion_min: number; notas: string | null; estado: string; canal: string
+  mesa_id: string | null; mesas?: { id: string; codigo: string; nombre: string | null } | null
+}
 
 /* ─── Logo ─── */
 const Logo = () => (
@@ -77,6 +83,8 @@ const ICONS = {
   shield: 'M12 2l8 3v6c0 5-3.5 9.74-8 11-4.5-1.26-8-6-8-11V5l8-3z',
   externalLink: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3',
   alertTriangle: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+  calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z',
+  phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.77 3.19 2 2 0 0 1 3.74 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6.59 6.59l.97-1.04a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z',
 }
 
 const ZONA_LABEL: Record<string, string> = { salon: 'Salón', terraza: 'Terraza', barra: 'Barra' }
@@ -4541,6 +4549,330 @@ function ServicioTab() {
   )
 }
 
+/* ─── Tab: Reservas ─── */
+const ESTADO_META: Record<string, { label: string; bg: string; fg: string }> = {
+  pendiente:  { label: 'Pendiente',  bg: C.amberS,  fg: '#7A5A1A' },
+  confirmada: { label: 'Confirmada', bg: C.greenS,   fg: C.green   },
+  sentada:    { label: 'En mesa',    bg: '#E0D8FF',  fg: '#5B4CB0' },
+  cancelada:  { label: 'Cancelada',  bg: C.redS,     fg: C.redD    },
+  no_show:    { label: 'No show',    bg: C.paper2,   fg: C.ink3    },
+}
+const CANAL_ICON: Record<string, string> = {
+  manual: '✍', telefono: '📞', web: '🌐', thefork: '🍴', covermanager: '📅',
+}
+
+function ReservasTab() {
+  const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
+  const hoy = () => new Date().toISOString().slice(0, 10)
+
+  const [fecha, setFecha] = useState(hoy())
+  const [reservas, setReservas] = useState<Reserva[]>([])
+  const [mesasDisp, setMesasDisp] = useState<{ id: string; codigo: string; nombre: string | null; capacidad: number }[]>([])
+  const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState<null | 'create' | { edit: Reserva }>(null)
+  const [form, setForm] = useState({
+    nombre_cliente: '', telefono: '', num_personas: '2',
+    fecha_reserva: hoy(), hora_reserva: '13:00',
+    duracion_min: '90', notas: '', canal: 'manual', mesa_id: '',
+  })
+  const [err, setErr] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async (f = fecha) => {
+    setLoading(true)
+    const r = await fetch(`/api/owner/reservas?fecha=${f}`, { headers: sh() })
+    const d = await r.json()
+    setReservas(d.reservas || [])
+    setMesasDisp(d.mesas || [])
+    setLoading(false)
+  }, [fecha])
+
+  useEffect(() => { load(fecha) }, [fecha])
+
+  const openCreate = () => {
+    setForm({ nombre_cliente: '', telefono: '', num_personas: '2',
+      fecha_reserva: fecha, hora_reserva: '13:00',
+      duracion_min: '90', notas: '', canal: 'manual', mesa_id: '' })
+    setErr(''); setModal('create')
+  }
+  const openEdit = (r: Reserva) => {
+    setForm({
+      nombre_cliente: r.nombre_cliente, telefono: r.telefono || '',
+      num_personas: String(r.num_personas), fecha_reserva: r.fecha_reserva,
+      hora_reserva: r.hora_reserva.slice(0, 5), duracion_min: String(r.duracion_min),
+      notas: r.notas || '', canal: r.canal, mesa_id: r.mesa_id || '',
+    })
+    setErr(''); setModal({ edit: r })
+  }
+
+  const save = async () => {
+    setErr('')
+    if (!form.nombre_cliente.trim()) return setErr('Nombre requerido')
+    if (!form.hora_reserva) return setErr('Hora requerida')
+    const n = parseInt(form.num_personas)
+    if (!n || n < 1) return setErr('Personas inválido')
+    setSaving(true)
+    const isEdit = modal && typeof modal === 'object' && 'edit' in modal
+    const url = '/api/owner/reservas'
+    const body = {
+      ...(isEdit ? { id: (modal as { edit: Reserva }).edit.id } : {}),
+      nombre_cliente: form.nombre_cliente.trim(),
+      telefono: form.telefono.trim() || null,
+      num_personas: n,
+      fecha_reserva: form.fecha_reserva,
+      hora_reserva: form.hora_reserva,
+      duracion_min: parseInt(form.duracion_min) || 90,
+      notas: form.notas.trim() || null,
+      canal: form.canal,
+      mesa_id: form.mesa_id || null,
+    }
+    const r = await fetch(url, {
+      method: isEdit ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify(body),
+    })
+    setSaving(false)
+    if (!r.ok) { const d = await r.json(); return setErr(d.error || 'Error') }
+    await load(fecha); setModal(null)
+  }
+
+  const cambiarEstado = async (id: string, estado: string) => {
+    await fetch('/api/owner/reservas', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({ id, estado }),
+    })
+    await load(fecha)
+  }
+
+  const cancelar = async (id: string) => {
+    await fetch('/api/owner/reservas', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({ id }),
+    })
+    await load(fecha)
+  }
+
+  const asignarMesa = async (id: string, mesa_id: string) => {
+    await fetch('/api/owner/reservas', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({ id, mesa_id: mesa_id || null, estado: mesa_id ? 'sentada' : 'confirmada' }),
+    })
+    await load(fecha)
+  }
+
+  const fmtHora = (t: string) => t.slice(0, 5)
+  const fmtHoraFin = (t: string, dur: number) => {
+    const [h, m] = t.split(':').map(Number)
+    const tot = h * 60 + m + dur
+    return `${String(Math.floor(tot / 60) % 24).padStart(2, '0')}:${String(tot % 60).padStart(2, '0')}`
+  }
+
+  const totalPax = reservas.reduce((s, r) => s + r.num_personas, 0)
+  const esHoy = fecha === hoy()
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase' }}>Agenda</div>
+          <div style={{ fontFamily: SE, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 2 }}>Reservas</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+            style={{ fontFamily: SM, fontSize: 12, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '7px 10px', background: C.bone, color: C.ink, outline: 'none' }}
+          />
+          {!esHoy && (
+            <Btn variant="ghost" onClick={() => setFecha(hoy())}>Hoy</Btn>
+          )}
+          <Btn variant="primary" onClick={openCreate}>
+            <Icon d={ICONS.plus} size={15}/>Nueva reserva
+          </Btn>
+        </div>
+      </div>
+
+      {/* Stats del día */}
+      {!loading && reservas.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(100px,1fr))', gap: 8, marginBottom: 20 }}>
+          {[
+            { val: reservas.length, label: 'Reservas', color: C.ink },
+            { val: totalPax, label: 'Comensales', color: C.red },
+            { val: reservas.filter(r => r.estado === 'confirmada').length, label: 'Confirmadas', color: C.green },
+            { val: reservas.filter(r => r.estado === 'pendiente').length, label: 'Pendientes', color: '#7A5A1A' },
+          ].map(s => (
+            <div key={s.label} style={{ background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontFamily: SE, fontStyle: 'italic', fontSize: 28, color: s.color, lineHeight: 1 }}>{s.val}</div>
+              <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3, marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lista / Timeline */}
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
+      ) : reservas.length === 0 ? (
+        <div style={{ padding: '48px 0', textAlign: 'center', border: `1px dashed ${C.rule}`, borderRadius: 12 }}>
+          <div style={{ fontFamily: SE, fontStyle: 'italic', fontSize: 20, color: C.ink3, marginBottom: 8 }}>
+            Sin reservas para este día
+          </div>
+          <div style={{ fontFamily: SN, fontSize: 13, color: C.ink4, marginBottom: 20 }}>
+            {esHoy ? 'El día está libre' : 'Puedes añadir reservas para cualquier fecha'}
+          </div>
+          <Btn variant="primary" onClick={openCreate}><Icon d={ICONS.plus} size={14}/>Añadir reserva</Btn>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {reservas.map(r => {
+            const meta = ESTADO_META[r.estado] || ESTADO_META.pendiente
+            const mesaLabel = r.mesas ? (r.mesas.nombre ? `${r.mesas.codigo} · ${r.mesas.nombre}` : r.mesas.codigo) : null
+            return (
+              <div key={r.id} style={{
+                background: C.bone, border: `1px solid ${C.rule}`,
+                borderLeft: `4px solid ${r.estado === 'confirmada' ? C.green : r.estado === 'sentada' ? '#7B5EA7' : r.estado === 'pendiente' ? C.amber : C.ink3}`,
+                borderRadius: 8, padding: '14px 16px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                  {/* Hora */}
+                  <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 52 }}>
+                    <div style={{ fontFamily: SM, fontSize: 17, fontWeight: 700, color: C.ink }}>{fmtHora(r.hora_reserva)}</div>
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>{fmtHoraFin(r.hora_reserva, r.duracion_min)}</div>
+                  </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <div style={{ fontFamily: SN, fontSize: 15, fontWeight: 700, color: C.ink }}>{r.nombre_cliente}</div>
+                      <span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em',
+                        background: meta.bg, color: meta.fg, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                        {meta.label}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontFamily: SN, fontSize: 12, color: C.ink3 }}>
+                      <span>👥 {r.num_personas} pax</span>
+                      {r.telefono && <span>{CANAL_ICON['telefono']} {r.telefono}</span>}
+                      <span>{CANAL_ICON[r.canal] || '✍'} {r.canal}</span>
+                      {mesaLabel && <span style={{ color: '#5B4CB0', fontWeight: 600 }}>🪑 {mesaLabel}</span>}
+                    </div>
+                    {r.notas && (
+                      <div style={{ marginTop: 6, fontFamily: SE, fontStyle: 'italic', fontSize: 12, color: C.amber }}>
+                        &ldquo;{r.notas}&rdquo;
+                      </div>
+                    )}
+                  </div>
+                  {/* Acciones */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {r.estado === 'pendiente' && (
+                      <button onClick={() => cambiarEstado(r.id, 'confirmada')}
+                        style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.green}66`,
+                          background: C.greenS, color: C.green, fontFamily: SM, fontSize: 10, fontWeight: 700,
+                          cursor: 'pointer', letterSpacing: '.06em' }}>
+                        CONFIRMAR
+                      </button>
+                    )}
+                    {(r.estado === 'pendiente' || r.estado === 'confirmada') && !r.mesa_id && (
+                      <select
+                        onChange={e => e.target.value && asignarMesa(r.id, e.target.value)}
+                        defaultValue=""
+                        style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                          background: C.paper, color: C.ink3, fontFamily: SN, fontSize: 11, cursor: 'pointer' }}>
+                        <option value="">🪑 Sentar...</option>
+                        {mesasDisp.filter(m => m.capacidad >= r.num_personas).map(m => (
+                          <option key={m.id} value={m.id}>{m.codigo} ({m.capacidad}p)</option>
+                        ))}
+                        {mesasDisp.filter(m => m.capacidad < r.num_personas).map(m => (
+                          <option key={m.id} value={m.id}>{m.codigo} ({m.capacidad}p) ⚠</option>
+                        ))}
+                      </select>
+                    )}
+                    {r.estado === 'sentada' && (
+                      <button onClick={() => asignarMesa(r.id, '')}
+                        style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                          background: 'transparent', color: C.ink3, fontFamily: SM, fontSize: 9, cursor: 'pointer' }}>
+                        Liberar mesa
+                      </button>
+                    )}
+                    <Btn size="sm" variant="ghost" onClick={() => openEdit(r)}>
+                      <Icon d={ICONS.edit} size={13}/>
+                    </Btn>
+                    <button onClick={() => cambiarEstado(r.id, 'no_show')}
+                      title="No-show"
+                      style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                        background: 'transparent', color: C.ink4, fontFamily: SN, fontSize: 11, cursor: 'pointer' }}>
+                      ✗ NS
+                    </button>
+                    <Btn size="sm" variant="danger" onClick={() => cancelar(r.id)}>
+                      <Icon d={ICONS.trash} size={13}/>
+                    </Btn>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal crear / editar */}
+      {modal && (modal === 'create' || (typeof modal === 'object' && 'edit' in modal)) && (
+        <Modal
+          title={modal === 'create' ? 'Nueva reserva' : 'Editar reserva'}
+          onClose={() => setModal(null)}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Field label="Nombre del cliente" value={form.nombre_cliente}
+              onChange={v => setForm(f => ({ ...f, nombre_cliente: v }))} placeholder="Marta García"/>
+            <Field label="Teléfono (opcional)" value={form.telefono}
+              onChange={v => setForm(f => ({ ...f, telefono: v }))} placeholder="+34 600 000 000"/>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Comensales" value={form.num_personas} type="number"
+                onChange={v => setForm(f => ({ ...f, num_personas: v }))} placeholder="2"/>
+              <Field label="Duración (min)" value={form.duracion_min} type="number"
+                onChange={v => setForm(f => ({ ...f, duracion_min: v }))} placeholder="90"/>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Fecha" value={form.fecha_reserva} type="date"
+                onChange={v => setForm(f => ({ ...f, fecha_reserva: v }))}/>
+              <Field label="Hora" value={form.hora_reserva} type="time"
+                onChange={v => setForm(f => ({ ...f, hora_reserva: v }))}/>
+            </div>
+            <Select label="Canal" value={form.canal} onChange={v => setForm(f => ({ ...f, canal: v }))}
+              options={[
+                { value: 'manual',      label: '✍ Manual' },
+                { value: 'telefono',    label: '📞 Teléfono' },
+                { value: 'web',         label: '🌐 Web' },
+                { value: 'thefork',     label: '🍴 TheFork' },
+                { value: 'covermanager',label: '📅 CoverManager' },
+              ]}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>Mesa (opcional)</label>
+              <select value={form.mesa_id} onChange={e => setForm(f => ({ ...f, mesa_id: e.target.value }))}
+                style={{ fontFamily: SN, fontSize: 14, background: C.bone, border: `1px solid ${C.rule}`,
+                  borderRadius: 4, padding: '8px 10px', color: C.ink, outline: 'none' }}>
+                <option value="">Sin asignar</option>
+                {mesasDisp.map(m => (
+                  <option key={m.id} value={m.id}>{m.codigo}{m.nombre ? ` · ${m.nombre}` : ''} ({m.capacidad}p)</option>
+                ))}
+              </select>
+            </div>
+            <Field label="Notas (opcional)" value={form.notas}
+              onChange={v => setForm(f => ({ ...f, notas: v }))} placeholder='ej. "Alérgica al gluten · mesa exterior"'/>
+            {err && <div style={{ fontFamily: SM, fontSize: 11, color: C.red }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn>
+              <Btn variant="primary" onClick={save} disabled={saving}>
+                <Icon d={ICONS.check} size={14}/>{saving ? 'Guardando...' : modal === 'create' ? 'Crear' : 'Guardar'}
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
 const GRUPOS = [
   {
     id: 'sala', label: 'Sala', icon: ICONS.users,
@@ -4559,6 +4891,7 @@ const GRUPOS = [
   {
     id: 'servicio', label: 'Servicio', icon: ICONS.chart,
     tabs: [
+      { id: 'reservas',  label: 'Reservas',  icon: ICONS.calendar },
       { id: 'turno',     label: 'Turno',     icon: ICONS.clock   },
       { id: 'caja',      label: 'Caja',      icon: ICONS.receipt },
       { id: 'analytics', label: 'Analytics', icon: ICONS.chart   },
@@ -5095,6 +5428,7 @@ export default function OwnerPage() {
         {/* ── Contenido ── */}
         <div style={{ marginTop: getGrupo(tab).tabs.length <= 1 ? 20 : 0 }}>
           {tab === 'cubierto'       && <ServicioTab/>}
+          {tab === 'reservas'       && <ReservasTab/>}
           {tab === 'camareros'      && <CamarerosTab/>}
           {tab === 'mesas'          && <MesasTab/>}
           {tab === 'secciones'      && <SeccionesTab/>}
