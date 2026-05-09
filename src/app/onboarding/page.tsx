@@ -809,11 +809,14 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
       {/* Explicación */}
       <div style={{ background: C.e1, border: `1px solid ${C.rule}`, borderRadius: 12, padding: '14px 16px', marginBottom: 20 }}>
         <p style={{ fontFamily: SN, fontSize: 14, color: C.fg2, margin: '0 0 8px', lineHeight: 1.6 }}>
-          ia.rest usa <strong style={{ color: C.fg }}>Star CloudPRNT</strong> para enviar tickets a impresoras térmicas.
+          ia.rest envía tickets a impresoras térmicas vía <strong style={{ color: C.fg }}>Star CloudPRNT</strong> (impresoras Star LAN/WiFi) o <strong style={{ color: C.fg }}>ESC/POS TCP</strong> (cualquier impresora en red local vía bridge).
           Cada impresora se vincula a una sección: cuando un plato de "Cocina caliente" se confirma, el ticket va directamente a esa impresora.
         </p>
-        <p style={{ fontFamily: SC, fontSize: 15, color: C.fg3, margin: 0 }}>
-          💡 El Device ID aparece en el menú de red de la impresora o en el panel CloudPRNT de Star
+        <p style={{ fontFamily: SC, fontSize: 15, color: C.fg3, margin: '0 0 6px' }}>
+          💡 CloudPRNT: el Device ID aparece en el menú de red de la impresora · ESC/POS: necesitas el bridge local corriendo en la red del restaurante
+        </p>
+        <p style={{ fontFamily: SN, fontSize: 11, color: C.fg4, margin: 0, lineHeight: 1.5 }}>
+          Compatibilidad garantizada: Star TSP143IIILAN · Star TSP143IIIW · Epson TM-T20III LAN · impresoras ESC/POS TCP genéricas. Otras marcas/modelos pueden funcionar pero sin garantía oficial.
         </p>
       </div>
 

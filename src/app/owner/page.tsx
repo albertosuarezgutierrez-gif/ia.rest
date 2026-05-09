@@ -2439,6 +2439,16 @@ function ImpresorasTab() {
         </div>
       </div>
 
+      {/* Nota compatibilidad hardware */}
+      <div style={{ background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '10px 14px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ fontFamily: SM, fontSize: 10, color: C.amber, fontWeight: 800, letterSpacing: '.08em', marginTop: 1, whiteSpace: 'nowrap' }}>ℹ COMPATIBILIDAD</div>
+        <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, lineHeight: 1.6 }}>
+          ia.rest garantiza compatibilidad 100% con impresoras <strong style={{ color: C.ink2 }}>ESC/POS TCP</strong> (IP local vía bridge) y <strong style={{ color: C.ink2 }}>Star CloudPRNT</strong> (modelos LAN/WiFi).
+          Otras impresoras pueden funcionar pero no están oficialmente soportadas.{' '}
+          <span style={{ color: C.ink4 }}>Modelos validados: Star TSP143IIILAN · Star TSP143IIIW · Epson TM-T20III LAN · Sunmi NT311.</span>
+        </div>
+      </div>
+
       {/* Lista impresoras */}
       {impresoras.length === 0 ? (
         <div style={{ border: `1px dashed ${C.rule}`, borderRadius: 8, padding: '48px 24px', textAlign: 'center', color: C.ink4, fontFamily: SN, fontSize: 14, marginBottom: 32 }}>
