@@ -2,6 +2,11 @@ User-agent: *
 Allow: /
 Allow: /registro
 Allow: /login
+Allow: /carta/
+Allow: /aviso-legal
+Allow: /privacidad
+Allow: /cookies
+Allow: /terminos
 
 Disallow: /api/
 Disallow: /edge
@@ -11,6 +16,8 @@ Disallow: /super
 Disallow: /jefe
 Disallow: /hub
 Disallow: /cocina
+Disallow: /running
 Disallow: /manual
+Disallow: /onboarding
 
-Sitemap: https://ia-rest.vercel.app/sitemap.xml
+Sitemap: https://www.iarest.es/sitemap.xml
