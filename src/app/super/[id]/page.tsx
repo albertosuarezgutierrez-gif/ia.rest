@@ -72,6 +72,11 @@ export default function SuperRestaurantePage() {
   const [configForm, setConfigForm] = useState({ nif:'', razon_social:'', nombre_comercial:'', plan:'servicio', activo:true })
   const [savingConfig, setSavingConfig] = useState(false)
   const [configMsg, setConfigMsg] = useState('')
+  // Cuenta (grupo multi-restaurante)
+  const [cuentaData, setCuentaData] = useState<{ cuenta_id_actual:string|null; cuentas:{id:string;nombre:string;pin_cuenta:string;estado:string;num_restaurantes:number}[] } | null>(null)
+  const [cuentaSelected, setCuentaSelected] = useState('')
+  const [savingCuenta, setSavingCuenta] = useState(false)
+  const [cuentaMsg, setCuentaMsg] = useState('')
 
   const hdrs = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -119,7 +124,13 @@ export default function SuperRestaurantePage() {
       fetch(`/api/owner/facturas?restaurante_id=${id}`, { headers: hdrs() })
         .then(r => r.json()).then(d => setFacturas(d.facturas || []))
     }
-  }, [tab, session, id, hdrs, productos.length, mesas.length, camareros.length, facturas.length])
+    if (tab === 'config' && !cuentaData) {
+      fetch(`/api/super/restaurantes/${id}/cuenta`, { headers: hdrs() })
+        .then(r => r.json())
+        .then(d => { setCuentaData(d); setCuentaSelected(d.cuenta_id_actual ?? '') })
+        .catch(() => {})
+    }
+  }, [tab, session, id, hdrs, productos.length, mesas.length, camareros.length, facturas.length, cuentaData])
 
   const saveConfig = async () => {
     setSavingConfig(true); setConfigMsg('')
@@ -131,6 +142,23 @@ export default function SuperRestaurantePage() {
     if (d.ok && rest) setRest({ ...rest, ...configForm })
     setSavingConfig(false)
     setTimeout(() => setConfigMsg(''), 3000)
+  }
+
+  const saveCuenta = async () => {
+    if (!cuentaSelected || cuentaSelected === cuentaData?.cuenta_id_actual) return
+    setSavingCuenta(true); setCuentaMsg('')
+    const r = await fetch(`/api/super/restaurantes/${id}/cuenta`, {
+      method: 'PATCH', headers: hdrs(), body: JSON.stringify({ cuenta_id: cuentaSelected })
+    })
+    const d = await r.json()
+    if (d.ok) {
+      setCuentaMsg(`✓ Asignado a "${d.cuenta_nombre}"`)
+      setCuentaData(prev => prev ? { ...prev, cuenta_id_actual: cuentaSelected } : prev)
+    } else {
+      setCuentaMsg(`Error: ${d.error}`)
+    }
+    setSavingCuenta(false)
+    setTimeout(() => setCuentaMsg(''), 4000)
   }
 
   const impersonate = async () => {
@@ -466,6 +494,41 @@ export default function SuperRestaurantePage() {
                   {savingConfig ? 'GUARDANDO…' : 'GUARDAR CAMBIOS'}
                 </button>
                 {configMsg && <div style={{fontFamily:SM,fontSize:12,color:configMsg.includes('✓')?C.green:C.amber}}>{configMsg}</div>}
+
+                {/* ── Grupo / Cuenta multi-restaurante ── */}
+                <div style={{borderTop:`1px solid ${C.ruleL}`,paddingTop:24,marginTop:8}}>
+                  <div style={{fontFamily:SM,fontSize:10,fontWeight:700,letterSpacing:'.12em',color:C.ink3,textTransform:'uppercase',marginBottom:16}}>
+                    Grupo / Cuenta multi-restaurante
+                  </div>
+                  {!cuentaData ? (
+                    <div style={{fontFamily:SM,fontSize:12,color:C.ink3}}>Cargando cuentas…</div>
+                  ) : (
+                    <>
+                      <div style={{fontFamily:SN,fontSize:13,color:C.ink3,marginBottom:12}}>
+                        Asigna este restaurante a una cuenta existente para que el dueño pueda ver todos sus locales desde un solo acceso.
+                      </div>
+                      <div style={{marginBottom:12}}>
+                        {label('CUENTA ASIGNADA')}
+                        <select value={cuentaSelected} onChange={e=>setCuentaSelected(e.target.value)}
+                          style={{width:'100%',background:C.card,border:`1px solid ${C.ruleL}`,borderRadius:6,padding:'10px 14px',fontFamily:SN,fontSize:14,color:C.ink,outline:'none'}}>
+                          <option value=''>— Sin asignar —</option>
+                          {cuentaData.cuentas.map(c=>(
+                            <option key={c.id} value={c.id}>
+                              {c.nombre} · PIN {c.pin_cuenta} · {c.num_restaurantes} local{c.num_restaurantes!==1?'es':''} · {c.estado}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button onClick={saveCuenta}
+                        disabled={savingCuenta || !cuentaSelected || cuentaSelected === cuentaData.cuenta_id_actual}
+                        style={{background:C.ink,border:'none',borderRadius:6,color:C.cream,padding:'10px 20px',
+                          fontFamily:SM,fontSize:11,letterSpacing:'.1em',cursor:'pointer',opacity:(!cuentaSelected||cuentaSelected===cuentaData.cuenta_id_actual)?0.4:1}}>
+                        {savingCuenta ? 'ASIGNANDO…' : 'ASIGNAR A ESTA CUENTA'}
+                      </button>
+                      {cuentaMsg && <div style={{fontFamily:SM,fontSize:12,color:cuentaMsg.includes('✓')?C.green:C.amber,marginTop:8}}>{cuentaMsg}</div>}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

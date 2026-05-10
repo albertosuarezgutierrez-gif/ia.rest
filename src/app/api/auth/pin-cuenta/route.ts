@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
         rol: 'owner',
         restaurante_id: r.id,
         restaurante_nombre: r.nombre,
+        cuenta_id: cuenta.id,
       },
       restaurantes,
     })

@@ -9,6 +9,7 @@ export interface Session {
   rol: Rol
   restaurante_id: string
   restaurante_nombre: string
+  cuenta_id?: string
   seccion_id?: string | null
 }
 

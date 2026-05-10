@@ -5468,6 +5468,35 @@ export default function OwnerPage() {
     window.location.href = '/login'
   }
 
+  const [misRestaurantes, setMisRestaurantes] = useState<{id:string;nombre:string;ciudad:string}[]>([])
+  const [switchingRest, setSwitchingRest] = useState(false)
+
+  useEffect(() => {
+    if (!session?.cuenta_id) return
+    const h = { 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' }
+    fetch('/api/owner/mis-restaurantes', { headers: h })
+      .then(r => r.json())
+      .then(d => { if (d.restaurantes?.length > 1) setMisRestaurantes(d.restaurantes) })
+      .catch(() => {})
+  }, [session?.cuenta_id])
+
+  const cambiarRestaurante = async (restaurante_id: string) => {
+    if (!session?.cuenta_id || restaurante_id === session.restaurante_id) return
+    setSwitchingRest(true)
+    try {
+      const r = await fetch('/api/auth/seleccionar-restaurante', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cuenta_id: session.cuenta_id, restaurante_id }),
+      })
+      const d = await r.json()
+      if (d.session) {
+        localStorage.setItem('ia_rest_session', JSON.stringify(d.session))
+        window.location.reload()
+      }
+    } catch { setSwitchingRest(false) }
+  }
+
   if (checking || !session) return (
     <div style={{ minHeight: '100dvh', background: C.paper }}/>
   )
@@ -5506,6 +5535,26 @@ export default function OwnerPage() {
           Panel del dueño
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {misRestaurantes.length > 1 && (
+            <div style={{ position: 'relative' }}>
+              <select
+                value={session.restaurante_id}
+                disabled={switchingRest}
+                onChange={e => cambiarRestaurante(e.target.value)}
+                style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 6,
+                  padding: '5px 28px 5px 10px', fontFamily: SM, fontSize: 11, fontWeight: 600,
+                  color: C.ink, cursor: 'pointer', outline: 'none', letterSpacing: '.02em',
+                  appearance: 'none', WebkitAppearance: 'none', maxWidth: 160 }}>
+                {misRestaurantes.map(r => (
+                  <option key={r.id} value={r.id}>{r.nombre}{r.ciudad ? ` · ${r.ciudad}` : ''}</option>
+                ))}
+              </select>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+                style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
+                <path d="M2 3.5L5 6.5L8 3.5" stroke={C.ink3} strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+          )}
           <div className="owner-hdr-name" style={{ fontFamily: SN, fontSize: 13, color: C.ink2 }}>{session.nombre}</div>
           <button onClick={() => window.location.href = '/onboarding'}
             style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 4, padding: '6px 10px', cursor: 'pointer', color: C.ink3, display: 'flex', alignItems: 'center', gap: 6 }}
