@@ -1350,7 +1350,7 @@ export default function OnboardingPage() {
       \`}</style>
 
       {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: `1px solid ${C.rule}`, position: 'sticky', top: 0, background: C.bg, zIndex: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid ' + C.rule, position: 'sticky', top: 0, background: C.bg, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Logo/>
           <span style={{ fontFamily: SE, fontSize: 17, fontStyle: 'italic', color: C.fg }}>ia.rest</span>
