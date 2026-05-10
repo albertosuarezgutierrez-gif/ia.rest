@@ -1419,7 +1419,7 @@ export default function OnboardingPage() {
       </div>
 
       {completing && (
-        <div style={{ position: 'fixed', inset: 0, background: `${C.bg}ee`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+        <div style={{ position: 'fixed', inset: 0, background: C.bg + 'ee', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: SE, fontSize: 28, fontStyle: 'italic', color: C.fg, marginBottom: 8 }}>
               ¡Todo listo 🎉
