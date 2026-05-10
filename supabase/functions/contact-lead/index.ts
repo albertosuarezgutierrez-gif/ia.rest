@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { nombre, restaurante, telefono } = await req.json()
+    const { nombre, restaurante, telefono, email } = await req.json()
 
     if (!nombre || !restaurante || !telefono) {
       return new Response(JSON.stringify({ error: 'Faltan campos' }), {
@@ -24,10 +24,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
-    const { error: dbError } = await supabase.from('leads').insert({ nombre, restaurante, telefono })
+    const { error: dbError } = await supabase.from('leads').insert({ nombre, restaurante, telefono, email: email || null })
     if (dbError) console.error('DB error:', dbError.message)
 
-    const texto = `🍽️ Nuevo lead ia.rest\n👤 ${nombre}\n🏪 ${restaurante}\n📞 ${telefono}`
+    const texto = `🍽️ Nuevo lead ia.rest\n👤 ${nombre}\n🏪 ${restaurante}\n📞 ${telefono}\n✉️ ${email || "sin email"}`
 
     // 2. Email via Resend
     const resendKey = Deno.env.get('RESEND_API_KEY')

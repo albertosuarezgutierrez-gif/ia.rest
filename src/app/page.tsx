@@ -294,6 +294,7 @@ const COMANDAS = [
 export default function Page() {
   const [openFaq, setOpenFaq] = useState<number|null>(null);
   const [leadNombre, setLeadNombre] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
   const [leadRest, setLeadRest] = useState("");
   const [leadTel, setLeadTel] = useState("");
   const [leadSending, setLeadSending] = useState(false);
@@ -303,8 +304,8 @@ export default function Page() {
   const demoRunning = useRef(false);
 
   const handleLead = async () => {
-    if (!leadNombre.trim() || !leadRest.trim() || !leadTel.trim()) {
-      setLeadError("Rellena los tres campos para que podamos llamarte.");
+    if (!leadNombre.trim() || !leadRest.trim() || !leadTel.trim() || !leadEmail.trim()) {
+      setLeadError("Rellena todos los campos para que podamos contactarte.");
       return;
     }
     setLeadError("");
@@ -313,7 +314,7 @@ export default function Page() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/contact-lead`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! },
-        body: JSON.stringify({ nombre: leadNombre.trim(), restaurante: leadRest.trim(), telefono: leadTel.trim() }),
+        body: JSON.stringify({ nombre: leadNombre.trim(), restaurante: leadRest.trim(), telefono: leadTel.trim(), email: leadEmail.trim() }),
       });
       if (!res.ok) throw new Error("error");
       setLeadSent(true);
@@ -444,7 +445,7 @@ export default function Page() {
             <strong>en menos de medio segundo.</strong> Sin errores. Sin desplazamientos. Sin semanas de formación.
           </p>
           <div className="hctas">
-            <button className="bth" onClick={()=>document.getElementById("contacto")?.scrollIntoView({behavior:"smooth"})}>Empezar gratis — 14 días</button>
+            <button className="bth" onClick={()=>document.getElementById("contacto")?.scrollIntoView({behavior:"smooth"})}>Solicitar 14 días gratis →</button>
             <button className="bto" onClick={()=>document.getElementById("como")?.scrollIntoView({behavior:"smooth"})}>Ver cómo funciona →</button>
           </div>
           <p className="nc">Sin tarjeta · Sin hardware caro · En marcha en 10 minutos</p>
@@ -676,11 +677,11 @@ export default function Page() {
         </div>
         <div className="plans">
           {[
-            {n:"Barra",tag:"Para el bar con una barra y pocos turnos",price:"59",cls:"",badge:"",btn:"plbo",cta:"Empezar gratis",trial:"14 días del plan Servicio, sin tarjeta",
+            {n:"Barra",tag:"Para el bar con una barra y pocos turnos",price:"59",cls:"",badge:"",btn:"plbo",cta:"Solicitar prueba gratuita",trial:"Te llamamos y te damos acceso en 24h",
              feats:[["ck","1 camarero activo"],["ck","Hasta 12 mesas"],["ck","Voz + KDS en cocina"],["ck","Cobro Stripe + Bizum"],["ck","Soporte por email"]]},
-            {n:"Servicio",tag:"Para el restaurante en pleno funcionamiento",price:"99",cls:"feat",badge:"Más popular",btn:"plbf",cta:"Empezar gratis — 14 días",trial:"Sin tarjeta · En marcha en 10 minutos",
+            {n:"Servicio",tag:"Para el restaurante en pleno funcionamiento",price:"99",cls:"feat",badge:"Más popular",btn:"plbf",cta:"Solicitar 14 días gratis",trial:"Sin tarjeta · Te configuramos nosotros",
              feats:[["ckg","Hasta 4 camareros"],["ckg","Mesas ilimitadas"],["ckg","Voz + KDS + Impresoras"],["ckg","Cobro Stripe + Bizum"],["ckg","VeriFactu incluido"],["ckg","Soporte prioritario en español"]]},
-            {n:"Casa",tag:"Para el grupo con varios locales",price:"169",cls:"",badge:"",btn:"plbo",cta:"Hablar con ventas",trial:"También con 14 días de prueba",
+            {n:"Casa",tag:"Para el grupo con varios locales",price:"169",cls:"",badge:"",btn:"plbo",cta:"Solicitar demo",trial:"También con 14 días de prueba gratuita",
              feats:[["ck","Camareros ilimitados"],["ck","Multi-sala y terraza"],["ck","Varios locales en un panel"],["ck","TheFork integrado"],["ck","VeriFactu + facturación completa"],["ck","Soporte 24h + onboarding presencial"]]},
           ].map((p,i)=>(
             <div key={i} className={`plan ${p.cls} reveal rd${i}`}>
@@ -717,6 +718,10 @@ export default function Page() {
             <div className="cfield">
               <label htmlFor="cf-nombre">Tu nombre</label>
               <input id="cf-nombre" className="cinput" type="text" placeholder="María García" value={leadNombre} onChange={e=>setLeadNombre(e.target.value)} />
+            </div>
+            <div className="cfield">
+              <label htmlFor="cf-email">Tu email</label>
+              <input id="cf-email" className="cinput" type="email" placeholder="maria@restaurante.com" value={leadEmail} onChange={e=>setLeadEmail(e.target.value)} />
             </div>
             <div className="cfield">
               <label htmlFor="cf-rest">Nombre del restaurante</label>
