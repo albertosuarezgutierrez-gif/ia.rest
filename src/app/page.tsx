@@ -265,7 +265,7 @@ footer{border-top:1px solid var(--b);padding:48px 40px;max-width:1100px;margin:0
 .cnota{font-family:var(--soft);font-size:14px;color:var(--cream3);text-align:center;margin-top:16px}
 @media(max-width:768px){
   nav{padding:0 20px}.nav-c{display:none}
-  .nbr{font-size:12px;padding:7px 14px;letter-spacing:-.01em}
+  .nav-r{display:none}
   .hero{padding:0 20px 80px}
   .dstage{grid-template-columns:1fr;min-height:auto}
   .ddiv{width:100%;height:1px}
