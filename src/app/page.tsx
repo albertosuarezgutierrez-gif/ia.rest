@@ -282,7 +282,37 @@ footer{border-top:1px solid var(--b);padding:48px 40px;max-width:1100px;margin:0
   .fcta{padding:80px 20px}
   .contacto{padding:80px 20px}
   footer{padding:40px 20px}.fbot{padding:20px}
+  .pcalc-inner{grid-template-columns:1fr}
+  .pcalc-inc-grid{grid-template-columns:repeat(2,1fr)}
 }
+.pcalc{max-width:860px;margin:0 auto}
+.pcalc-inner{display:grid;grid-template-columns:1fr 1fr;gap:48px;background:var(--bg2);border:1px solid rgba(217,68,43,.22);border-radius:24px;padding:52px;margin-bottom:24px;box-shadow:rgba(217,68,43,.07) 0 20px 60px -20px}
+.pcalc-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream3);margin-bottom:20px}
+.pcalc-note{font-family:var(--soft);font-size:14px;color:var(--cream3);margin-top:6px;margin-bottom:28px}
+.pcalc-ctrl{display:flex;flex-direction:column;justify-content:center;gap:28px}
+.pcalc-field-label{font-size:14px;color:var(--cream2);margin-bottom:10px;letter-spacing:-.005em;line-height:1.4}
+.pcalc-field-label span{display:block;font-size:12px;color:var(--cream3);margin-top:3px}
+.pcalc-count{font-family:var(--head);font-style:italic;font-size:56px;color:var(--red);line-height:1;margin-bottom:10px;letter-spacing:-.03em}
+.pcalc-slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:9999px;background:var(--b);outline:none;cursor:pointer}
+.pcalc-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--red);cursor:pointer;box-shadow:rgba(217,68,43,.5) 0 0 14px}
+.pcalc-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--red);cursor:pointer;border:none}
+.pcalc-range-labels{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--cream3)}
+.pcalc-annual{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--cream2);cursor:pointer}
+.pcalc-toggle{width:40px;height:22px;border-radius:9999px;border:1px solid var(--b);cursor:pointer;background:var(--bg3);position:relative;transition:background .2s,border-color .2s;flex-shrink:0;padding:0}
+.pcalc-toggle.on{background:var(--red);border-color:var(--red)}
+.pcalc-toggle-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--cream);transition:transform .2s;display:block}
+.pcalc-toggle.on .pcalc-toggle-knob{transform:translateX(18px)}
+.pcsave{font-family:var(--mono);font-size:10px;font-style:normal;font-weight:700;color:var(--green);background:rgba(74,145,80,.1);border:1px solid rgba(74,145,80,.22);border-radius:9999px;padding:2px 9px;margin-left:6px;letter-spacing:.02em}
+.pcalc-examples{display:flex;gap:8px;flex-wrap:wrap}
+.pcalc-ex{background:transparent;border:1px solid var(--b);border-radius:12px;padding:10px 14px;cursor:pointer;font-family:var(--ui);text-align:left;transition:all .2s;display:flex;flex-direction:column;gap:4px}
+.pcalc-ex strong{font-size:12px;color:var(--cream2);font-weight:600;letter-spacing:-.005em}
+.pcalc-ex span{font-family:var(--mono);font-size:11px;color:var(--cream3)}
+.pcalc-ex.active,.pcalc-ex:hover{border-color:rgba(217,68,43,.35);background:rgba(217,68,43,.06)}
+.pcalc-ex.active strong{color:var(--cream)}.pcalc-ex.active span{color:var(--red)}
+.pcalc-includes{background:rgba(246,241,231,.015);border:1px solid var(--b);border-radius:18px;padding:28px 32px}
+.pcalc-inc-title{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream3);margin-bottom:20px}
+.pcalc-inc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 28px}
+.pcalc-inc-item{font-size:14px;color:var(--cream2);display:flex;align-items:baseline;gap:8px;letter-spacing:-.005em}
 `;
 
 const COMANDAS = [
@@ -294,6 +324,8 @@ const COMANDAS = [
 export default function Page() {
   const [openFaq, setOpenFaq] = useState<number|null>(null);
   const [leadNombre, setLeadNombre] = useState("");
+  const [pUsers, setPUsers] = useState(3);
+  const [pAnnual, setPAnnual] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
   const [leadRest, setLeadRest] = useState("");
   const [leadTel, setLeadTel] = useState("");
@@ -602,9 +634,9 @@ export default function Page() {
         </div>
         <div className="tgrid">
           {[
-            {cls:"hl",ini:"M",av:"ta-red",q:'"Antes mis camareras tardaban <em>45 segundos por comanda</em> en el TPV. Ahora dictan y se quedan en sala. En la primera semana noté que las propinas subieron."',r:"↑ 18% en propinas — primera semana",n:"María José Paredes",l:"Propietaria · Casa Manuela, Sevilla",p:"Plan Servicio"},
-            {cls:"",ini:"R",av:"ta-amber",q:'"El verano pasado era un caos en la terraza. Este año puse ia.rest y los sábados son otra cosa. <em>Cero errores de comanda</em> en dos meses."',r:"0 errores en 60 días de temporada",n:"Roberto Fuentes",l:"Gerente · El Rincón de la Bahía, Cádiz",p:"Plan Casa"},
-            {cls:"",ini:"C",av:"ta-green",q:'"Formé a dos camareros nuevos para agosto. <em>En 10 minutos ya estaban mandando comandas.</em> Antes era una semana mínimo."',r:"Formación de 1 semana → 10 minutos",n:"Carmen Vidal",l:"Jefa de sala · Taberna La Cava, Madrid",p:"Plan Servicio"},
+            {cls:"hl",ini:"M",av:"ta-red",q:'"Antes mis camareras tardaban <em>45 segundos por comanda</em> en el TPV. Ahora dictan y se quedan en sala. En la primera semana noté que las propinas subieron."',r:"↑ 18% en propinas — primera semana",n:"María José Paredes",l:"Propietaria · Casa Manuela, Sevilla",p:"3 perfiles · 99€/mes"},
+            {cls:"",ini:"R",av:"ta-amber",q:'"El verano pasado era un caos en la terraza. Este año puse ia.rest y los sábados son otra cosa. <em>Cero errores de comanda</em> en dos meses."',r:"0 errores en 60 días de temporada",n:"Roberto Fuentes",l:"Gerente · El Rincón de la Bahía, Cádiz",p:"6 perfiles · 159€/mes"},
+            {cls:"",ini:"C",av:"ta-green",q:'"Formé a dos camareros nuevos para agosto. <em>En 10 minutos ya estaban mandando comandas.</em> Antes era una semana mínimo."',r:"Formación de 1 semana → 10 minutos",n:"Carmen Vidal",l:"Jefa de sala · Taberna La Cava, Madrid",p:"4 perfiles · 119€/mes"},
           ].map((t,i)=>(
             <div key={i} className={`tcard ${t.cls} reveal rd${i}`}>
               <div className="tstars">⭐⭐⭐⭐⭐</div>
@@ -620,8 +652,8 @@ export default function Page() {
         </div>
         <div className="tgrid-wide" style={{marginTop:16}}>
           {[
-            {ini:"A",av:"ta-blue",q:'"Tengo un bar en el Mercado de San Miguel. Volumen brutal, espacio mínimo. <em>El camarero dicta y el cocinero lo ve al momento.</em> No sé cómo trabajábamos antes."',r:"Volumen ×3 · mismo equipo · cero cuellos de botella",n:"Alejandro Mora",l:"Propietario · Barra Madrid, Mercado San Miguel",p:"Plan Barra"},
-            {ini:"P",av:"ta-brown",q:'"Tengo 3 locales en Valencia. Con ia.rest <em>veo los tres en tiempo real</em> y las alertas de alergia ya no se pierden entre papeles."',r:"3 locales · panel único · alertas centralizadas",n:"Pilar Escrivá",l:"Grupo hostelero · La Familia Escrivá, Valencia",p:"Plan Casa"},
+            {ini:"A",av:"ta-blue",q:'"Tengo un bar en el Mercado de San Miguel. Volumen brutal, espacio mínimo. <em>El camarero dicta y el cocinero lo ve al momento.</em> No sé cómo trabajábamos antes."',r:"Volumen ×3 · mismo equipo · cero cuellos de botella",n:"Alejandro Mora",l:"Propietario · Barra Madrid, Mercado San Miguel",p:"1 perfil · 59€/mes"},
+            {ini:"P",av:"ta-brown",q:'"Tengo 3 locales en Valencia. Con ia.rest <em>veo los tres en tiempo real</em> y las alertas de alergia ya no se pierden entre papeles."',r:"3 locales · panel único · alertas centralizadas",n:"Pilar Escrivá",l:"Grupo hostelero · La Familia Escrivá, Valencia",p:"8 perfiles · 189€/mes"},
           ].map((t,i)=>(
             <div key={i} className={`tcard reveal rd${i}`}>
               <div className="tstars">⭐⭐⭐⭐⭐</div>
@@ -673,33 +705,73 @@ export default function Page() {
         <div className="phead reveal">
           <div className="section-tag">Precios</div>
           <h2>Sin comisiones por comanda.<br/>Sin sorpresas al mes siguiente.</h2>
-          <p>Precio fijo mensual. Todos los planes incluyen voz, KDS y soporte en español.</p>
+          <p>Solo pagas por los perfiles activos. Sin planes fijos, sin letra pequeña.</p>
         </div>
-        <div className="plans">
-          {[
-            {n:"Barra",tag:"Para el bar con una barra y pocos turnos",price:"59",cls:"",badge:"",btn:"plbo",cta:"Solicitar prueba gratuita",trial:"Te llamamos y te damos acceso en 24h",
-             feats:[["ck","1 camarero activo"],["ck","Hasta 12 mesas"],["ck","Voz + KDS en cocina"],["ck","Cobro Stripe + Bizum"],["ck","Soporte por email"]]},
-            {n:"Servicio",tag:"Para el restaurante en pleno funcionamiento",price:"99",cls:"feat",badge:"Más popular",btn:"plbf",cta:"Solicitar 14 días gratis",trial:"Sin tarjeta · Te configuramos nosotros",
-             feats:[["ckg","Hasta 4 camareros"],["ckg","Mesas ilimitadas"],["ckg","Voz + KDS + Impresoras"],["ckg","Cobro Stripe + Bizum"],["ckg","VeriFactu incluido"],["ckg","Soporte prioritario en español"]]},
-            {n:"Casa",tag:"Para el grupo con varios locales",price:"169",cls:"",badge:"",btn:"plbo",cta:"Solicitar demo",trial:"También con 14 días de prueba gratuita",
-             feats:[["ck","Camareros ilimitados"],["ck","Multi-sala y terraza"],["ck","Varios locales en un panel"],["ck","TheFork integrado"],["ck","VeriFactu + facturación completa"],["ck","Soporte 24h + onboarding presencial"]]},
-          ].map((p,i)=>(
-            <div key={i} className={`plan ${p.cls} reveal rd${i}`}>
-              {p.badge&&<div className="plbadge">{p.badge}</div>}
-              <div className="pln">{p.n}</div>
-              <div className="pltag">{p.tag}</div>
-              <div className="plpw"><div className="plp"><sup>€</sup>{p.price}</div><div className="plper">/mes · sin permanencia</div></div>
-              <div className="plhr"/>
-              <ul className="plfs">
-                {p.feats.map(([cls,txt])=>(
-                  <li key={txt}><span className={cls}>—</span>{txt}</li>
-                ))}
-              </ul>
-              <button className={`plbtn ${p.btn}`} onClick={()=>document.getElementById("contacto")?.scrollIntoView({behavior:"smooth"})}>{p.cta}</button>
-              <p className="pltrial">{p.trial}</p>
+        {(()=>{
+          const calcPrice=(n:number,ann:boolean)=>{
+            let p=59;
+            if(n>1) p+=Math.min(n-1,5)*20;
+            if(n>6) p+=(n-6)*15;
+            return ann?Math.round(p*0.82):p;
+          };
+          const price=calcPrice(pUsers,pAnnual);
+          const examples:Array<[number,string]>=[[1,"1 perfil"],[3,"3 perfiles"],[6,"6 perfiles"]];
+          const feats=["Voz + KDS en cocina","Cobro Stripe + Bizum","VeriFactu incluido","Impresoras térmicas","Alertas en tiempo real","Panel owner","Soporte en español","14 días de prueba gratis"];
+          return (
+            <div className="pcalc reveal">
+              <div className="pcalc-inner">
+                {/* Precio */}
+                <div>
+                  <div className="pcalc-label">Precio mensual estimado</div>
+                  <div className="plpw">
+                    <div className="plp"><sup>€</sup>{price}</div>
+                    <div className="plper">/mes · sin permanencia{pAnnual?" · pago anual":""}</div>
+                  </div>
+                  <div className="pcalc-note">{pUsers} perfil{pUsers>1?"es":""} activo{pUsers>1?"s":""}
+                    {pAnnual&&<> · <em style={{color:"var(--green)"}}>18% de descuento aplicado</em></>}
+                  </div>
+                  <button className="plbtn plbf" style={{maxWidth:320}} onClick={()=>document.getElementById("contacto")?.scrollIntoView({behavior:"smooth"})}>Solicitar 14 días gratis</button>
+                  <p className="pltrial">Sin tarjeta · Te configuramos nosotros</p>
+                </div>
+                {/* Controles */}
+                <div className="pcalc-ctrl">
+                  <div>
+                    <div className="pcalc-field-label">
+                      Perfiles activos
+                      <span>Camareros · cocina · jefe de sala. El owner no cuenta.</span>
+                    </div>
+                    <div className="pcalc-count">{pUsers}</div>
+                    <input type="range" min={1} max={15} value={pUsers} onChange={e=>setPUsers(+e.target.value)} className="pcalc-slider"/>
+                    <div className="pcalc-range-labels"><span>1</span><span>15 perfiles</span></div>
+                  </div>
+                  <div className="pcalc-annual" onClick={()=>setPAnnual(!pAnnual)}>
+                    <button className={`pcalc-toggle${pAnnual?" on":""}`} onClick={e=>{e.stopPropagation();setPAnnual(!pAnnual)}}>
+                      <span className="pcalc-toggle-knob"/>
+                    </button>
+                    <span>Facturación anual <em className="pcsave">Ahorra 18%</em></span>
+                  </div>
+                  <div>
+                    <div className="pcalc-field-label">Ejemplos rápidos</div>
+                    <div className="pcalc-examples">
+                      {examples.map(([n,label])=>(
+                        <button key={n} className={`pcalc-ex${pUsers===n?" active":""}`} onClick={()=>setPUsers(n)}>
+                          <strong>{label}</strong>
+                          <span>{calcPrice(n,pAnnual)}€/mes</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="pcalc-includes reveal rd1">
+                <div className="pcalc-inc-title">Incluido en todos los perfiles</div>
+                <div className="pcalc-inc-grid">
+                  {feats.map(f=><div key={f} className="pcalc-inc-item"><span className="ckg">—</span>{f}</div>)}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })()}
       </section>
 
       {/* FORMULARIO DE CONTACTO */}
