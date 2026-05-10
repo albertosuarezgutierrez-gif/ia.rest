@@ -695,7 +695,7 @@ export default function Page() {
 
       {/* TRUST */}
       <div className="trust">
-        {[["🔒","Datos en España","· Supabase EU-West"],["🇪🇸","Soporte en español","· Respuesta el mismo día"],["📋","VeriFactu AEAT 2026","· Incluido en Servicio y Casa"],["💳","Sin permanencia","· Cancela cuando quieras"]].map(([ico,b,t])=>(
+        {[["🔒","Datos en España","· Supabase EU-West"],["🇪🇸","Soporte en español","· Respuesta el mismo día"],["📋","VeriFactu AEAT 2026","· Incluido en todos los perfiles"],["💳","Sin permanencia","· Cancela cuando quieras"]].map(([ico,b,t])=>(
           <div key={b} className="ti"><span className="ico">{ico}</span><span><strong>{b}</strong>{t}</span></div>
         ))}
       </div>
