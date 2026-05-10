@@ -31,7 +31,7 @@ async function yaAlertado(
 }
 
 async function sendPush(rid: string, title: string, body: string) {
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://ia-rest.vercel.app'
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://www.iarest.es'
   // Construir header de sesión falso para que getRestauranteId devuelva el rid correcto
   await fetch(`${base}/api/push/send`, {
     method: 'POST',

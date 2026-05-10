@@ -1206,7 +1206,7 @@ function StepPrimerTurno({ session, onComplete }: { session: any; onComplete: ()
           ].map(item => (
             <div key={item.url} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: C.e2, borderRadius: 8 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, flexShrink: 0 }}/>
-              <span style={{ fontFamily: SM, fontSize: 13, color: item.color, flexShrink: 0 }}>ia-rest.vercel.app{item.url}</span>
+              <span style={{ fontFamily: SM, fontSize: 13, color: item.color, flexShrink: 0 }}>www.iarest.es{item.url}</span>
               <span style={{ fontFamily: SN, fontSize: 12, color: C.fg3, marginLeft: 'auto' }}>{item.pin}</span>
             </div>
           ))}

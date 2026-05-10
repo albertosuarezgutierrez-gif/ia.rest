@@ -14,7 +14,7 @@ export default function TerminosPage() {
         </h1>
         <p style={{ fontSize:13, color:'#6B5F52', margin:'0 0 40px' }}>Última actualización: mayo 2026</p>
         {[
-          { titulo:'1. Objeto del servicio', texto:'ia.rest es un software de gestión de restaurantes con inteligencia artificial conversacional para la toma de pedidos por voz. El servicio se presta como SaaS (Software as a Service) a través de la URL ia-rest.vercel.app.' },
+          { titulo:'1. Objeto del servicio', texto:'ia.rest es un software de gestión de restaurantes con inteligencia artificial conversacional para la toma de pedidos por voz. El servicio se presta como SaaS (Software as a Service) a través de la URL www.iarest.es.' },
           { titulo:'2. Contratación y pago', texto:'El servicio se contrata mediante suscripción mensual con un período de prueba gratuito de 14 días. Al finalizar el trial, se realizará el cargo automático según el plan contratado. El precio depende del número de usuarios activos (camareros, jefes de sala y cocina). El propietario del restaurante no cuenta como usuario de pago.' },
           { titulo:'3. Cancelación', texto:'Puedes cancelar tu suscripción en cualquier momento desde el panel de propietario o contactando con nosotros por WhatsApp. La cancelación es efectiva al final del período de facturación en curso. No se realizan reembolsos por períodos parciales.' },
           { titulo:'4. Datos y privacidad', texto:'Los datos introducidos en el sistema (carta, comandas, clientes) son propiedad del restaurante. ia.rest actúa como encargado del tratamiento según el RGPD. Los datos de voz (transcripciones) se procesan para mejorar el sistema y se eliminan automáticamente a los 90 días.' },

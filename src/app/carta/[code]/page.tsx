@@ -17,7 +17,7 @@ export async function generateMetadata({
     robots: { index: false, follow: false },
     openGraph: {
       title: 'Carta digital',
-      url: `https://ia-rest.vercel.app/carta/${code}`,
+      url: `https://www.iarest.es/carta/${code}`,
     },
   }
 }

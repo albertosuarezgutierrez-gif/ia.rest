@@ -53,7 +53,7 @@ export default function CartaPublicPanel({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const cartaUrl = rest ? `https://ia-rest.vercel.app/carta/${rest.slug}` : ''
+  const cartaUrl = rest ? `https://www.iarest.es/carta/${rest.slug}` : ''
 
   const qrSrc = useCallback(
     (size: number) =>

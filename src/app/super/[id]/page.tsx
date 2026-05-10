@@ -260,7 +260,7 @@ export default function SuperRestaurantePage() {
                   {[
                     ['ID Supabase', rest.id],
                     ['Slug / Código', `${rest.slug} · ${rest.codigo_acceso}`],
-                    ['Enlace de acceso', rest.access_token ? `ia-rest.vercel.app/login?t=${rest.access_token}` : '⚠ Sin token — ejecuta migración SQL'],
+                    ['Enlace de acceso', rest.access_token ? `www.iarest.es/login?t=${rest.access_token}` : '⚠ Sin token — ejecuta migración SQL'],
                     ['Ciudad', rest.ciudad || '—'],
                     ['NIF', rest.nif || '⚠ No configurado'],
                     ['Razón Social', rest.razon_social || '⚠ No configurado'],

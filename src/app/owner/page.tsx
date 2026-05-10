@@ -2748,7 +2748,7 @@ function ImpresorasTab() {
               {[
                 'git clone https://github.com/albertosuarezgutierrez-gif/ia.rest.git',
                 'cd ia.rest/scripts',
-                'export IAREST_API=https://ia-rest.vercel.app',
+                'export IAREST_API=https://www.iarest.es',
                 'export BRIDGE_TOKEN=<token de abajo>',
                 'node bridge-local.js',
               ].map((cmd, idx) => (

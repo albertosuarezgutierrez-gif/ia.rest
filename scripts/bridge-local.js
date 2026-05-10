@@ -16,13 +16,13 @@
 //   node bridge-local.js
 //
 // Variables de entorno (.env o exportadas):
-//   IAREST_API=https://ia-rest.vercel.app   (sin slash final)
+//   IAREST_API=https://www.iarest.es   (sin slash final)
 //   BRIDGE_TOKEN=tu_token_de_32_chars
 // ============================================================
 
 const net = require('net')
 
-const API    = (process.env.IAREST_API    || 'https://ia-rest.vercel.app').replace(/\/$/, '')
+const API    = (process.env.IAREST_API    || 'https://www.iarest.es').replace(/\/$/, '')
 const TOKEN  = process.env.BRIDGE_TOKEN   || ''
 const POLL_MS = parseInt(process.env.POLL_MS || '3000', 10)
 const TIMEOUT_MS = 5000  // TCP connection timeout

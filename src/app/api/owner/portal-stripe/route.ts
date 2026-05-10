@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = new Stripe(getStripeSecretKey(), { apiVersion: '2023-10-16' as any })
-  const appUrl = process.env.APP_URL ?? 'https://ia-rest.vercel.app'
+  const appUrl = process.env.APP_URL ?? 'https://www.iarest.es'
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: perfil.stripe_customer_id,
