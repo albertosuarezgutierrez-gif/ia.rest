@@ -143,9 +143,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [autoThreshold, setAutoThreshold] = useState(85)    // % mínimo para auto-confirmar
   const [ttsOff, setTtsOff]             = useState(false)   // BRAIN no habla, solo escribe
   const [mesaFijada, setMesaFijada]     = useState<string|null>(null)  // mesa pinchada en HABLAR
-  const [alergenosMesa, setAlergenosMesa] = useState<string[]>([])
-  const [zonaAsignada, setZonaAsignada]   = useState('salon')
-  const [fontBig, setFontBig]             = useState(false)
+  const [alergenosMesa, setAlergenosMesa]   = useState<string[]>([])
+  const [zonasAsignadas, setZonasAsignadas] = useState<string[]>([])   // [] = todas
+  const [fontBig, setFontBig]               = useState(false)
 
   const addMsg = useCallback((from:ChatMsg['from'], texto:string, tipo?:ChatMsg['tipo']) => {
     setChatMsgs(prev => [...prev.slice(-4), {id:Date.now().toString(), from, texto, ts:new Date(), tipo}])
@@ -190,7 +190,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     try {
       const cfg = JSON.parse(localStorage.getItem('ia_cfg')||'{}')
       if (cfg.voiceConfirm !== undefined) setVoiceConfirm(cfg.voiceConfirm)
-      if (cfg.zonaAsignada) setZonaAsignada(cfg.zonaAsignada)
+      if (cfg.zonasAsignadas) setZonasAsignadas(cfg.zonasAsignadas)
+      else if (cfg.zonaAsignada) setZonasAsignadas([cfg.zonaAsignada]) // backward compat
       if (cfg.fontBig !== undefined) setFontBig(cfg.fontBig)
       if (cfg.autoConfirm !== undefined) setAutoConfirm(cfg.autoConfirm)
       if (cfg.autoThreshold !== undefined) setAutoThreshold(cfg.autoThreshold)
@@ -734,6 +735,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
             onVoiceMode={()=>setTab('hablar')}
             mesasPlano={mesasPlano}
             zonasPlano={zonasPlano}
+            zonasAsignadas={zonasAsignadas}
           />
         </div>
       )}
@@ -835,7 +837,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         <ConfigScreen
           session={session}
           voiceConfirm={voiceConfirm}    onVoiceConfirm={v=>{setVoiceConfirm(v);saveCfg({voiceConfirm:v})}}
-          zonaAsignada={zonaAsignada}    onZona={v=>{setZonaAsignada(v);saveCfg({zonaAsignada:v})}}
+          zonasAsignadas={zonasAsignadas} onZonasAsignadas={v=>{setZonasAsignadas(v);saveCfg({zonasAsignadas:v})}}
+          zonasDisponibles={zonasPlano}
           fontBig={fontBig}              onFontBig={v=>{setFontBig(v);saveCfg({fontBig:v})}}
           alergenosMesa={alergenosMesa}  onAlergenosMesa={()=>setMostrarAlerg(true)}
           subscribed={subscribed}        onSubscribe={subscribe}
@@ -945,10 +948,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 }
 
 /* ─── CONFIG ─────────────────────────────────────────────────── */
-function ConfigScreen({session,voiceConfirm,onVoiceConfirm,zonaAsignada,onZona,fontBig,onFontBig,alergenosMesa,onAlergenosMesa,subscribed,onSubscribe,hasInstall,onInstall,autoConfirm,onAutoConfirm,autoThreshold,onAutoThreshold,ttsOff,onTtsOff,onLogout}:{
+function ConfigScreen({session,voiceConfirm,onVoiceConfirm,zonasAsignadas,onZonasAsignadas,zonasDisponibles,fontBig,onFontBig,alergenosMesa,onAlergenosMesa,subscribed,onSubscribe,hasInstall,onInstall,autoConfirm,onAutoConfirm,autoThreshold,onAutoThreshold,ttsOff,onTtsOff,onLogout}:{
   session:{id:string;nombre:string;rol:string}
   voiceConfirm:boolean; onVoiceConfirm:(v:boolean)=>void
-  zonaAsignada:string;  onZona:(v:string)=>void
+  zonasAsignadas:string[]; onZonasAsignadas:(v:string[])=>void; zonasDisponibles?:ZonaInfo[]
   fontBig:boolean;      onFontBig:(v:boolean)=>void
   alergenosMesa:string[];onAlergenosMesa:()=>void
   subscribed:boolean;   onSubscribe:()=>void
@@ -992,9 +995,22 @@ function ConfigScreen({session,voiceConfirm,onVoiceConfirm,zonaAsignada,onZona,f
       </div>
       <div style={{padding:'0 20px'}}>
         <div style={{padding:'13px 0',borderBottom:`1px solid ${C.rule}`}}>
-          <div style={{fontSize:13,fontWeight:500,color:C.ink,marginBottom:9}}>Zona asignada</div>
+          <div style={{fontSize:13,fontWeight:500,color:C.ink,marginBottom:4}}>Zona asignada</div>
+          <div style={{fontSize:11,color:C.ink4,marginBottom:9}}>
+            {zonasAsignadas.length===0
+              ? 'Todas las zonas — sin filtro activo'
+              : zonasAsignadas.length===1
+                ? '1 zona · filtro activo en Manual'
+                : `${zonasAsignadas.length} zonas · filtro activo en Manual`}
+          </div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap' as const}}>
-            {['salon','terraza','barra'].map(z=><Chip key={z} label={z.charAt(0).toUpperCase()+z.slice(1)} on={zonaAsignada===z} onClick={()=>onZona(z)}/>)}
+            {(zonasDisponibles && zonasDisponibles.length > 0
+              ? zonasDisponibles.map(z=>({key:z.tipo, label:z.nombre}))
+              : [{key:'salon',label:'Salón'},{key:'terraza',label:'Terraza'},{key:'barra',label:'Barra'}]
+            ).map(z=>{
+              const on = zonasAsignadas.includes(z.key)
+              return <Chip key={z.key} label={z.label} on={on} onClick={()=>onZonasAsignadas(on?zonasAsignadas.filter(x=>x!==z.key):[...zonasAsignadas,z.key])}/>
+            })}
           </div>
         </div>
         <Row label="Confirmación por voz" sub="BRAIN lee la comanda antes de confirmar"

@@ -35,13 +35,14 @@ interface Session { id:string; nombre:string; rol:string; restaurante_id?:string
 
 export default function ManualComanda({
   session, onSent, onVoiceMode,
-  mesasPlano, zonasPlano,
+  mesasPlano, zonasPlano, zonasAsignadas,
 }: {
   session: Session
   onSent: () => void
   onVoiceMode?: () => void
   mesasPlano?: MesaPlano[]
   zonasPlano?: ZonaInfo[]
+  zonasAsignadas?: string[]
 }) {
   const [step, setStep] = useState<'mesa'|'carta'>('mesa')
   const [mesas, setMesas] = useState<Mesa[]>([])
@@ -59,6 +60,15 @@ export default function ManualComanda({
   const [error, setError] = useState('')
   const [formatoPicker, setFormatoPicker] = useState<Producto|null>(null)
   const [showCart, setShowCart] = useState(false)
+
+  // Auto-filtrar según zonas asignadas del camarero
+  useEffect(() => {
+    if (zonasAsignadas && zonasAsignadas.length === 1) {
+      setZonaFiltro(zonasAsignadas[0])
+    } else {
+      setZonaFiltro('todas')
+    }
+  }, [zonasAsignadas?.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const h = useCallback(() => ({
     'x-ia-session': JSON.stringify(session),
@@ -132,7 +142,9 @@ export default function ManualComanda({
     return mc && mq
   })
 
-  const mesasFiltradas = zonaFiltro === 'todas' ? mesas : mesas.filter(m => m.zona === zonaFiltro)
+  const mesasFiltradas = zonaFiltro === 'todas'
+    ? (zonasAsignadas?.length ? mesas.filter(m => zonasAsignadas.includes(m.zona)) : mesas)
+    : mesas.filter(m => m.zona === zonaFiltro)
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -208,9 +220,12 @@ export default function ManualComanda({
           return { ...m, minutos: plano?.minutos_abierta ?? null, capacidad: plano?.capacidad ?? null }
         })
         // Zonas para tabs — usar zonasPlano si hay, si no usar zonas string[]
-        const zonaTabs = zonasPlano && zonasPlano.length > 0
+        const zonaTabsAll = zonasPlano && zonasPlano.length > 0
           ? zonasPlano.map(z => ({ key: z.tipo, label: z.nombre }))
           : zonas.map(z => ({ key: z, label: z }))
+        const zonaTabs = zonasAsignadas?.length
+          ? zonaTabsAll.filter(z => zonasAsignadas.includes(z.key))
+          : zonaTabsAll
 
         // Colores de sombra por estado (técnica shadow ring tintada)
         const shadowCard = (estado: string) => {
