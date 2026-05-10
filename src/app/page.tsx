@@ -256,6 +256,10 @@ footer{border-top:1px solid var(--b);padding:48px 40px;max-width:1100px;margin:0
 .csubmit{margin-top:8px;padding:16px 32px;border-radius:9999px;background:var(--red);border:none;color:var(--cream);font-size:16px;font-weight:700;font-family:var(--ui);cursor:pointer;letter-spacing:-.015em;box-shadow:rgba(217,68,43,.55) 0 8px 28px -6px;transition:all .25s}
 .csubmit:hover:not(:disabled){background:#e54e35;transform:translateY(-2px);box-shadow:rgba(217,68,43,.7) 0 12px 36px -6px}
 .csubmit:disabled{opacity:.6;cursor:not-allowed}
+.ccheck-row{display:flex;align-items:flex-start;gap:12px;margin-top:4px}
+.ccheck-row input[type=checkbox]{width:18px;height:18px;min-width:18px;accent-color:var(--red);cursor:pointer;margin-top:2px;border-radius:4px}
+.ccheck-row label{font-family:var(--ui);font-size:13px;color:var(--cream2);line-height:1.6;cursor:pointer}
+.ccheck-row label a{color:var(--red);text-decoration:underline}
 .csent{text-align:center;padding:40px 0}
 .csent .ccheck{font-size:48px;margin-bottom:20px}
 .csent h3{font-family:var(--head);font-style:italic;font-size:28px;color:var(--cream);margin-bottom:12px}
@@ -342,12 +346,17 @@ export default function Page() {
   const [leadSending, setLeadSending] = useState(false);
   const [leadSent, setLeadSent] = useState(false);
   const [leadError, setLeadError] = useState("");
+  const [leadConsent, setLeadConsent] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const demoRunning = useRef(false);
 
   const handleLead = async () => {
     if (!leadNombre.trim() || !leadRest.trim() || !leadTel.trim() || !leadEmail.trim()) {
       setLeadError("Rellena todos los campos para que podamos contactarte.");
+      return;
+    }
+    if (!leadConsent) {
+      setLeadError("Debes aceptar la política de privacidad para continuar.");
       return;
     }
     setLeadError("");
@@ -819,7 +828,18 @@ export default function Page() {
               <input id="cf-tel" className="cinput" type="tel" placeholder="+34 600 000 000" value={leadTel} onChange={e=>setLeadTel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLead()} />
             </div>
             {leadError && <p className="cerr">{leadError}</p>}
-            <button className="csubmit" onClick={handleLead} disabled={leadSending}>
+            <div className="ccheck-row">
+              <input
+                id="cf-consent"
+                type="checkbox"
+                checked={leadConsent}
+                onChange={e => setLeadConsent(e.target.checked)}
+              />
+              <label htmlFor="cf-consent">
+                He leído y acepto la <a href="/privacidad" target="_blank" rel="noopener">Política de privacidad</a>. Consiento el tratamiento de mis datos para gestionar mi solicitud de demo y que ia.rest se ponga en contacto conmigo. Puedo retirar el consentimiento en cualquier momento.
+              </label>
+            </div>
+            <button className="csubmit" onClick={handleLead} disabled={leadSending || !leadConsent}>
               {leadSending ? "Enviando…" : "Quiero la demo — me llamáis vosotros →"}
             </button>
             <p className="cnota">Sin tarjeta · Sin compromiso · Respuesta en menos de 24h</p>

@@ -9,6 +9,7 @@ export default function PrivacidadPage() {
       'Actividad: Prestación de servicios SaaS para hostelería bajo la marca ia.rest',
     ]},
     { titulo: '2. Datos que recopilamos y por qué', bloques: [
+      'Datos de solicitud de demo y contacto comercial: nombre, email, teléfono y nombre del restaurante facilitados a través del formulario de contacto de la web. Base legal: consentimiento del interesado (art. 6.1.a RGPD). Finalidad: gestionar la solicitud, ponernos en contacto para organizar la demo y, en su caso, informar sobre el servicio. Conservación: hasta que retires el consentimiento o un máximo de 2 años desde el último contacto sin actividad. Puedes retirar el consentimiento en cualquier momento escribiendo a alberto.suarez.gutierrez@gmail.com, sin que ello afecte a la licitud del tratamiento previo. Conforme al art. 21 LSSI-CE, el consentimiento otorgado en el formulario ampara exclusivamente las comunicaciones relacionadas con el servicio ia.rest.',
       'Datos de registro: nombre, email, nombre del restaurante, número de usuarios. Base legal: ejecución del contrato (art. 6.1.b RGPD). Finalidad: crear y gestionar tu cuenta.',
       'Datos de facturación: NIF, razón social, dirección. Base legal: obligación legal (LSSI, VeriFactu). Finalidad: emisión de facturas legales.',
       'Datos operativos del restaurante: carta de productos, mesas, zonas, comandas, secciones de cocina. Base legal: ejecución del contrato. Finalidad: prestación del servicio. Estos datos son propiedad del restaurante; ia.rest actúa como encargado del tratamiento.',
