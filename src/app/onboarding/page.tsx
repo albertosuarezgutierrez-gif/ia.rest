@@ -279,7 +279,7 @@ function StepCarta({ session, onNext }: { session: any; onNext: () => void }) {
                       const active = p.alergenos.includes(a)
                       return (
                         <button key={a} onClick={() => updateProducto(idx, 'alergenos', active ? p.alergenos.filter((x: string) => x !== a) : [...p.alergenos, a])}
-                          style={{ padding: '3px 8px', borderRadius: 20, border: '1px solid ' + active ? C.amber : C.rule2, background: active ? C.amberS : 'transparent', color: active ? C.amber : C.fg3, fontFamily: SN, fontSize: 11, cursor: 'pointer' }}>
+                          style={{ padding: '3px 8px', borderRadius: 20, border: '1px solid ' + (active ? C.amber : C.rule2), background: active ? C.amberS : 'transparent', color: active ? C.amber : C.fg3, fontFamily: SN, fontSize: 11, cursor: 'pointer' }}>
                           {a}
                         </button>
                       )
@@ -344,7 +344,7 @@ function StepCarta({ session, onNext }: { session: any; onNext: () => void }) {
         onDrop={e => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files) }}
         onClick={() => fileRef.current?.click()}
         style={{
-          border: '2px dashed ' + dragging ? C.red : C.rule2,
+          border: '2px dashed ' + (dragging ? C.red : C.rule2),
           borderRadius: 14,
           padding: '36px 24px',
           textAlign: 'center',
@@ -471,7 +471,7 @@ function StepPersonal({ session, onNext }: { session: any; onNext: () => void })
             <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && pinRef.current?.focus()}
               placeholder="Nombre (Marta, Iván…)"
-              style={{ width: '100%', background: C.e2, border: '1px solid ' + errors.nombre ? '#F07060' : C.rule2, color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SN, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}/>
+              style={{ width: '100%', background: C.e2, border: '1px solid ' + (errors.nombre ? '#F07060' : C.rule2), color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SN, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}/>
             {errors.nombre && <p style={{ fontFamily: SN, fontSize: 11, color: '#F07060', margin: '4px 0 0' }}>{errors.nombre}</p>}
           </div>
           <select value={form.rol} onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
@@ -482,7 +482,7 @@ function StepPersonal({ session, onNext }: { session: any; onNext: () => void })
             <input ref={pinRef} value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
               onKeyDown={e => e.key === 'Enter' && addPersonal()}
               placeholder="PIN" maxLength={4} inputMode="numeric"
-              style={{ width: '100%', background: C.e2, border: '1px solid ' + errors.pin ? '#F07060' : C.rule2, color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SM, fontSize: 16, outline: 'none', letterSpacing: 4, boxSizing: 'border-box' }}/>
+              style={{ width: '100%', background: C.e2, border: '1px solid ' + (errors.pin ? '#F07060' : C.rule2), color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SM, fontSize: 16, outline: 'none', letterSpacing: 4, boxSizing: 'border-box' }}/>
             {errors.pin && <p style={{ fontFamily: SN, fontSize: 11, color: '#F07060', margin: '4px 0 0' }}>{errors.pin}</p>}
           </div>
         </div>
@@ -697,7 +697,7 @@ function StepSecciones({ onNext }: { onNext: () => void }) {
           const ya = secciones.some(s => s.nombre === p.nombre)
           return (
             <button key={p.nombre} onClick={() => añadirPreset(p)} disabled={ya}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: '1px solid ' + ya ? C.rule : p.color, background: ya ? C.e1 : `${p.color}18`, color: ya ? C.fg3 : p.color, fontFamily: SN, fontSize: 13, cursor: ya ? 'default' : 'pointer', transition: 'all .15s' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: '1px solid ' + (ya ? C.rule : p.color), background: ya ? C.e1 : `${p.color}18`, color: ya ? C.fg3 : p.color, fontFamily: SN, fontSize: 13, cursor: ya ? 'default' : 'pointer', transition: 'all .15s' }}>
               {p.icono} {p.nombre} {ya && '✓'}
             </button>
           )
@@ -709,7 +709,7 @@ function StepSecciones({ onNext }: { onNext: () => void }) {
         <input value={form.nombre} onChange={e => { setForm(f => ({ ...f, nombre: e.target.value })); setError('') }}
           onKeyDown={e => e.key === 'Enter' && añadir()}
           placeholder="Nombre de sección personalizada"
-          style={{ flex: 1, background: C.e2, border: '1px solid ' + error ? '#F07060' : C.rule2, color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SN, fontSize: 14, outline: 'none' }}/>
+          style={{ flex: 1, background: C.e2, border: '1px solid ' + (error ? '#F07060' : C.rule2), color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SN, fontSize: 14, outline: 'none' }}/>
         <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
           style={{ width: 42, height: 40, border: '1px solid ' + C.rule2, borderRadius: 8, background: C.e2, cursor: 'pointer', padding: 4 }}/>
         <button onClick={añadir}
@@ -821,7 +821,7 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
             { v: 'tcp'   as const, label: 'ESC/POS TCP/IP',  sub: 'Epson TM-T20 · genéricas LAN',  desc: 'Impresora en red local. Necesita el bridge ia.rest corriendo.' },
           ].map(opt => (
             <button key={opt.v} onClick={() => setTipo(opt.v)}
-              style={{ background: tipo === opt.v ? `${C.red}18` : C.e2, border: '1.5px solid ' + tipo === opt.v ? C.red : C.rule2, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all .15s' }}>
+              style={{ background: tipo === opt.v ? C.red + '18' : C.e2, border: '1.5px solid ' + (tipo === opt.v ? C.red : C.rule2), borderRadius: 10, padding: '10px 12px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all .15s' }}>
               <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 700, color: tipo === opt.v ? C.red : C.fg, marginBottom: 2 }}>{opt.label}</div>
               <div style={{ fontFamily: SM, fontSize: 11, color: C.fg3, marginBottom: 4 }}>{opt.sub}</div>
               <div style={{ fontFamily: SN, fontSize: 12, color: C.fg3, lineHeight: 1.4 }}>{opt.desc}</div>
@@ -869,7 +869,7 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input value={form.cloud_device_id} onChange={e => setForm(f => ({ ...f, cloud_device_id: e.target.value.toUpperCase() }))}
                     placeholder="00:11:62:XX:XX:XX"
-                    style={{ flex: 1, background: C.e2, border: '1px solid ' + error ? '#F07060' : C.rule2, color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none', letterSpacing: 1 }}/>
+                    style={{ flex: 1, background: C.e2, border: '1px solid ' + (error ? '#F07060' : C.rule2), color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none', letterSpacing: 1 }}/>
                   <button onClick={añadir}
                     style={{ background: C.e2, border: '1px solid ' + C.rule2, color: C.fg2, borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontFamily: SN, fontSize: 13, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Icon d={ICONS.plus} size={14}/> Añadir
@@ -882,7 +882,7 @@ function StepImpresoras({ onNext }: { onNext: () => void }) {
                   <label style={{ fontFamily: SN, fontSize: 12, color: C.fg3, display: 'block', marginBottom: 5 }}>IP de la impresora</label>
                   <input value={form.ip_address} onChange={e => setForm(f => ({ ...f, ip_address: e.target.value }))}
                     placeholder="192.168.1.100"
-                    style={{ width: '100%', background: C.e2, border: '1px solid ' + error ? '#F07060' : C.rule2, color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const }}/>
+                    style={{ width: '100%', background: C.e2, border: '1px solid ' + (error ? '#F07060' : C.rule2), color: C.fg, borderRadius: 8, padding: '9px 12px', fontFamily: SM, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const }}/>
                 </div>
                 <div>
                   <label style={{ fontFamily: SN, fontSize: 12, color: C.fg3, display: 'block', marginBottom: 5 }}>Puerto</label>
@@ -1048,13 +1048,13 @@ function StepMesas({ session, onComplete }: { session: any; onComplete: () => vo
           <div>
             <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
               placeholder="Salón interior, Terraza…"
-              style={{ width: '100%', background: C.e2, border: '1px solid ' + errors.nombre ? '#F07060' : C.rule2, color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SN, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}/>
+              style={{ width: '100%', background: C.e2, border: '1px solid ' + (errors.nombre ? '#F07060' : C.rule2), color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SN, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}/>
             {errors.nombre && <p style={{ fontFamily: SN, fontSize: 11, color: '#F07060', margin: '4px 0 0' }}>{errors.nombre}</p>}
           </div>
           <div>
             <input value={form.prefijo} onChange={e => setForm(f => ({ ...f, prefijo: e.target.value.toUpperCase().slice(0, 3) }))}
               placeholder="S"
-              style={{ width: '100%', background: C.e2, border: '1px solid ' + errors.prefijo ? '#F07060' : C.rule2, color: C.red, borderRadius: 7, padding: '9px 12px', fontFamily: SM, fontSize: 16, fontWeight: 700, outline: 'none', letterSpacing: 2, textAlign: 'center', boxSizing: 'border-box' }}/>
+              style={{ width: '100%', background: C.e2, border: '1px solid ' + (errors.prefijo ? '#F07060' : C.rule2), color: C.red, borderRadius: 7, padding: '9px 12px', fontFamily: SM, fontSize: 16, fontWeight: 700, outline: 'none', letterSpacing: 2, textAlign: 'center', boxSizing: 'border-box' }}/>
             {errors.prefijo && <p style={{ fontFamily: SN, fontSize: 11, color: '#F07060', margin: '4px 0 0' }}>{errors.prefijo}</p>}
           </div>
           <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
@@ -1064,7 +1064,7 @@ function StepMesas({ session, onComplete }: { session: any; onComplete: () => vo
           <div>
             <input value={form.count} onChange={e => setForm(f => ({ ...f, count: parseInt(e.target.value) || 1 }))}
               type="number" min={1} max={50} placeholder="6"
-              style={{ width: '100%', background: C.e2, border: '1px solid ' + errors.count ? '#F07060' : C.rule2, color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SM, fontSize: 16, outline: 'none', textAlign: 'center', boxSizing: 'border-box' }}/>
+              style={{ width: '100%', background: C.e2, border: '1px solid ' + (errors.count ? '#F07060' : C.rule2), color: C.fg, borderRadius: 7, padding: '9px 12px', fontFamily: SM, fontSize: 16, outline: 'none', textAlign: 'center', boxSizing: 'border-box' }}/>
             {errors.count && <p style={{ fontFamily: SN, fontSize: 11, color: '#F07060', margin: '4px 0 0' }}>{errors.count}</p>}
           </div>
         </div>
