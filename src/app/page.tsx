@@ -464,8 +464,8 @@ export default function Page() {
         <div className="hglow"/><div className="hglow2"/>
         <div className="hi">
           <div className="ep">
-            <span className="chip">Nuevo</span>
-            <span className="pt">Reconocimiento de voz en español hostelero — &ldquo;la cuatro de terraza&rdquo;</span>
+            <span className="chip">Live</span>
+            <span className="pt">TPV por voz para hostelería española — &ldquo;la cuatro de terraza&rdquo;</span>
           </div>
           <h1>
             Para de correr<br/>
@@ -572,7 +572,7 @@ export default function Page() {
         <div className="steps">
           {[
             {n:"1",ico:"🎙️",t:"El camarero habla",p:'Sin abrir apps, sin buscar platos. Dice la comanda en voz natural: "dos de la casa", "sin sal ojo", "que llegue primero".',time:"Tiempo: 4 segundos"},
-            {n:"2",ico:"🧠",t:"ia.rest entiende",p:"Whisper transcribe, el LLM estructura. Mesa, platos, cantidades, notas de alergias. En español real de hostelería.",time:"Tiempo: 0.4 segundos"},
+            {n:"2",ico:"🧠",t:"ia.rest entiende",p:"Whisper (Groq) transcribe en menos de 0,3s. Claude estructura: mesa, platos, cantidades, notas de alergias. En español real de hostelería.",time:"Tiempo: 0.4 segundos"},
             {n:"3",ico:"📺",t:"Cocina lo ve al momento",p:"El ticket aparece en el KDS con prioridades, alertas de alergia y orden de llegada. La cocina marcha sin esperar al camarero.",time:"Total: menos de 5 segundos"},
           ].map(s=>(
             <div key={s.n} className="step reveal" data-n={s.n}>
@@ -675,11 +675,11 @@ export default function Page() {
         <h2 className="reveal">Lo que siempre<br/><em>preguntan primero</em></h2>
         <div className="faqlist">
           {[
-            {q:"¿Funciona si hay ruido en sala?",a:"Sí. Usamos Whisper de OpenAI, el mejor modelo de transcripción para español. Funciona bien con ruido de fondo, música y conversaciones cercanas. Recomendamos hablar a 15–20 cm del micrófono, algo natural cuando ya llevas la comanda en mente."},
+            {q:"¿Funciona si hay ruido en sala?",a:"Sí. Usamos Whisper large-v3 vía Groq, el mejor modelo de transcripción para español. Funciona bien con ruido de fondo, música y conversaciones cercanas. Recomendamos hablar a 15–20 cm del micrófono, algo natural cuando ya llevas la comanda en mente."},
             {q:"¿Qué pasa si se cae internet en mitad del servicio?",a:"Las comandas ya enviadas siguen visibles en cocina. Para nuevas comandas cae a modo manual: el camarero puede abrir cualquier comanda anterior y modificarla."},
             {q:"¿Necesito hardware nuevo? ¿Impresoras, tablets específicas?",a:"No. ia.rest funciona en cualquier móvil o tablet con navegador. Para el KDS en cocina, una tablet de 70€ es suficiente. Para impresoras de tickets, garantizamos compatibilidad 100% con modelos ESC/POS TCP (IP local) y Star CloudPRNT LAN/WiFi como la Star TSP143IIILAN o TSP143IIIW. Si ya tienes otra impresora, probablemente funcione, pero solo garantizamos las anteriores."},
             {q:"¿El sistema entiende la carta de mi restaurante?",a:'Sí. Durante el onboarding (10 minutos) introduces tus platos y el sistema los aprende. Si el camarero dice "una de la casa" y en tu carta se llama "Ensaladilla de la abuela", el ticket sale con el nombre correcto.'},
-            {q:"¿Cómo funciona lo de VeriFactu y Hacienda?",a:"VeriFactu es el sistema obligatorio de la AEAT para emitir facturas. Obligatorio para sociedades desde enero 2027 y autónomos desde julio 2027. Multa de hasta 50.000 €/ejercicio por software no homologado. ia.rest genera facturas firmadas digitalmente ya activo."},
+            {q:"¿Cómo funciona lo de VeriFactu y Hacienda?",a:"VeriFactu es el sistema obligatorio de la AEAT para emitir facturas. Obligatorio para sociedades desde enero de 2026 y autónomos desde julio de 2026. Multa de hasta 50.000 €/ejercicio por software no homologado. ia.rest genera facturas con hash encadenado SHA-256 y QR verificable. Incluido en todos los perfiles."},
             {q:"¿Puedo cancelar en cualquier momento?",a:"Sí, siempre. Sin permanencia ni penalizaciones. El servicio sigue activo hasta final del período pagado. Datos exportables en CSV. No te vamos a llamar para retenerte."},
           ].map((f,i)=>(
             <div key={i} className={`faqitem${openFaq===i?" open":""}`}>
@@ -819,7 +819,7 @@ export default function Page() {
         </div>
         <div className="fcol">
           <h4>Producto</h4>
-          <ul>{[["#como","Cómo funciona"],["#precios","Precios"],["#","KDS en cocina"],["#","VeriFactu"]].map(([h,l])=><li key={l}><a href={h}>{l}</a></li>)}</ul>
+          <ul>{[["#como","Cómo funciona"],["#precios","Precios"],["#como","KDS en cocina"],["#contacto","VeriFactu"]].map(([h,l])=><li key={l}><a href={h}>{l}</a></li>)}</ul>
         </div>
         <div className="fcol">
           <h4>Legal</h4>
