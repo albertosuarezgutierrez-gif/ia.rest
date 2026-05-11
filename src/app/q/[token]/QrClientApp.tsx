@@ -186,29 +186,28 @@ export default function QrClientApp({ token }: { token: string }) {
     { id:'problema',  emoji:'⚠️', label:'Tengo un problema' },
   ]
 
-  const mostrarBotonFijo = sesionId && !['welcome','paying'].includes(screen)
+  const mostrarHeader = sesionId && !['welcome','paying'].includes(screen)
 
   return (
     <div style={s}>
       <style>{`:root{color-scheme:dark} *{box-sizing:border-box;margin:0;padding:0} ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-thumb{background:#2e2720}`}</style>
 
-      {/* ── BOTÓN FIJO LLAMAR CAMARERO ── */}
-      {mostrarBotonFijo && (
-        <button
-          onClick={() => setCallModal(true)}
-          disabled={calling}
-          style={{
-            position: 'fixed', bottom: 24, right: 20, zIndex: 50,
-            width: 52, height: 52, borderRadius: '50%',
-            background: calling ? C.bg3 : C.amber,
-            border: 'none', cursor: calling ? 'not-allowed' : 'pointer',
-            fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 4px 20px ${C.amber}66`,
-            transition: 'all 0.2s',
-          }}
-        >
-          {calling ? '⏳' : '🙋'}
-        </button>
+      {/* ── HEADER FIJO — nombre restaurante + botón camarero ── */}
+      {mostrarHeader && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 18px', background:C.bg, borderBottom:`1px solid ${C.rule}`, flexShrink:0, position:'sticky', top:0, zIndex:40 }}>
+          <div>
+            <div style={{ fontFamily:'monospace', fontSize:9, color:C.creamDim, letterSpacing:'0.08em' }}>{data?.restaurante.nombre.toUpperCase()}</div>
+            <div style={{ fontSize:12, fontWeight:600, color:C.cream, marginTop:1 }}>Mesa {data?.mesa.codigo}</div>
+          </div>
+          <button
+            onClick={() => setCallModal(true)}
+            disabled={calling}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 13px', background: calling ? C.bg3 : C.amber, border:'none', borderRadius:20, cursor: calling ? 'not-allowed' : 'pointer', fontSize:12, fontWeight:600, color:'#1A1714', transition:'all 0.2s' }}
+          >
+            <span style={{ fontSize:14 }}>{calling ? '⏳' : '🙋'}</span>
+            {calling ? 'Avisando...' : 'Camarero'}
+          </button>
+        </div>
       )}
 
       {/* ── MODAL MOTIVO LLAMADA ── */}
