@@ -62,6 +62,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                // Inyectar flag para que ia.rest sepa que corre dentro del APK nativo
+                // y desactive su propia MediaSession (evita conflicto con la nativa)
+                webView.evaluateJavascript("window.isNativeApp = true;", null)
+            }
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
                 return when {

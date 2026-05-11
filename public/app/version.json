@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "url": "https://github.com/albertosuarezgutierrez-gif/ia.rest/releases/download/android-v1.0/iarest.apk",
-  "notes": "Permisos completos: notificaciones, cámara, micro, galería, vibración."
+  "notes": "Fix PTT auricular: elimina conflicto MediaSession web vs nativa."
 }

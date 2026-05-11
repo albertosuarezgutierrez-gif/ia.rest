@@ -304,6 +304,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   // Necesario para que Chrome Android enrute teclas de auricular a la app.
   // Solo se activa una vez por sesión, en el primer gesto del usuario.
   const activateMediaSession = useCallback(() => {
+    // Si corre dentro del APK nativo, la MediaSession la gestiona Android directamente
+    if (typeof window !== 'undefined' && (window as any).isNativeApp) return
     if (mediaSessionReadyRef.current) return
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return
     try {
@@ -457,8 +459,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   // ── MediaSession — botón auricular 3.5mm como PTT (toggle) ──────
   // Comportamiento: 1er click → empieza a grabar · 2º click → para y envía
   // Funciona con cualquier auricular con cable y botón (play/pause).
+  // En APK nativo se salta — Android gestiona el botón directamente via dispatchKeyEvent.
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    if ((window as any).isNativeApp) return // APK nativo — no interferir
     const toggle = () => {
       if (screen === 'idle')      { activateMediaSession(); startRecording() }
       else if (screen === 'recording') stopRecording()
