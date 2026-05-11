@@ -3,19 +3,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm install --legacy-peer-deps",
-  "devCommand": "npm run dev",
-  "crons": [
-    {
-      "path": "/api/cron/alertas",
-            "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/cobro-inactividad",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/cobro-descuento",
-      "schedule": "0 2 1 * *"
-    }
-  ]
+  "devCommand": "npm run dev"
 }
