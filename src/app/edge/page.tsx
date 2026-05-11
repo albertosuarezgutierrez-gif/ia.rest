@@ -278,6 +278,30 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const chunksRef   = useRef<Blob[]>([])
   const recordingRef = useRef(false)
 
+  // ── Auriculares 3.5mm — PTT por botón de cable ──────────────────
+  const silentAudioRef       = useRef<HTMLAudioElement|null>(null)
+  const mediaSessionReadyRef = useRef(false)
+  const [headphoneConnected, setHeadphoneConnected] = useState(false)
+
+  // Activa MediaSession con audio silencioso en loop.
+  // Necesario para que Chrome Android enrute teclas de auricular a la app.
+  // Solo se activa una vez por sesión, en el primer gesto del usuario.
+  const activateMediaSession = useCallback(() => {
+    if (mediaSessionReadyRef.current) return
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return
+    try {
+      if (!silentAudioRef.current) {
+        // WAV silencioso mínimo (1 sample, 8-bit, 8kHz) en base64
+        const a = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA')
+        a.loop = true
+        a.volume = 0.001
+        silentAudioRef.current = a
+      }
+      silentAudioRef.current.play().catch(() => {/* autoplay bloqueado hasta gesto — normal */})
+      mediaSessionReadyRef.current = true
+    } catch { /* ignore en browsers sin soporte */ }
+  }, [])
+
   const startRecording = useCallback(async () => {
     if (screen !== 'idle') return
     try {
@@ -386,6 +410,51 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     window.addEventListener('keydown',dn); window.addEventListener('keyup',up)
     return () => { window.removeEventListener('keydown',dn); window.removeEventListener('keyup',up) }
   }, [startRecording, stopRecording])
+
+  // ── MediaSession — botón auricular 3.5mm como PTT (toggle) ──────
+  // Comportamiento: 1er click → empieza a grabar · 2º click → para y envía
+  // Funciona con cualquier auricular con cable y botón (play/pause).
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    const toggle = () => {
+      if (screen === 'idle')      { activateMediaSession(); startRecording() }
+      else if (screen === 'recording') stopRecording()
+    }
+    const stop = () => { if (screen === 'recording') stopRecording() }
+    try {
+      navigator.mediaSession.setActionHandler('play',  toggle)
+      navigator.mediaSession.setActionHandler('pause', stop)
+      navigator.mediaSession.setActionHandler('stop',  stop)
+      // Neutralizar seek para que no interfiera con nada
+      navigator.mediaSession.setActionHandler('seekbackward', null)
+      navigator.mediaSession.setActionHandler('seekforward',  null)
+    } catch { /* Browser sin soporte completo de MediaSession */ }
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler('play',  null)
+        navigator.mediaSession.setActionHandler('pause', null)
+        navigator.mediaSession.setActionHandler('stop',  null)
+      } catch { /* ignore */ }
+    }
+  }, [screen, startRecording, stopRecording, activateMediaSession])
+
+  // ── Detección de auriculares conectados ─────────────────────────
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
+    const checkHeadphones = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const hasHeadphone = devices.some(d =>
+          d.kind === 'audioinput' && d.label.toLowerCase().includes('wired')
+          || d.kind === 'audiooutput' && (d.label.toLowerCase().includes('wired') || d.label.toLowerCase().includes('headphone') || d.label.toLowerCase().includes('auricular'))
+        )
+        setHeadphoneConnected(hasHeadphone)
+      } catch { /* ignore */ }
+    }
+    checkHeadphones()
+    navigator.mediaDevices.addEventListener('devicechange', checkHeadphones)
+    return () => navigator.mediaDevices.removeEventListener('devicechange', checkHeadphones)
+  }, [])
 
   const logout = () => {
     fetch('/api/auth',{method:'DELETE'}); localStorage.removeItem('ia_rest_session')
@@ -716,7 +785,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
               <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',border:`1.5px solid ${isListening?C.verm+'60':'#D9442B22'}`,animation:'hout 2s ease-out infinite'}}/>
               <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',border:`1.5px solid ${isListening?C.verm+'60':'#D9442B22'}`,animation:'hout 2s ease-out .7s infinite'}}/>
               <button
-                onPointerDown={e=>{e.preventDefault();startRecording()}}
+                onPointerDown={e=>{e.preventDefault();activateMediaSession();startRecording()}}
                 onPointerUp={e=>{e.preventDefault();stopRecording()}}
                 onPointerLeave={e=>{e.preventDefault();if(recordingRef.current)stopRecording()}}
                 disabled={isProcessing}
@@ -737,6 +806,12 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
             <span style={{fontFamily:SM,fontSize:10,fontWeight:600,color:isListening?C.verm:C.ink3,textTransform:'uppercase',letterSpacing:'1.5px',animation:isListening?'sttPulse .8s infinite alternate':'none'}}>
               {isListening?'escuchando…':isProcessing?'procesando…':'mantén para hablar'}
             </span>
+            {headphoneConnected && !isListening && !isProcessing && (
+              <span style={{fontFamily:SM,fontSize:9,fontWeight:500,color:C.gr,letterSpacing:'1px',display:'flex',alignItems:'center',gap:4}}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+                botón auricular activo
+              </span>
+            )}
           </div>
         </div>
       )}
