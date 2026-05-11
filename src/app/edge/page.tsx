@@ -438,6 +438,23 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     }
   }, [screen, startRecording, stopRecording, activateMediaSession])
 
+  // ── Activar MediaSession en el primer toque de pantalla ─────────
+  // Necesario para "robar" la sesión a Spotify/YouTube en cuanto
+  // el camarero toca cualquier parte de la app, sin esperar al PTT.
+  useEffect(() => {
+    const onFirstTouch = () => {
+      activateMediaSession()
+      document.removeEventListener('touchstart', onFirstTouch)
+      document.removeEventListener('mousedown',  onFirstTouch)
+    }
+    document.addEventListener('touchstart', onFirstTouch, { passive: true })
+    document.addEventListener('mousedown',  onFirstTouch, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', onFirstTouch)
+      document.removeEventListener('mousedown',  onFirstTouch)
+    }
+  }, [activateMediaSession])
+
   // ── Detección de auriculares conectados ─────────────────────────
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
