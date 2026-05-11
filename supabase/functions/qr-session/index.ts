@@ -1,6 +1,6 @@
-// qr-session v1 — Crea/obtiene sesión de cliente QR
-// GET  ?token=xxx          → valida token, devuelve restaurante+mesa+carta
-// POST { token, action }   → crea sesión activa
+// qr-session v2 — Crea/obtiene sesión de cliente QR
+// GET  ?token=xxx                        → valida token, devuelve restaurante+mesa+carta+config precio fijo
+// POST { token, num_comensales }         → crea sesión activa con número de comensales
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -20,26 +20,24 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const token = url.searchParams.get('token') || (await req.json().catch(() => ({}))).token
+    const isGet = req.method === 'GET'
+    const token = isGet
+      ? url.searchParams.get('token')
+      : (await req.json().catch(() => ({}))).token
 
     if (!token) {
-      return new Response(JSON.stringify({ error: 'token requerido' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } })
+      return res400('token requerido')
     }
 
     // 1. Buscar mesa por token
     const { data: mesa, error: mesaErr } = await supabase
       .from('mesas')
-      .select('id, codigo, nombre, restaurante_id, qr_habilitado, qr_modo_pago')
+      .select('id, codigo, nombre, restaurante_id, qr_habilitado, qr_modo_pago, qr_precio_fijo_persona, qr_precio_fijo_concepto')
       .eq('qr_token', token)
       .single()
 
-    if (mesaErr || !mesa) {
-      return new Response(JSON.stringify({ error: 'QR no válido o expirado' }), { status: 404, headers: { ...cors, 'Content-Type': 'application/json' } })
-    }
-
-    if (!mesa.qr_habilitado) {
-      return new Response(JSON.stringify({ error: 'QR no activo en esta mesa' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } })
-    }
+    if (mesaErr || !mesa) return res404('QR no válido o expirado')
+    if (!mesa.qr_habilitado)  return res403('QR no activo en esta mesa')
 
     // 2. Restaurante
     const { data: rest } = await supabase
@@ -57,40 +55,73 @@ serve(async (req) => {
       .order('categoria')
       .order('nombre')
 
-    // 4. Sesión activa existente para esta mesa
-    let sesion = null
-    if (req.method === 'GET') {
+    // 4. GET: devolver config sin crear sesión
+    if (isGet) {
       const { data: sesionExistente } = await supabase
         .from('qr_sesiones_cliente')
-        .select('id, estado, payment_method_id')
+        .select('id, estado, payment_method_id, num_comensales, precio_fijo_aplicado')
         .eq('mesa_id', mesa.id)
         .eq('estado', 'activa')
         .order('creado_en', { ascending: false })
         .limit(1)
         .single()
-      sesion = sesionExistente
+
+      return resOK({
+        mesa: {
+          id: mesa.id, codigo: mesa.codigo, nombre: mesa.nombre,
+          qr_modo_pago: mesa.qr_modo_pago,
+          precio_fijo_persona: mesa.qr_precio_fijo_persona,
+          precio_fijo_concepto: mesa.qr_precio_fijo_concepto || 'Cubierto',
+        },
+        restaurante: { id: rest?.id, nombre: rest?.nombre, connect_activo: rest?.stripe_connect_onboarded },
+        productos: productos || [],
+        sesion_id: sesionExistente?.id || null,
+        num_comensales: sesionExistente?.num_comensales || null,
+        precio_fijo_aplicado: sesionExistente?.precio_fijo_aplicado || 0,
+        tiene_tarjeta: !!sesionExistente?.payment_method_id,
+      })
     }
 
-    // 5. POST: crear nueva sesión
-    if (req.method === 'POST') {
-      const { data: nuevaSesion } = await supabase
-        .from('qr_sesiones_cliente')
-        .insert({ restaurante_id: mesa.restaurante_id, mesa_id: mesa.id })
-        .select('id')
-        .single()
-      sesion = nuevaSesion
-    }
+    // 5. POST: crear sesión con num_comensales
+    const body = await req.json().catch(() => ({}))
+    const num_comensales = Math.max(1, parseInt(body.num_comensales) || 1)
+    const precio_fijo_persona = mesa.qr_precio_fijo_persona || 0
+    const precio_fijo_aplicado = precio_fijo_persona > 0
+      ? Math.round(precio_fijo_persona * num_comensales * 100) / 100
+      : 0
 
-    return new Response(JSON.stringify({
-      ok: true,
-      mesa: { id: mesa.id, codigo: mesa.codigo, nombre: mesa.nombre, qr_modo_pago: mesa.qr_modo_pago },
+    const { data: nuevaSesion } = await supabase
+      .from('qr_sesiones_cliente')
+      .insert({
+        restaurante_id: mesa.restaurante_id,
+        mesa_id: mesa.id,
+        num_comensales,
+        precio_fijo_aplicado,
+      })
+      .select('id')
+      .single()
+
+    return resOK({
+      sesion_id: nuevaSesion?.id,
+      num_comensales,
+      precio_fijo_aplicado,
+      mesa: {
+        id: mesa.id, codigo: mesa.codigo, nombre: mesa.nombre,
+        qr_modo_pago: mesa.qr_modo_pago,
+        precio_fijo_persona,
+        precio_fijo_concepto: mesa.qr_precio_fijo_concepto || 'Cubierto',
+      },
       restaurante: { id: rest?.id, nombre: rest?.nombre, connect_activo: rest?.stripe_connect_onboarded },
       productos: productos || [],
-      sesion_id: sesion?.id || null,
-      tiene_tarjeta: !!sesion?.payment_method_id,
-    }), { headers: { ...cors, 'Content-Type': 'application/json' } })
+    })
 
-  } catch (err) {
+  } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } })
   }
 })
+
+const h = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }
+const resOK  = (d: object) => new Response(JSON.stringify({ ok: true, ...d }), { headers: h })
+const res400 = (e: string) => new Response(JSON.stringify({ error: e }), { status: 400, headers: h })
+const res403 = (e: string) => new Response(JSON.stringify({ error: e }), { status: 403, headers: h })
+const res404 = (e: string) => new Response(JSON.stringify({ error: e }), { status: 404, headers: h })

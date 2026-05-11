@@ -59,7 +59,18 @@ serve(async (req) => {
     }
 
     const iva = subtotal * 0.10
-    const total = subtotal + iva
+    const totalComandas = subtotal + iva
+
+    // Precio fijo por persona (cubierto / menú)
+    const { data: sesionData } = await supabase
+      .from('qr_sesiones_cliente')
+      .select('num_comensales, precio_fijo_aplicado, mesas(qr_precio_fijo_concepto)')
+      .eq('id', sesion_id)
+      .single()
+
+    const precio_fijo = sesionData?.precio_fijo_aplicado || 0
+    const concepto_fijo = (sesionData?.mesas as any)?.qr_precio_fijo_concepto || 'Cubierto'
+    const total = totalComandas + precio_fijo
     const propina = propina_pct > 0 ? total * propina_pct / 100 : 0
     const totalConPropina = total + propina
 
@@ -78,11 +89,22 @@ serve(async (req) => {
         {
           price_data: {
             currency: 'eur',
-            unit_amount: Math.round(total * 100),
-            product_data: { name: `Consumición en ${rest.nombre}`, description: `Mesa · IVA incluido` },
+            unit_amount: Math.round(totalComandas * 100),
+            product_data: { name: `Consumición en ${rest.nombre}`, description: 'IVA incluido' },
           },
           quantity: 1,
         },
+        ...(precio_fijo > 0 ? [{
+          price_data: {
+            currency: 'eur',
+            unit_amount: Math.round(precio_fijo * 100),
+            product_data: {
+              name: concepto_fijo,
+              description: `${sesionData?.num_comensales} persona${sesionData?.num_comensales !== 1 ? 's' : ''}`,
+            },
+          },
+          quantity: 1,
+        }] : []),
         ...(propina > 0 ? [{
           price_data: {
             currency: 'eur',
@@ -116,7 +138,7 @@ serve(async (req) => {
       ok: true,
       checkout_url: session.url,
       total: totalConPropina,
-      desglose: { subtotal, iva, propina, total: totalConPropina }
+      desglose: { subtotal, iva, precio_fijo, concepto_fijo, propina, total: totalConPropina }
     }), { headers: { ...cors, 'Content-Type': 'application/json' } })
 
   } catch (err) {

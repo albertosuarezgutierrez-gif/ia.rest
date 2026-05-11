@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'react'
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-type Screen = 'loading' | 'error' | 'welcome' | 'menu' | 'cart' | 'cooking' | 'bill' | 'split_modo' | 'split_igual' | 'split_items' | 'tip' | 'paying'
+type Screen = 'loading' | 'error' | 'welcome' | 'comensales' | 'menu' | 'cart' | 'cooking' | 'bill' | 'split_modo' | 'split_igual' | 'split_items' | 'tip' | 'paying'
 
 interface Producto {
   id: string; nombre: string; descripcion: string; precio: number
@@ -46,6 +46,7 @@ export default function QrClientApp({ token }: { token: string }) {
   const [data, setData] = useState<SessionData | null>(null)
   const [sesionId, setSesionId] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
+  const [numComensales, setNumComensales] = useState(1)
   const [numComandas, setNumComandas] = useState(0)   // cuántas comandas ha hecho en esta sesión
   const [splitPersonas, setSplitPersonas] = useState(2)
   const [splitItemsSeleccionados, setSplitItemsSeleccionados] = useState<string[]>([])
@@ -73,10 +74,22 @@ export default function QrClientApp({ token }: { token: string }) {
 
   const iniciarSesion = useCallback(async () => {
     if (!data) return
-    const d = await callEF('qr-session', { token })
-    if (d.sesion_id) { setSesionId(d.sesion_id); setScreen('menu') }
-    else { setError('No se pudo iniciar sesión'); setScreen('error') }
+    // Si hay precio fijo por persona → preguntar comensales primero
+    if (data.mesa.precio_fijo_persona) {
+      setScreen('comensales')
+    } else {
+      // Sin precio fijo: crear sesión con 1 comensal y pasar a carta
+      const d = await callEF('qr-session', { token, num_comensales: 1 })
+      if (d.sesion_id) { setSesionId(d.sesion_id); setNumComensales(1); setScreen('menu') }
+      else { setError('No se pudo iniciar sesión'); setScreen('error') }
+    }
   }, [data, token])
+
+  const confirmarComensales = useCallback(async (n: number) => {
+    const d = await callEF('qr-session', { token, num_comensales: n })
+    if (d.sesion_id) { setSesionId(d.sesion_id); setNumComensales(n); setScreen('menu') }
+    else { setError('No se pudo iniciar sesión'); setScreen('error') }
+  }, [token])
 
   const confirmarPedido = useCallback(async () => {
     if (!data || !sesionId || !cart.length) return
@@ -167,8 +180,9 @@ export default function QrClientApp({ token }: { token: string }) {
   })
 
   const totalItems = cart.reduce((a, b) => a + b.qty, 0)
-  const subtotal   = cart.reduce((a, b) => a + b.precio * b.qty, 0)
-  const total      = subtotal * 1.10
+  const subtotal     = cart.reduce((a, b) => a + b.precio * b.qty, 0)
+  const precioFijo   = (data?.mesa.precio_fijo_persona || 0) * numComensales
+  const total        = subtotal * 1.10 + precioFijo
 
   const s: React.CSSProperties = { fontFamily: 'sans-serif', background: C.bg, color: C.cream, minHeight: '100vh', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' }
 
@@ -268,6 +282,35 @@ export default function QrClientApp({ token }: { token: string }) {
           </button>
           <button onClick={() => showToast('🙋 Camarero avisado')} style={{ width: '100%', padding: '12px', background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: 13, color: C.creamDim, fontSize: 13, cursor: 'pointer' }}>
             🙋 Llamar al camarero
+          </button>
+        </div>
+      )}
+
+      {/* ── COMENSALES ── */}
+      {screen === 'comensales' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '28px 22px', gap: 22, textAlign: 'center' }}>
+          <div style={{ fontSize: 42 }}>👥</div>
+          <div>
+            <div style={{ fontSize: 22, fontStyle: 'italic', color: C.cream, marginBottom: 6 }}>¿Cuántas personas sois?</div>
+            <div style={{ fontSize: 13, color: C.creamDim }}>Para preparar vuestra cuenta correctamente</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, margin: '8px 0' }}>
+            <button onClick={() => setNumComensales(n => Math.max(1, n - 1))} style={{ width: 48, height: 48, borderRadius: '50%', background: C.bg3, border: `1px solid ${C.rule}`, color: C.cream, fontSize: 24, cursor: 'pointer' }}>−</button>
+            <div style={{ fontSize: 60, fontStyle: 'italic', color: C.cream, fontFamily: 'serif', width: 70, textAlign: 'center', lineHeight: 1 }}>{numComensales}</div>
+            <button onClick={() => setNumComensales(n => Math.min(20, n + 1))} style={{ width: 48, height: 48, borderRadius: '50%', background: C.bg3, border: `1px solid ${C.rule}`, color: C.cream, fontSize: 24, cursor: 'pointer' }}>+</button>
+          </div>
+          {data.mesa.precio_fijo_persona && (
+            <div style={{ width: '100%', background: C.bg2, borderRadius: 14, padding: '16px 20px', border: `1px solid ${C.rule}` }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: C.creamDim, marginBottom: 8, letterSpacing: '0.08em' }}>{data.mesa.precio_fijo_concepto?.toUpperCase()}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 13, color: C.creamMid }}>{numComensales} persona{numComensales !== 1 ? 's' : ''} × {fmt(data.mesa.precio_fijo_persona)}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: C.cream }}>{fmt(data.mesa.precio_fijo_persona * numComensales)}</span>
+              </div>
+              <div style={{ fontSize: 11, color: C.creamDim }}>Se añade automáticamente a vuestra cuenta</div>
+            </div>
+          )}
+          <button onClick={() => confirmarComensales(numComensales)} style={{ width: '100%', padding: '15px', background: C.vermilion, border: 'none', borderRadius: 13, color: 'white', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+            Ver la carta →
           </button>
         </div>
       )}
@@ -389,7 +432,11 @@ export default function QrClientApp({ token }: { token: string }) {
               </div>
             ))}
             <div style={{ marginTop: 14, background: C.bg2, borderRadius: 11, padding: '14px 16px', border: `1px solid ${C.rule}` }}>
-              {[['Subtotal', fmt(subtotal)], ['IVA (10%)', fmt(subtotal * 0.10)]].map(([k, v]) => (
+              {[
+                ['Subtotal', fmt(subtotal)],
+                ['IVA (10%)', fmt(subtotal * 0.10)],
+                ...(data.mesa.precio_fijo_persona ? [[`${data.mesa.precio_fijo_concepto} (${numComensales}p)`, fmt(data.mesa.precio_fijo_persona * numComensales)]] : []),
+              ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
                   <span style={{ fontSize: 12, color: C.creamDim }}>{k}</span>
                   <span style={{ fontFamily: 'monospace', fontSize: 12, color: C.creamDim }}>{v}</span>
