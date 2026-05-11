@@ -41,7 +41,13 @@ const SM = "'JetBrains Mono',ui-monospace,monospace"
 const SC = "'Caveat',cursive"
 
 type Screen = 'idle'|'recording'|'processing'|'speaking'|'asking'|'confirm'|'sent'|'error'
-type Tab    = 'hablar'|'manual'|'sala'|'config'
+type Tab    = 'hablar'|'manual'|'sala'|'carta'|'config'
+
+interface ProductoCarta {
+  id: string; nombre: string; precio: number | null
+  categoria: string; descripcion?: string | null
+  alergenos?: string[] | null; activo: boolean
+}
 
 interface BrainResult {
   mesa: string; tipo: string
@@ -147,6 +153,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [alergenosMesa, setAlergenosMesa]   = useState<string[]>([])
   const [zonasAsignadas, setZonasAsignadas] = useState<string[]>([])   // [] = todas
   const [fontBig, setFontBig]               = useState(false)
+  const [productosCarta, setProductosCarta] = useState<ProductoCarta[]>([])
+  const [cartaBusqueda, setCartaBusqueda]   = useState('')
 
   const addMsg = useCallback((from:ChatMsg['from'], texto:string, tipo?:ChatMsg['tipo']) => {
     setChatMsgs(prev => [...prev.slice(-4), {id:Date.now().toString(), from, texto, ts:new Date(), tipo}])
@@ -211,6 +219,11 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           preguntar_voz: d.config.servicio_preguntar_voz ?? false,
         })
       })
+      .catch(() => {})
+    // Cargar carta para consulta del camarero
+    fetch('/api/owner/carta', { headers: { 'x-ia-session': ses } })
+      .then(r => r.json())
+      .then(d => { if (d.productos) setProductosCarta(d.productos.filter((p: ProductoCarta) => p.activo)) })
       .catch(() => {})
     // Cargar mesas y zonas para el plano visual
     Promise.all([
@@ -939,6 +952,127 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
       {/* ══ TAB: PENDIENTES ══════════════════════════════════════ */}
 
+      {/* ══ TAB: CARTA — consulta de carta para camarero ════════ */}
+      {tab==='carta' && (() => {
+        const nombres86 = new Set(productos86.map(p => p.nombre.toLowerCase()))
+        const filtro    = cartaBusqueda.trim().toLowerCase()
+        const todos     = filtro
+          ? productosCarta.filter(p =>
+              p.nombre.toLowerCase().includes(filtro) ||
+              (p.descripcion ?? '').toLowerCase().includes(filtro) ||
+              p.categoria.toLowerCase().includes(filtro)
+            )
+          : productosCarta
+        // Agrupar por categoría manteniendo el orden original
+        const cats: string[] = []
+        const porCat: Record<string, ProductoCarta[]> = {}
+        todos.forEach(p => {
+          if (!porCat[p.categoria]) { porCat[p.categoria] = []; cats.push(p.categoria) }
+          porCat[p.categoria].push(p)
+        })
+        return (
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            {/* Buscador sticky */}
+            <div style={{padding:'8px 14px',flexShrink:0,background:C.bg1,borderBottom:`1px solid ${C.rule}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,padding:'7px 12px'}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input
+                  value={cartaBusqueda}
+                  onChange={e => setCartaBusqueda(e.target.value)}
+                  placeholder="Buscar en carta…"
+                  style={{border:'none',background:'transparent',outline:'none',flex:1,fontFamily:SN,fontSize:13,color:C.ink}}
+                />
+                {cartaBusqueda && (
+                  <span onClick={()=>setCartaBusqueda('')} style={{color:C.ink4,cursor:'pointer',fontSize:15,lineHeight:1}}>×</span>
+                )}
+              </div>
+              {productos86.length > 0 && (
+                <div style={{marginTop:6,display:'flex',gap:6,flexWrap:'wrap' as const}}>
+                  {productos86.slice(0,5).map(p => (
+                    <span key={p.id} style={{fontFamily:SM,fontSize:9,color:C.verm,background:C.vermS,border:`1px solid ${C.verm}44`,padding:'2px 7px',borderRadius:4,fontWeight:700,letterSpacing:'.06em'}}>
+                      86 · {p.nombre}
+                    </span>
+                  ))}
+                  {productos86.length > 5 && (
+                    <span style={{fontFamily:SM,fontSize:9,color:C.ink4}}>+{productos86.length-5} más</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de productos */}
+            <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const}}>
+              {productosCarta.length === 0 ? (
+                <div style={{textAlign:'center',padding:'48px 20px'}}>
+                  <div style={{fontFamily:SE,fontStyle:'italic',fontSize:17,color:C.ink4,marginBottom:6}}>Cargando carta…</div>
+                </div>
+              ) : cats.length === 0 ? (
+                <div style={{textAlign:'center',padding:'48px 20px'}}>
+                  <div style={{fontFamily:SE,fontStyle:'italic',fontSize:17,color:C.ink4}}>Sin resultados para "{cartaBusqueda}"</div>
+                  <button onClick={()=>setCartaBusqueda('')} style={{marginTop:12,background:'none',border:`1px solid ${C.rule}`,color:C.ink3,padding:'6px 14px',borderRadius:8,fontFamily:SN,fontSize:12,cursor:'pointer'}}>Limpiar búsqueda</button>
+                </div>
+              ) : (
+                cats.map(cat => (
+                  <div key={cat}>
+                    {/* Cabecera de categoría */}
+                    <div style={{padding:'8px 16px 5px',background:C.bg2,borderBottom:`1px solid ${C.rule}`,borderTop:`1px solid ${C.rule}`,position:'sticky',top:0,zIndex:2}}>
+                      <span style={{fontFamily:SM,fontSize:9,fontWeight:700,color:C.ink3,textTransform:'uppercase',letterSpacing:'.1em'}}>{cat}</span>
+                      <span style={{fontFamily:SM,fontSize:9,color:C.ink4,marginLeft:6}}>{porCat[cat].length} productos</span>
+                    </div>
+                    {/* Productos */}
+                    {porCat[cat].map((p, i) => {
+                      const es86 = nombres86.has(p.nombre.toLowerCase())
+                      const alerg = Array.isArray(p.alergenos) ? p.alergenos : []
+                      return (
+                        <div key={p.id} style={{
+                          display:'flex',alignItems:'flex-start',gap:10,
+                          padding:'11px 16px',
+                          borderBottom: i < porCat[cat].length-1 ? `1px solid ${C.rule}` : 'none',
+                          background: es86 ? `${C.verm}08` : C.bg,
+                          opacity: es86 ? 0.65 : 1,
+                        }}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' as const}}>
+                              <span style={{
+                                fontFamily:SN,fontSize:14,fontWeight:600,color:es86?C.ink3:C.ink,
+                                textDecoration:es86?'line-through':'none',lineHeight:1.3
+                              }}>{p.nombre}</span>
+                              {es86 && (
+                                <span style={{fontFamily:SM,fontSize:8,fontWeight:700,color:C.verm,background:C.vermS,border:`1px solid ${C.verm}44`,padding:'1px 6px',borderRadius:3,letterSpacing:'.06em',flexShrink:0}}>
+                                  86
+                                </span>
+                              )}
+                            </div>
+                            {p.descripcion && (
+                              <div style={{fontFamily:SN,fontSize:11,color:C.ink4,marginTop:2,lineHeight:1.4,fontStyle:'italic'}}>{p.descripcion}</div>
+                            )}
+                            {alerg.length > 0 && (
+                              <div style={{display:'flex',gap:4,marginTop:4,flexWrap:'wrap' as const}}>
+                                {alerg.map((a:string) => (
+                                  <span key={a} style={{fontFamily:SM,fontSize:8,color:'#7A5A1A',background:C.ambS,border:`1px solid ${C.amb}44`,padding:'1px 6px',borderRadius:3}}>
+                                    ⚠ {a}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{fontFamily:SE,fontStyle:'italic',fontSize:17,fontWeight:500,color:es86?C.ink4:C.verm,flexShrink:0,lineHeight:1.2,paddingTop:1}}>
+                            {p.precio != null ? `${p.precio.toFixed(2).replace('.',',')} €` : '—'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))
+              )}
+              <div style={{height:16}}/>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ══ TAB: CONFIG ══════════════════════════════════════════ */}
       {tab==='config' && (
         <ConfigScreen
@@ -1035,7 +1169,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           {id:'hablar', lbl:'Hablar', path:'M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v4'},
           {id:'manual', lbl:'Manual', path:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7M17.5 14v7'},
           {id:'sala',   lbl:'Pedidos', path:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h4'},
-          {id:'config', lbl:'Config', path:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'},
+          {id:'carta',  lbl:'Carta',   path:'M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM9 9h6M9 13h4'},
+          {id:'config', lbl:'Config',  path:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'},
         ] as {id:Tab;lbl:string;path:string}[]).map(t => {
           const on = tab===t.id
           return (
