@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "url": "https://github.com/albertosuarezgutierrez-gif/ia.rest/releases/download/android-v1.0/iarest.apk",
-  "notes": "Fix PTT auricular: elimina conflicto MediaSession web vs nativa."
+  "notes": "Fix PTT multi-comanda: re-adquiere foco audio tras cada grabación."
 }
