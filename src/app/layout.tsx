@@ -170,8 +170,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style>{`body { background: #F6F1E7; }`}</style>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdApp) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }} />
-        {/* Plausible Analytics — sin cookies, sin consentimiento, servidores UE, RGPD compliant */}
-        <script defer data-domain="iarest.es" src="https://plausible.io/js/script.js" />
+        {/* Analytics — pendiente. Opción elegida: Plausible (sin cookies, RGPD, UE, 9€/mes).
+            Activar cuando haya clientes reales: crear cuenta en plausible.io + descomentar:
+            <script defer data-domain="iarest.es" src="https://plausible.io/js/script.js" /> */}
       </head>
       <body>
         {children}
