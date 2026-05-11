@@ -2406,7 +2406,7 @@ function ImpresorasTab() {
   const [loading, setLoading]           = useState(true)
   const [editando, setEditando]         = useState<Impresora | null>(null)
   const [modal, setModal]               = useState<null | 'create' | 'bridge' | { del: Impresora }>(null)
-  const [testing, setTesting]           = useState<string | null>(null)  // impresora_id en prueba
+  const [testResult, setTestResult]     = useState<Record<string, { status: 'testing'|'ok'|'error'|'timeout', msg?: string }>>({})  // impresora_id → resultado test
   const [form, setForm]                 = useState({
     nombre: '', seccion_id: 'calientes', connection_type: 'ip_local',
     ip_address: '', port: '9100', cloud_device_id: '', modelo: ''
@@ -2500,12 +2500,39 @@ function ImpresorasTab() {
   }
 
   const testPrint = async (id: string) => {
-    setTesting(id)
-    await fetch('/api/print', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', ...sh() },
-      body: JSON.stringify({ trigger: 'test', impresora_id: id })
-    })
-    setTimeout(() => setTesting(null), 2000)
+    setTestResult(prev => ({ ...prev, [id]: { status: 'testing' } }))
+    try {
+      const res  = await fetch('/api/print', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...sh() },
+        body: JSON.stringify({ trigger: 'test', impresora_id: id })
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok || !body.job_id) {
+        setTestResult(prev => ({ ...prev, [id]: { status: 'error', msg: body.error ?? 'No se pudo crear job' } }))
+        setTimeout(() => setTestResult(prev => { const n = {...prev}; delete n[id]; return n }), 6000)
+        return
+      }
+      // Polling hasta confirmar resultado (max 20s)
+      const jobId    = body.job_id
+      const deadline = Date.now() + 20000
+      let   done     = false
+      while (!done && Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 1500))
+        const sb = await fetch(`/api/owner/print-jobs?job_id=${jobId}`, { headers: sh() }).then(r => r.json()).catch(() => null)
+        const job = sb?.jobs?.find((j: { id: string }) => j.id === jobId)
+        if (job?.status === 'impreso') {
+          setTestResult(prev => ({ ...prev, [id]: { status: 'ok' } }))
+          done = true
+        } else if (job?.status === 'error') {
+          setTestResult(prev => ({ ...prev, [id]: { status: 'error', msg: job.error_msg ?? 'Error en impresora' } }))
+          done = true
+        }
+      }
+      if (!done) setTestResult(prev => ({ ...prev, [id]: { status: 'timeout', msg: 'Bridge no respondió en 20s' } }))
+    } catch (e) {
+      setTestResult(prev => ({ ...prev, [id]: { status: 'error', msg: String(e) } }))
+    }
+    setTimeout(() => setTestResult(prev => { const n = {...prev}; delete n[id]; return n }), 8000)
     await loadAll()
   }
 
@@ -2583,8 +2610,8 @@ function ImpresorasTab() {
           </div>
           {impresoras.map((imp, i) => {
             const sec     = seccionStyle(imp.seccion_id)
-            const isOnline = imp.ultimo_ping && Date.now() - new Date(imp.ultimo_ping).getTime() < 35000
-            const isTest   = testing === imp.id
+            const isOnline  = imp.ultimo_ping && Date.now() - new Date(imp.ultimo_ping).getTime() < 35000
+            const testState = testResult[imp.id]
             const connInfo = imp.connection_type === 'ip_local'
               ? (imp.ip_address ? `${imp.ip_address}:${imp.port ?? 9100}` : 'Sin IP')
               : imp.connection_type === 'star_cloudprnt'
@@ -2669,16 +2696,30 @@ function ImpresorasTab() {
                     <span style={{ fontFamily: SM, fontSize: 11, color: isOnline ? C.green : C.ink4, fontWeight: isOnline ? 700 : 400 }}>
                       {isOnline ? 'ONLINE' : fmtPing(imp.ultimo_ping)}
                     </span>
-                    <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span style={{ display: 'flex', gap: 6 }}>
                       <button
                         onClick={() => testPrint(imp.id)}
-                        disabled={!!isTest}
+                        disabled={!!testState}
                         title="Test de impresión"
-                        style={{ background: isTest ? C.greenS : C.paper2, color: isTest ? C.green : C.ink3, border: `1px solid ${C.rule}`, borderRadius: 4, padding: '5px 8px', cursor: 'pointer', fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.06em' }}>
-                        {isTest ? 'ENVIADO' : 'TEST'}
+                        style={{
+                          background: testState?.status === 'ok' ? C.greenS : testState?.status === 'error' || testState?.status === 'timeout' ? '#3D1010' : testState?.status === 'testing' ? C.paper2 : C.paper2,
+                          color:      testState?.status === 'ok' ? C.green  : testState?.status === 'error' || testState?.status === 'timeout' ? C.red : C.ink3,
+                          border: `1px solid ${testState?.status === 'ok' ? C.green : testState?.status === 'error' || testState?.status === 'timeout' ? C.red : C.rule}`,
+                          borderRadius: 4, padding: '5px 8px', cursor: testState ? 'not-allowed' : 'pointer',
+                          fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+                          transition: 'all .2s',
+                        }}>
+                        {testState?.status === 'testing' ? '⏳ ...' : testState?.status === 'ok' ? '✓ OK' : testState?.status === 'error' ? '✗ ERROR' : testState?.status === 'timeout' ? '⏱ TIMEOUT' : 'TEST'}
                       </button>
                       <Btn size="sm" onClick={() => setEditando({...imp})}><Icon d={ICONS.edit} size={13}/></Btn>
                       <Btn size="sm" variant="danger" onClick={() => setModal({ del: imp })}><Icon d={ICONS.trash} size={13}/></Btn>
+                      </span>
+                      {(testState?.status === 'error' || testState?.status === 'timeout') && testState.msg && (
+                        <div style={{ fontFamily: SM, fontSize: 9, color: C.red, letterSpacing: '.04em', maxWidth: 180, textAlign: 'right', lineHeight: 1.4 }}>
+                          {testState.msg}
+                        </div>
+                      )}
                     </span>
                   </div>
                 )}
