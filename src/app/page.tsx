@@ -729,6 +729,14 @@ export default function Page() {
           <h2>Sin comisiones por comanda.<br/>Sin sorpresas al mes siguiente.</h2>
           <p>Solo pagas por los perfiles activos de cada restaurante. Sin planes fijos, sin letra pequeña.</p>
         </div>
+        <div className="reveal rd1" style={{maxWidth:860,margin:"0 auto 32px",padding:"18px 24px",background:"rgba(232,163,59,.07)",border:"1px solid rgba(232,163,59,.25)",borderRadius:16,display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
+          <div style={{fontSize:22}}>▣</div>
+          <div style={{flex:1,minWidth:220}}>
+            <div style={{fontFamily:"var(--head)",fontStyle:"italic",fontSize:17,color:"var(--cream)",marginBottom:4}}>Add-on: QR en mesa</div>
+            <div style={{fontSize:14,color:"var(--cream2)",lineHeight:1.6,letterSpacing:"-.005em"}}>El cliente pide desde su móvil. El ticket llega al mismo KDS que el resto — como si lo dictara el camarero. <span style={{color:"var(--amber)",fontFamily:"var(--mono)",fontSize:12"}}>+12€/mesa/mes</span></div>
+          </div>
+          <div style={{fontFamily:"var(--soft)",fontSize:14,color:"var(--cream3)",whiteSpace:"nowrap"}}>Mueve el slider abajo →</div>
+        </div>
         {(()=>{
           const calcBase=(n:number,ann:boolean)=>{
             let p=59;
