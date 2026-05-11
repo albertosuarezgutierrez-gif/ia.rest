@@ -60,7 +60,8 @@ function enviarAlaPrinter(ip, port, data) {
 
     socket.connect(port, ip, () => {
       // Convertir string con bytes de control a Buffer
-      const buf = Buffer.from(data, 'binary')
+      // print_data viene en base64 desde el servidor
+      const buf = Buffer.from(data, 'base64')
       socket.write(buf, (err) => {
         if (err) {
           socket.destroy()

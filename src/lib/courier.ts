@@ -400,12 +400,10 @@ export async function crearPrintJobs(
       ts,
     }
 
-    let printData: string
-    if (imp.connection_type === 'ip_local' || imp.connection_type === 'usb_bridge') {
-      printData = generarEscPos(payload)
-    } else {
-      printData = generarTextoPlano(payload)
-    }
+    const printDataRaw = (imp.connection_type === 'ip_local' || imp.connection_type === 'usb_bridge')
+      ? generarEscPos(payload)
+      : generarTextoPlano(payload)
+    const printData = Buffer.from(printDataRaw, 'binary').toString('base64')
 
     const { data: job, error } = await supabase
       .from('print_jobs')
@@ -425,9 +423,10 @@ export async function crearPrintJobs(
       if (imp.fallback_id && impresoraById[imp.fallback_id]) {
         console.warn(`[COURIER] Error en impresora principal, intentando fallback "${imp.fallback_id}"`)
         imp = impresoraById[imp.fallback_id]
-        const printDataFallback = imp.connection_type === 'ip_local' || imp.connection_type === 'usb_bridge'
+        const printDataFallbackRaw = imp.connection_type === 'ip_local' || imp.connection_type === 'usb_bridge'
           ? generarEscPos(payload)
           : generarTextoPlano(payload)
+        const printDataFallback = Buffer.from(printDataFallbackRaw, 'binary').toString('base64')
         const { data: jobFallback } = await supabase
           .from('print_jobs')
           .insert({ comanda_id: comanda.id, impresora_id: imp.id, seccion_id: imp.seccion_id, payload, print_data: printDataFallback, status: 'pendiente' })
@@ -516,9 +515,10 @@ export async function crearPrintJobMarchar(
       tipo: 'marchar',
       ts,
     }
-    const printData = imp.connection_type === 'ip_local' || imp.connection_type === 'usb_bridge'
+    const printDataRawM = imp.connection_type === 'ip_local' || imp.connection_type === 'usb_bridge'
       ? generarEscPos(payload)
       : generarTextoPlano(payload)
+    const printData = Buffer.from(printDataRawM, 'binary').toString('base64')
 
     const { data: job } = await supabase
       .from('print_jobs')

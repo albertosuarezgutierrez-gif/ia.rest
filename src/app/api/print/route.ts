@@ -140,9 +140,10 @@ export async function POST(req: NextRequest) {
     }
 
     const esTcp = TIPOS_TCP.includes(imp.connection_type)
-    const printData = esTcp
+    const rawData = esTcp
       ? generarEscPosPrueba(imp.nombre ?? 'Impresora', imp.ip_address ?? '', imp.port ?? 9100)
       : generarTextoPlano(payload)
+    const printData = Buffer.from(rawData, 'binary').toString('base64')
 
     const { data: job, error } = await sb
       .from('print_jobs')
