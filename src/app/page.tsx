@@ -590,11 +590,12 @@ export default function Page() {
       <section className="how" id="como">
         <div className="section-tag">La solución</div>
         <h2 className="reveal">Tres pasos.<br/><em>Cero fricción.</em></h2>
+        <p className="reveal rd1" style={{fontFamily:"var(--soft)",fontSize:17,color:"var(--cream3)",marginTop:-24,marginBottom:40,maxWidth:520}}>¿Tienes mesas con QR activado? El cliente pide desde su móvil y el ticket llega al mismo KDS, igual que si lo dictara el camarero.</p>
         <div className="steps">
           {[
             {n:"1",ico:"🎙️",t:"El camarero habla",p:'Sin abrir apps, sin buscar platos. Dice la comanda en voz natural: "dos de la casa", "sin sal ojo", "que llegue primero".',time:"Tiempo: 4 segundos"},
             {n:"2",ico:"🧠",t:"ia.rest entiende",p:"Whisper (Groq) transcribe en menos de 0,3s. Claude estructura: mesa, platos, cantidades, notas de alergias. En español real de hostelería.",time:"Tiempo: 0.4 segundos"},
-            {n:"3",ico:"📺",t:"Cocina lo ve al momento",p:"El ticket aparece en el KDS con prioridades, alertas de alergia y orden de llegada. La cocina marcha sin esperar al camarero.",time:"Total: menos de 5 segundos"},
+            {n:"3",ico:"📺",t:"Cocina lo ve al momento",p:"El ticket aparece en el KDS con prioridades, alertas de alergia y orden de llegada. Venga del camarero o de un QR de mesa — la cocina marcha igual.",time:"Total: menos de 5 segundos"},
           ].map(s=>(
             <div key={s.n} className="step reveal" data-n={s.n}>
               <div className="sico">{s.ico}</div>
@@ -739,7 +740,7 @@ export default function Page() {
           const qrPrice=pQR>0?(pAnnual?Math.round(pQR*12*0.82):pQR*12):0;
           const total=basePrice+qrPrice;
           const examples:Array<[number,string]>=[[1,"1 perfil"],[3,"3 perfiles"],[6,"6 perfiles"]];
-          const feats=["Voz + KDS en cocina","Cobro Stripe + Bizum","VeriFactu incluido","Impresoras térmicas","Alertas en tiempo real","Panel owner","Soporte en español","14 días de prueba gratis"];
+          const feats=["Voz + KDS en cocina","Cobro Stripe + Bizum","VeriFactu incluido","Impresoras térmicas","Alertas en tiempo real","Panel owner","QR en mesa (add-on)","14 días de prueba gratis"];
           return (
             <div className="pcalc reveal">
               <div className="pcalc-inner">
