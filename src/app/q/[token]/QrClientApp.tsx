@@ -190,16 +190,25 @@ export default function QrClientApp({ token }: { token: string }) {
   }, [preauthClientSecret, sesionId, data])
 
   const confirmarComensales = useCallback(async (n: number) => {
-    // Si ya tenemos sesionId (venimos de pre_auth), solo actualizamos comensales
+    // Si ya tenemos sesionId (venimos de pre_auth), actualizamos comensales en BD
     if (sesionId) {
       setNumComensales(n)
+      // Actualizar num_comensales en la sesión existente si hay precio fijo
+      if (data?.mesa.precio_fijo_persona) {
+        const preciofijo = Math.round((data.mesa.precio_fijo_persona * n) * 100) / 100
+        await fetch(`${SUPABASE_URL}/functions/v1/qr-session`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY },
+          body: JSON.stringify({ sesion_id: sesionId, num_comensales: n, precio_fijo_aplicado: preciofijo }),
+        }).catch(() => {}) // no crítico, continúa
+      }
       setScreen('menu')
       return
     }
     const d = await callEF('qr-session', { token, num_comensales: n })
     if (d.sesion_id) { setSesionId(d.sesion_id); setNumComensales(n); setScreen('menu') }
     else { setError('No se pudo iniciar sesión'); setScreen('error') }
-  }, [token, sesionId])
+  }, [token, sesionId, data])
 
   const confirmarPedido = useCallback(async () => {
     if (!data || !sesionId || !cart.length) return

@@ -21,12 +21,28 @@ serve(async (req) => {
 
     const url = new URL(req.url)
     const isGet = req.method === 'GET'
+    const isPatch = req.method === 'PATCH'
     const token = isGet
       ? url.searchParams.get('token')
       : (await req.json().catch(() => ({}))).token
 
-    if (!token) {
+    if (!token && !isPatch) {
       return res400('token requerido')
+    }
+
+    // PATCH: actualizar num_comensales en sesión existente (flujo pre_auth + precio_fijo)
+    if (isPatch) {
+      const body = await req.json().catch(() => ({}))
+      const { sesion_id, num_comensales, precio_fijo_aplicado } = body
+      if (!sesion_id) return res400('sesion_id requerido')
+      const nc = Math.max(1, parseInt(num_comensales) || 1)
+      const pf = parseFloat(precio_fijo_aplicado) || 0
+      await supabase
+        .from('qr_sesiones_cliente')
+        .update({ num_comensales: nc, precio_fijo_aplicado: pf })
+        .eq('id', sesion_id)
+        .eq('estado', 'activa')
+      return resOK({ updated: true, num_comensales: nc, precio_fijo_aplicado: pf })
     }
 
     // 1. Buscar mesa por token

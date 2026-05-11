@@ -79,15 +79,6 @@ export async function GET(req: NextRequest) {
         .update({ inactividad_alerta_enviada: true })
         .eq('id', s.sesion_id)
 
-      // Registrar en alerta_log para auditoría
-      await supabase.from('alerta_log').insert({
-        restaurante_id: s.restaurante_id,
-        tipo: 'qr_inactividad',
-        referencia_id: s.sesion_id,
-        mensaje: `Mesa ${s.mesa_codigo}: ${minutos}min sin pago QR`,
-        nivel: 'aviso',
-      })
-
       enviadas++
     } catch (e) {
       console.error(`[cobro-inactividad] Error procesando sesión ${s.sesion_id}:`, e)
