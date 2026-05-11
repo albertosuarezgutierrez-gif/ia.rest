@@ -19,13 +19,13 @@ export async function POST(req: NextRequest) {
   const { nombre, seccion_id, cloud_device_id, ip_address, port, connection_type, modelo } = await req.json()
   if (!nombre || !seccion_id) return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
 
-  const isTCP = connection_type === 'tcp' || (!cloud_device_id && ip_address)
+  const isTCP = connection_type === 'tcp' || connection_type === 'ip_local' || (!cloud_device_id && ip_address)
   if (isTCP && !ip_address) return NextResponse.json({ error: 'IP requerida para ESC/POS TCP' }, { status: 400 })
   if (!isTCP && !cloud_device_id) return NextResponse.json({ error: 'Device ID requerido para CloudPRNT' }, { status: 400 })
 
   const row: Record<string, unknown> = {
     nombre, seccion_id, modelo: modelo || null, activa: true, configurada: true,
-    connection_type: isTCP ? 'tcp' : 'epson_epos',
+    connection_type: isTCP ? 'ip_local' : 'epson_epos',
   }
   if (isTCP) {
     row.ip_address = ip_address.trim()
