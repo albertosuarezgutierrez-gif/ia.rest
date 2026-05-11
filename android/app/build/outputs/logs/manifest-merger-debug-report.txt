@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-40:12
-INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-40:12
-INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-40:12
-INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-40:12
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-42:12
+INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-42:12
+INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-42:12
+INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:2:1-42:12
 MERGED from [com.google.android.material:material:1.11.0] /root/.gradle/caches/transforms-3/fcbc5d16c187e197fa242b722ddc8c8e/transformed/material-1.11.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /root/.gradle/caches/transforms-3/3e12dc78bff8e4a706493c9e795b8073/transformed/jetified-appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /root/.gradle/caches/transforms-3/a4481682e3066cfdc55a77f4128b8e07/transformed/constraintlayout-2.0.1/AndroidManifest.xml:2:1-11:12
@@ -76,8 +76,8 @@ ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:9:5-76
 	android:name
 		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:9:22-74
 application
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:11:5-39:19
-INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:11:5-39:19
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:11:5-41:19
+INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:11:5-41:19
 MERGED from [com.google.android.material:material:1.11.0] /root/.gradle/caches/transforms-3/fcbc5d16c187e197fa242b722ddc8c8e/transformed/material-1.11.0/AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.11.0] /root/.gradle/caches/transforms-3/fcbc5d16c187e197fa242b722ddc8c8e/transformed/material-1.11.0/AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /root/.gradle/caches/transforms-3/a4481682e3066cfdc55a77f4128b8e07/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
@@ -99,51 +99,55 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /root/.gradle/caches/transf
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.9.0] /root/.gradle/caches/transforms-3/bda0c27834fb93924e867ed40e13d9d8/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:14:9-36
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:16:9-36
 	android:label
 		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:13:9-32
+	android:roundIcon
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:15:9-54
+	android:icon
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:14:9-43
 	android:allowBackup
 		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:12:9-36
 	android:theme
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:16:9-44
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:18:9-44
 	android:usesCleartextTraffic
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:15:9-45
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:17:9-45
 activity#es.iarest.app.MainActivity
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:18:9-28:20
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:20:9-30:20
 	android:screenOrientation
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:21:13-49
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:23:13-49
 	android:windowSoftInputMode
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:22:13-55
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:24:13-55
 	android:exported
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:20:13-36
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:22:13-36
 	android:configChanges
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:23:13-74
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:25:13-74
 	android:name
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:19:13-41
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:21:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:24:13-27:29
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:26:13-29:29
 action#android.intent.action.MAIN
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:25:17-68
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:27:17-68
 	android:name
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:25:25-66
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:27:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:26:17-76
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:28:17-76
 	android:name
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:26:27-74
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:28:27-74
 receiver#androidx.media.session.MediaButtonReceiver
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:31:9-37:20
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:33:9-39:20
 	android:exported
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:33:13-36
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:35:13-36
 	android:name
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:32:13-70
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:34:13-70
 intent-filter#action:name:android.intent.action.MEDIA_BUTTON
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:34:13-36:29
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:36:13-38:29
 	android:priority
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:34:28-57
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:36:28-57
 action#android.intent.action.MEDIA_BUTTON
-ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:35:17-76
+ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:37:17-76
 	android:name
-		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:35:25-74
+		ADDED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml:37:25-74
 uses-sdk
 INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/claude/ia.rest/android/app/src/main/AndroidManifest.xml
