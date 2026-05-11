@@ -51,6 +51,8 @@ export default function QrClientApp({ token }: { token: string }) {
   const [splitItemsSeleccionados, setSplitItemsSeleccionados] = useState<string[]>([])
   const [splitItemsDisponibles, setSplitItemsDisponibles] = useState<any[]>([])
   const [splitSlotId, setSplitSlotId] = useState<string | null>(null)
+  const [callModal, setCallModal] = useState(false)
+  const [calling, setCalling] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [propinaPct, setPropinaPct] = useState(0)
@@ -149,6 +151,16 @@ export default function QrClientApp({ token }: { token: string }) {
     }
   }, [sesionId])
 
+  const callWaiter = useCallback(async (motivo: string) => {
+    if (!sesionId || calling) return
+    setCalling(true)
+    setCallModal(false)
+    const res = await callEF('qr-call-waiter', { sesion_id: sesionId, motivo })
+    setCalling(false)
+    if (res.ok) showToast('🙋 Camarero avisado — viene enseguida')
+    else showToast('Error al llamar al camarero')
+  }, [sesionId, calling])
+
   const addToCart = (prod: Producto) => setCart(prev => {
     const ex = prev.find(p => p.id === prod.id)
     return ex ? prev.map(p => p.id === prod.id ? { ...p, qty: p.qty + 1 } : p) : [...prev, { ...prod, qty: 1 }]
@@ -167,9 +179,67 @@ export default function QrClientApp({ token }: { token: string }) {
 
   const cats = [...new Set(data.productos.map(p => p.categoria))]
 
+  const MOTIVOS = [
+    { id:'ayuda',     emoji:'🙋', label:'Necesito ayuda' },
+    { id:'pedir_mas', emoji:'🍽️', label:'Quiero pedir más' },
+    { id:'cuenta',    emoji:'💳', label:'Quiero la cuenta' },
+    { id:'problema',  emoji:'⚠️', label:'Tengo un problema' },
+  ]
+
+  const mostrarBotonFijo = sesionId && !['welcome','paying'].includes(screen)
+
   return (
     <div style={s}>
       <style>{`:root{color-scheme:dark} *{box-sizing:border-box;margin:0;padding:0} ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-thumb{background:#2e2720}`}</style>
+
+      {/* ── BOTÓN FIJO LLAMAR CAMARERO ── */}
+      {mostrarBotonFijo && (
+        <button
+          onClick={() => setCallModal(true)}
+          disabled={calling}
+          style={{
+            position: 'fixed', bottom: 24, right: 20, zIndex: 50,
+            width: 52, height: 52, borderRadius: '50%',
+            background: calling ? C.bg3 : C.amber,
+            border: 'none', cursor: calling ? 'not-allowed' : 'pointer',
+            fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 4px 20px ${C.amber}66`,
+            transition: 'all 0.2s',
+          }}
+        >
+          {calling ? '⏳' : '🙋'}
+        </button>
+      )}
+
+      {/* ── MODAL MOTIVO LLAMADA ── */}
+      {callModal && (
+        <div
+          onClick={() => setCallModal(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:60, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background:C.bg2, borderRadius:'20px 20px 0 0', padding:'20px 20px 32px', width:'100%', maxWidth:480, border:`1px solid ${C.rule}`, borderBottom:'none' }}
+          >
+            <div style={{ width:36, height:4, background:C.rule, borderRadius:2, margin:'0 auto 16px' }} />
+            <div style={{ fontSize:16, fontStyle:'italic', color:C.cream, marginBottom:3 }}>¿En qué te ayudamos?</div>
+            <div style={{ fontSize:12, color:C.creamDim, marginBottom:16 }}>El camarero recibe un aviso en su móvil ahora mismo</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+              {MOTIVOS.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => callWaiter(m.id)}
+                  style={{ display:'flex', gap:14, alignItems:'center', padding:'13px 16px', background:C.bg3, border:`1px solid ${C.rule}`, borderRadius:12, cursor:'pointer', textAlign:'left' }}
+                >
+                  <span style={{ fontSize:22 }}>{m.emoji}</span>
+                  <span style={{ fontSize:14, color:C.cream }}>{m.label}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setCallModal(false)} style={{ width:'100%', marginTop:12, padding:'11px', background:'transparent', border:`1px solid ${C.rule}`, borderRadius:11, color:C.creamDim, fontSize:13, cursor:'pointer' }}>Cancelar</button>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
