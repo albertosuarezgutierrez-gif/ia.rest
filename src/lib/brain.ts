@@ -134,8 +134,16 @@ REGLAS ESTRICTAS:
 - COMENSALES: si el camarero menciona número de personas/comensales/cubiertos, extráelo en "num_comensales" (null si no se menciona)
 - Ejemplos comensales: "mesa cuatro para tres"→num_comensales:3, "somos cuatro"→num_comensales:4, "dos cubiertos"→num_comensales:2
 
+CLARIFICACIÓN POR AMBIGÜEDAD:
+- Si el camarero menciona un producto que en la CARTA ACTIVA tiene múltiples variantes distintas (tipos diferentes, no solo formatos de tamaño) y NO especificó cuál, devuelve necesita_clarificacion:true
+- Ejemplo: "una copa de vino" y en carta existen "Copa Vino Blanco", "Copa Vino Tinto", "Copa Vino Rosado" → preguntar tipo
+- Ejemplo: "una cerveza" y en carta existen "Caña", "Mediana", "Botellín" → preguntar formato
+- NO preguntes si: el producto es único, si ya especificó tipo/formato, o si las variantes tienen el mismo nombre base con solo diferencia de tamaño trivial
+- La pregunta debe ser corta, directa y listar las opciones: "¿Qué tipo de vino? Blanco, tinto o rosado"
+- Si hay texto "→ respuesta:" en el input, es la respuesta a una clarificación anterior — úsala para completar la comanda sin volver a preguntar
+
 SCHEMA:
-{"mesa":"S4","tipo":"comanda|marchar|86|cuenta|aviso","items":[{"nombre":"Nombre canónico de la carta","cantidad":2,"notas":"","formato":null}],"num_comensales":null,"confianza":0.95,"raw":"texto original"}`
+{"mesa":"S4","tipo":"comanda|marchar|86|cuenta|aviso","items":[{"nombre":"Nombre canónico de la carta","cantidad":2,"notas":"","formato":null}],"num_comensales":null,"necesita_clarificacion":false,"pregunta_clarificacion":null,"confianza":0.95,"raw":"texto original"}`
 
 export async function parsearComanda(texto: string, restaurante_id?: string): Promise<BrainResult> {
   // Usar cache cuando sea posible para evitar DB queries en cada llamada (~200ms ahorrados)

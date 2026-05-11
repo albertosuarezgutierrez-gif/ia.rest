@@ -13,13 +13,18 @@ export async function POST(req: NextRequest) {
     const camareroId = formData.get('camarero_id') as string
     const turnoId = formData.get('turno_id') as string
     const pendingItemsRaw = formData.get('pending_items') as string | null  // flujo conversacional
+    const pendingContext  = formData.get('pending_context') as string | null  // flujo clarificación
     if (!audio || !camareroId || !turnoId)
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
 
     const supabase = createServerClient()
     const rid = getRestauranteId(req)
 
-    const { texto, latencia_ms: latenciaEar } = await transcribir(audio)
+    const { texto: textoRaw, latencia_ms: latenciaEar } = await transcribir(audio)
+    // Si hay contexto previo de clarificación, se lo pasamos a BRAIN para que resuelva
+    const texto = pendingContext
+      ? `${pendingContext} → respuesta: ${textoRaw}`
+      : textoRaw
     const brainResult = await routearComanda(texto, rid)
 
     // Guardia: asegurar que items siempre es array (defensa en profundidad)

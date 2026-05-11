@@ -89,6 +89,8 @@ export interface BrainResult {
   tipo: 'comanda' | 'marchar' | '86' | 'cuenta' | 'aviso'
   items: { nombre: string; cantidad: number; notas?: string; producto_id?: string; precio_unitario?: number; formato?: string | null }[]
   num_comensales?: number | null   // extraído de voz: "mesa 4 para 3 personas"
+  necesita_clarificacion?: boolean          // BRAIN no puede resolver la ambigüedad
+  pregunta_clarificacion?: string | null    // ej: "¿Qué tipo de vino? Blanco, tinto o rosado"
   confianza: number
   raw: string
 }

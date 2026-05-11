@@ -150,6 +150,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [autoThreshold, setAutoThreshold] = useState(85)    // % mínimo para auto-confirmar
   const [ttsOff, setTtsOff]             = useState(false)   // BRAIN no habla, solo escribe
   const [mesaFijada, setMesaFijada]     = useState<string|null>(null)  // mesa pinchada en HABLAR
+  const [clarificacionCtx, setClarificacionCtx] = useState<string|null>(null)  // texto ambiguo anterior
+  const [preguntaBrain, setPreguntaBrain]       = useState<string>('¿Qué mesa?')
   const [alergenosMesa, setAlergenosMesa]   = useState<string[]>([])
   const [zonasAsignadas, setZonasAsignadas] = useState<string[]>([])   // [] = todas
   const [fontBig, setFontBig]               = useState(false)
@@ -342,6 +344,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     fd.append('camarero_id', session.id)
     fd.append('turno_id', turnoId||'demo')
     if (pendingItems.length > 0) fd.append('pending_items', JSON.stringify(pendingItems))
+    if (clarificacionCtx)        fd.append('pending_context', clarificacionCtx)
 
     try {
       const r = await fetch('/api/transcribe', {method:'POST', body:fd})
@@ -350,6 +353,21 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         setTranscript(d.texto); setBrain(d.brain); setLatencia(d.latencia_ms)
         setLastComandaId(d.comanda_id??null); setAlertas86(d.alertas_86??[]); setAlertasAlerg(d.alertas_alergenos??[])
         addMsg('camarero', d.texto)
+
+        // ── BRAIN pide clarificación por ambigüedad (ej: "copa de vino" sin tipo) ──
+        if (d.brain?.necesita_clarificacion && d.brain?.pregunta_clarificacion) {
+          const pregunta = d.brain.pregunta_clarificacion as string
+          setClarificacionCtx(d.texto)
+          setPreguntaBrain(pregunta)
+          addMsg('brain', pregunta, 'pregunta')
+          setScreen('asking')
+          speak(pregunta).then(() => startRecording())
+          return
+        }
+        // Limpiar contexto de clarificación si se resolvió con éxito
+        setClarificacionCtx(null)
+        setPreguntaBrain('¿Qué mesa?')
+
         // Si BRAIN no encontró mesa o no creó comanda → preguntar
         const mesaInvalida = !d.comanda_id && (
           !d.brain?.mesa ||
@@ -512,6 +530,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     speakingRef.current=false; setScreen('idle'); setBrain(null); setTranscript('')
     setError(''); setPedidoCuenta({loading:false,error:'',factura:null})
     setAlertas86([]); setAlertasAlerg([]); setPendingItems([])
+    setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
   }
   const pedirCuenta = async () => {
     if (!lastComandaId) return
@@ -688,7 +707,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
             {screen==='asking' && (
               <div style={{background:`${C.teal}14`,border:`1px solid ${C.teal}44`,borderRadius:12,padding:'12px 14px',animation:'msgIn .2s ease'}}>
                 <div style={{fontFamily:SM,fontSize:8,color:C.teal,letterSpacing:'1px',marginBottom:5,textTransform:'uppercase'}}>BRAIN · pregunta</div>
-                <div style={{fontSize:15,fontWeight:600,color:C.ink}}>¿Qué mesa?</div>
+                <div style={{fontSize:15,fontWeight:600,color:C.ink}}>{preguntaBrain}</div>
                 {pendingItems.length>0 && (
                   <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:3}}>
                     {pendingItems.map((it,i)=>(
