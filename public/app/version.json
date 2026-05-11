@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "url": "https://github.com/albertosuarezgutierrez-gif/ia.rest/releases/download/android-v1.0/iarest.apk",
-  "notes": "Fix navegación — ya no salta al navegador. Login funciona correctamente."
+  "notes": "Fix micrófono: recarga tras conceder permiso. Fix navegación interna."
 }
