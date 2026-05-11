@@ -4432,6 +4432,152 @@ function ZonaCubiertoOverride({ sesion, precioGlobal, activoGlobal }: {
 }
 
 /* ─── Tab: Servicio / Cubierto ─── */
+// ─── Tab QR Mesa ───────────────────────────────────────────
+function QRTabOwner({ restauranteId, sh }: { restauranteId: string; sh: () => Record<string,string> }) {
+  const [mesas, setMesas] = useState<any[]>([])
+  const [conectado, setConectado] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState<string|null>(null)
+  const [editPrecio, setEditPrecio] = useState<Record<string,string>>({})
+  const [editConcepto, setEditConcepto] = useState<Record<string,string>>({})
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/owner/mesas', { headers: sh() }).then(r => r.json()),
+      fetch('/api/qr/connect/status', { headers: sh() }).then(r => r.json()),
+    ]).then(([md, cd]) => {
+      setMesas(md.mesas || [])
+      setConectado(cd.conectado || false)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  const updateQR = async (id: string, patch: Record<string,unknown>) => {
+    setSaving(id)
+    const r = await fetch('/api/owner/mesas', { method: 'PATCH', headers: { ...sh(), 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) })
+    const d = await r.json()
+    if (d.mesa) setMesas(prev => prev.map(m => m.id === id ? { ...m, ...d.mesa } : m))
+    setSaving(null)
+  }
+
+  const conectarStripe = async () => {
+    const r = await fetch('/api/qr/connect/link', { method: 'POST', headers: sh() })
+    const d = await r.json()
+    if (d.url) window.location.href = d.url
+    else alert('Configura STRIPE_CLIENT_ID en las variables de entorno de Vercel')
+  }
+
+  const nAct = mesas.filter(m => m.qr_habilitado).length
+
+  if (loading) return <div style={{ padding: 32, color: C.ink3, fontFamily: SM, fontSize: 12 }}>CARGANDO...</div>
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      {!conectado ? (
+        <div style={{ background: C.bone, borderRadius: 14, padding: '20px 22px', border: `1px solid ${C.rule}`, marginBottom: 24 }}>
+          <div style={{ fontFamily: SE, fontSize: 18, fontWeight: 500, color: C.ink, marginBottom: 6 }}>Activar pagos QR</div>
+          <div style={{ fontFamily: SN, fontSize: 13, color: C.ink3, marginBottom: 16, lineHeight: 1.6 }}>
+            Conecta tu cuenta bancaria. Los cobros van directamente a ti. ia.rest recibe un 0,5% automático por cada cobro QR.
+          </div>
+          <button onClick={conectarStripe} style={{ padding: '10px 20px', background: C.red, border: 'none', borderRadius: 10, color: C.bone, fontFamily: SN, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            Conectar cuenta bancaria →
+          </button>
+        </div>
+      ) : (
+        <div style={{ background: C.greenS, borderRadius: 12, padding: '12px 18px', border: `1px solid ${C.green}55`, marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span style={{ color: C.green, fontSize: 16 }}>✓</span>
+          <div>
+            <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, color: C.ink }}>Cuenta bancaria conectada</div>
+            <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3 }}>Los cobros QR llegan directamente a tu banco</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ fontFamily: SE, fontSize: 20, fontWeight: 500, color: C.ink }}>Mesas QR</div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: SM, fontSize: 14, color: C.amber }}>{nAct * 12},00 €/mes</div>
+          <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3 }}>{nAct} mesa{nAct !== 1 ? 's' : ''} activa{nAct !== 1 ? 's' : ''} × 12 €</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {mesas.map(mesa => {
+          const on = !!mesa.qr_habilitado
+          const modo = mesa.qr_modo_pago || 'solo_pedido'
+          const precio = editPrecio[mesa.id] ?? (mesa.qr_precio_fijo_persona?.toString() || '')
+          const concepto = editConcepto[mesa.id] ?? (mesa.qr_precio_fijo_concepto || 'Cubierto')
+          const isSaving = saving === mesa.id
+          return (
+            <div key={mesa.id} style={{ background: C.bone, borderRadius: 14, padding: '14px 18px', border: `1px solid ${on ? C.green + '55' : C.rule}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: on ? 12 : 0 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span style={{ fontFamily: SM, fontSize: 14, color: C.ink, fontWeight: 600 }}>{mesa.codigo}</span>
+                  {on && <span style={{ fontFamily: SM, fontSize: 9, padding: '2px 7px', background: C.greenS, border: `1px solid ${C.green}44`, borderRadius: 20, color: C.green }}>QR · 12€/mes</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {isSaving && <span style={{ fontFamily: SM, fontSize: 10, color: C.ink3 }}>...</span>}
+                  <div onClick={() => !isSaving && updateQR(mesa.id, { qr_habilitado: !on })}
+                    style={{ width: 42, height: 24, borderRadius: 12, background: on ? C.red : C.paper2, border: `1px solid ${C.rule}`, cursor: isSaving ? 'not-allowed' : 'pointer', position: 'relative', transition: 'background 0.2s', opacity: isSaving ? 0.6 : 1 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: C.bone, position: 'absolute', top: 3, left: on ? 22 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
+                  </div>
+                </div>
+              </div>
+              {on && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, marginBottom: 6, letterSpacing: '0.06em' }}>MODO PAGO</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {(['solo_pedido', 'opcional', 'obligatorio'] as const).map(v => (
+                        <button key={v} onClick={() => updateQR(mesa.id, { qr_modo_pago: v })}
+                          style={{ flex: 1, padding: '7px 0', background: modo === v ? C.paper3 : 'transparent', border: `1px solid ${modo === v ? C.ruleS : C.rule}`, borderRadius: 8, color: modo === v ? C.ink : C.ink3, fontFamily: SN, fontSize: 10, cursor: 'pointer', fontWeight: modo === v ? 600 : 400 }}>
+                          {v === 'solo_pedido' ? 'Solo pedido' : v === 'opcional' ? 'Pago opcional' : 'Pago obligatorio'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, marginBottom: 6, letterSpacing: '0.06em' }}>PRECIO FIJO / PERSONA</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input value={concepto} onChange={e => setEditConcepto(p => ({ ...p, [mesa.id]: e.target.value }))}
+                        onBlur={() => updateQR(mesa.id, { qr_precio_fijo_concepto: concepto })}
+                        placeholder="Cubierto / Menú del día..."
+                        style={{ flex: 2, padding: '8px 12px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: 9, color: C.ink, fontFamily: SN, fontSize: 12, outline: 'none' }} />
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input type="number" value={precio} min="0" step="0.5"
+                          onChange={e => setEditPrecio(p => ({ ...p, [mesa.id]: e.target.value }))}
+                          onBlur={() => updateQR(mesa.id, { qr_precio_fijo_persona: parseFloat(precio) || null })}
+                          placeholder="0,00"
+                          style={{ width: '100%', padding: '8px 28px 8px 12px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: 9, color: C.ink, fontFamily: SN, fontSize: 12, outline: 'none' }} />
+                        <span style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', fontFamily: SM, fontSize: 11, color: C.ink3 }}>€</span>
+                      </div>
+                    </div>
+                    {mesa.qr_precio_fijo_persona ? (
+                      <div style={{ fontFamily: SN, fontSize: 11, color: C.amber, marginTop: 5 }}>
+                        Al escanear se preguntará cuántas personas son · El importe se suma a la cuenta final
+                      </div>
+                    ) : (
+                      <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3, marginTop: 4 }}>Sin precio fijo por persona</div>
+                    )}
+                  </div>
+                  {mesa.qr_token && (
+                    <div style={{ background: C.paper2, borderRadius: 9, padding: '9px 13px', border: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>iarest.es/q/{mesa.qr_token.slice(0, 12)}...</span>
+                      <button onClick={() => { navigator.clipboard.writeText(`https://www.iarest.es/q/${mesa.qr_token}`); }}
+                        style={{ padding: '4px 10px', background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: 6, color: C.ink3, fontFamily: SN, fontSize: 11, cursor: 'pointer' }}>
+                        Copiar URL
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 function ServicioTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '', 'Content-Type': 'application/json' })
   const [form, setForm] = useState({
@@ -5001,6 +5147,7 @@ const GRUPOS = [
   {
     id: 'config', label: 'Config', icon: ICONS.shield,
     tabs: [
+      { id: 'qr',             label: 'QR Mesa',           icon: ICONS.wifi          },
       { id: 'cubierto',       label: 'Cubierto',         icon: ICONS.receipt       },
       { id: 'impresoras',     label: 'Impresoras',        icon: ICONS.printer       },
       { id: 'flujos',         label: 'Flujos',            icon: ICONS.wifi          },
@@ -5656,6 +5803,7 @@ export default function OwnerPage() {
 
         {/* ── Contenido ── */}
         <div style={{ marginTop: getGrupo(tab).tabs.length <= 1 ? 20 : 0 }}>
+          {tab === 'qr'             && <QRTabOwner restauranteId={session.restaurante_id} sh={sh} />}
           {tab === 'cubierto'       && <ServicioTab/>}
           {tab === 'reservas'       && <ReservasTab/>}
           {tab === 'leads'           && <LeadsTab/>}

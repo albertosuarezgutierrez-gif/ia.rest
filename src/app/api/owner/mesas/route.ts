@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
   const { data, error } = await supabase.from('mesas')
-    .select('id, codigo, nombre, zona, capacidad, estado, pos_x, pos_y, forma')
+    .select('id, codigo, nombre, zona, capacidad, estado, pos_x, pos_y, forma, qr_habilitado, qr_modo_pago, qr_precio_fijo_persona, qr_precio_fijo_concepto, qr_token')
     .eq('restaurante_id', rid).order('codigo', { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ mesas: data })
@@ -46,6 +46,25 @@ export async function PUT(req: NextRequest) {
   if (pos_y     !== undefined) updates.pos_y     = pos_y
   if (forma     !== undefined) updates.forma     = forma
   const { data, error } = await supabase.from('mesas').update(updates).eq('id', id).eq('restaurante_id', rid).select().single()
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ mesa: data })
+}
+
+export async function PATCH(req: NextRequest) {
+  // PATCH: actualizar campos QR de una mesa
+  const supabase = createServerClient()
+  const rid = getRestauranteId(req)
+  const body = await req.json()
+  const { id, qr_habilitado, qr_modo_pago, qr_precio_fijo_persona, qr_precio_fijo_concepto } = body
+  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+  const updates: Record<string, unknown> = {}
+  if (qr_habilitado           !== undefined) updates.qr_habilitado           = qr_habilitado
+  if (qr_modo_pago            !== undefined) updates.qr_modo_pago            = qr_modo_pago
+  if (qr_precio_fijo_persona  !== undefined) updates.qr_precio_fijo_persona  = qr_precio_fijo_persona
+  if (qr_precio_fijo_concepto !== undefined) updates.qr_precio_fijo_concepto = qr_precio_fijo_concepto
+  const { data, error } = await supabase.from('mesas')
+    .update(updates).eq('id', id).eq('restaurante_id', rid)
+    .select('id, codigo, qr_habilitado, qr_modo_pago, qr_precio_fijo_persona, qr_precio_fijo_concepto, qr_token').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ mesa: data })
 }
