@@ -733,7 +733,7 @@ export default function Page() {
           <div style={{fontSize:22}}>▣</div>
           <div style={{flex:1,minWidth:220}}>
             <div style={{fontFamily:"var(--head)",fontStyle:"italic",fontSize:17,color:"var(--cream)",marginBottom:4}}>Add-on: QR en mesa</div>
-            <div style={{fontSize:14,color:"var(--cream2)",lineHeight:1.6,letterSpacing:"-.005em"}}>El cliente pide desde su móvil. El ticket llega al mismo KDS que el resto — como si lo dictara el camarero. <span style={{color:"var(--amber)",fontFamily:"var(--mono)",fontSize:12"}}>+12€/mesa/mes</span></div>
+            <div style={{fontSize:14,color:"var(--cream2)",lineHeight:1.6,letterSpacing:"-.005em"}}>El cliente pide desde su móvil. El ticket llega al mismo KDS que el resto — como si lo dictara el camarero. <span style={{color:"var(--amber)",fontFamily:"var(--mono)",fontSize:12}}>+12€/mesa/mes</span></div>
           </div>
           <div style={{fontFamily:"var(--soft)",fontSize:14,color:"var(--cream3)",whiteSpace:"nowrap"}}>Mueve el slider abajo →</div>
         </div>
