@@ -21,12 +21,13 @@ async function buildMenuContext(restaurante_id?: string): Promise<string> {
       const lines = [...bySec.entries()].map(([sec, items]) => {
         const row = items.map(p => {
           const alias = p.aliases.length > 1 ? ` [${p.aliases.slice(1).join('/')}]` : ''
+          const fam   = p.familia ? ` {${p.familia}}` : ''
           if (p.formatos.length) {
             const fmtStr = p.formatos.map(f => `${f.nombre}:${f.precio}€`).join('/')
-            return `${p.nombre}${alias} (formatos: ${fmtStr})`
+            return `${p.nombre}${alias}${fam} (formatos: ${fmtStr})`
           }
           const precio = p.precio != null ? ` ${p.precio}€` : ''
-          return `${p.nombre}${alias}${precio}`
+          return `${p.nombre}${alias}${fam}${precio}`
         }).join(' · ')
         return `${sec.toUpperCase()}: ${row}`
       })

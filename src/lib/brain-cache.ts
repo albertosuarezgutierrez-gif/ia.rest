@@ -14,9 +14,10 @@ const CACHE_TTL_MS = 2 * 60 * 1000 // 2 minutos
 export interface ProductoCacheItem {
   id: string
   nombre: string
-  aliases: string[]   // nombre + nombre_alternativo[]
+  aliases: string[]
   precio: number | null
   seccion: string | null
+  familia: string | null   // grupo semántico para BRAIN (ej: 'vino_tinto', 'cerveza')
   formatos: { id: string; nombre: string; precio: number }[]
 }
 
@@ -54,7 +55,7 @@ async function cargarCache(restaurante_id: string): Promise<MenuCache> {
   const [{ data: productos }, { data: formatos }, { data: zonas }] = await Promise.all([
     supabase
       .from('productos')
-      .select('id, nombre, nombre_alternativo, precio, seccion')
+      .select('id, nombre, nombre_alternativo, precio, seccion, familia')
       .eq('activo', true)
       .eq('restaurante_id', restaurante_id),
     supabase
@@ -87,6 +88,7 @@ async function cargarCache(restaurante_id: string): Promise<MenuCache> {
     ],
     precio: p.precio != null ? Number(p.precio) : null,
     seccion: (p.seccion as string) ?? null,
+    familia: (p.familia as string) ?? null,
     formatos: fmtMap.get(p.id as string) ?? [],
   }))
 

@@ -1628,7 +1628,7 @@ function ResumenTab() {
 }
 
 /* ─── Tab: Carta ─── */
-type Producto = { id: string; nombre: string; descripcion: string | null; precio: number | null; categoria: string; seccion: string; nombre_alternativo: string[]; activo: boolean; orden: number }
+type Producto = { id: string; nombre: string; descripcion: string | null; precio: number | null; categoria: string; seccion: string; nombre_alternativo: string[]; familia: string | null; activo: boolean; orden: number }
 type ProductoDraft = Omit<Producto, 'id' | 'orden' | 'activo'> & { _key: string }
 type ProdFormato = { id: string; nombre: string; precio: number; activo: boolean; orden: number }
 
@@ -1739,7 +1739,7 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
   const [secciones, setSecciones] = useState<Seccion[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<null | 'create' | { edit: Producto } | { del: Producto }>(null)
-  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', seccion: '', nombre_alternativo: '' })
+  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', seccion: '', nombre_alternativo: '', familia: '' })
   const [err, setErr] = useState('')
 
   // Scanner state
@@ -1769,13 +1769,14 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
   const primeraSeccion = secciones[0]?.id || SECCIONES_DEFAULT[0]
 
   // ── CRUD ──
-  const openCreate = () => { setForm({ nombre: '', descripcion: '', precio: '', seccion: primeraSeccion, nombre_alternativo: '' }); setErr(''); setModal('create') }
+  const openCreate = () => { setForm({ nombre: '', descripcion: '', precio: '', seccion: primeraSeccion, nombre_alternativo: '', familia: '' }); setErr(''); setModal('create') }
   const openEdit = (p: Producto) => {
     setForm({
       nombre: p.nombre, descripcion: p.descripcion || '',
       precio: p.precio != null ? String(p.precio) : '',
       seccion: p.seccion || 'otras',
       nombre_alternativo: (p.nombre_alternativo || []).join(', '),
+      familia: p.familia || '',
     })
     setErr(''); setModal({ edit: p })
   }
@@ -1792,8 +1793,9 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
       descripcion: form.descripcion.trim() || null,
       precio: form.precio !== '' ? parseFloat(form.precio) : null,
       seccion: form.seccion,
-      categoria: form.seccion, // keep categoria in sync for compat
+      categoria: form.seccion,
       nombre_alternativo: aliases,
+      familia: form.familia.trim() || null,
     }
     const r = await fetch('/api/owner/carta', { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', ...sh() }, body: JSON.stringify(body) })
     const d = await r.json()
@@ -2104,6 +2106,13 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
                 : SECCIONES_DEFAULT.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))
               }/>
             <Field label="Aliases (separados por coma)" value={form.nombre_alternativo} onChange={v => setForm(f => ({ ...f, nombre_alternativo: v }))} placeholder="bravas, una de bravas, patatas"/>
+            <div>
+              <Field label="Familia BRAIN (opcional)" value={form.familia} onChange={v => setForm(f => ({ ...f, familia: v }))} placeholder="vino_tinto"/>
+              <div style={{fontFamily:SM,fontSize:10,color:C.ink3,marginTop:4,lineHeight:1.5}}>
+                Si varios productos comparten familia, el sistema muestra opciones al camarero cuando hay ambigüedad.<br/>
+                Ejemplos: <span style={{color:C.ink2}}>vino_tinto · vino_blanco · cerveza · refresco · postre · vermut</span>
+              </div>
+            </div>
             <Field label="Descripción (opcional)" value={form.descripcion} onChange={v => setForm(f => ({ ...f, descripcion: v }))} placeholder="Caseras, con bechamel de la abuela"/>
             {modal !== 'create' && typeof modal === 'object' && 'edit' in modal && (
               <FormatsEditor productoId={(modal as { edit: Producto }).edit.id} sh={sh} />

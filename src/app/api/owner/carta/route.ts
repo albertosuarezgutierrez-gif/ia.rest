@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getRestauranteId } from '@/lib/session'
+import { invalidarCache } from '@/lib/brain-cache'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const maxDuration = 60
@@ -21,11 +22,14 @@ export async function POST(req: NextRequest) {
   if (url.searchParams.get('action') === 'bulk') return POST_BULK(req)
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
-  const { nombre, descripcion, precio, categoria, activo, orden } = await req.json()
+  const { nombre, descripcion, precio, categoria, activo, orden, familia, nombre_alternativo } = await req.json()
   if (!nombre?.trim()) return NextResponse.json({ error: 'Nombre requerido' }, { status: 400 })
   const { data, error } = await supabase.from('productos')
     .insert({ nombre: nombre.trim(), descripcion, precio: precio ?? null,
-      categoria: categoria || 'Sin categoría', activo: activo ?? true, orden: orden ?? 0, restaurante_id: rid })
+      categoria: categoria || 'Sin categoría', activo: activo ?? true, orden: orden ?? 0,
+      familia: familia ?? null,
+      nombre_alternativo: Array.isArray(nombre_alternativo) ? nombre_alternativo : [],
+      restaurante_id: rid })
     .select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ producto: data })
@@ -40,6 +44,7 @@ export async function PUT(req: NextRequest) {
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id).eq('restaurante_id', rid).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  invalidarCache(rid)
   if (updates.activo === false && data) {
     const { data: turno } = await supabase.from('turnos').select('id')
       .eq('estado', 'activo').eq('restaurante_id', rid).order('created_at', { ascending: false }).limit(1).single()
