@@ -486,6 +486,19 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     }
   }, [activateMediaSession])
 
+  // ── Exponer PTT globalmente para app nativa Android ─────────────
+  // La app Android (WebView) llama a window.startPTT() / window.stopPTT()
+  // cuando el botón del auricular es interceptado por MediaSession nativo.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(window as any).startPTT = () => { activateMediaSession(); startRecording() }
+    ;(window as any).stopPTT  = () => stopRecording()
+    return () => {
+      delete (window as any).startPTT
+      delete (window as any).stopPTT
+    }
+  }, [startRecording, stopRecording, activateMediaSession])
+
   // ── Detección de auriculares conectados ─────────────────────────
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
