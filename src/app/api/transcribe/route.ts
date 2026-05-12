@@ -288,7 +288,7 @@ export async function POST(req: NextRequest) {
       }
 
       const nuevoEstado = ({ comanda: 'activa', marchar: 'marchar', '86': mesa.estado, cuenta: 'cuenta', aviso: 'aviso' })[brainResult.tipo] as string
-      await supabase.from('mesas').update({ estado: nuevoEstado, ultima_comanda: new Date().toISOString(), camarero_id: camareroId }).eq('id', mesa.id)
+      await supabase.from('mesas').update({ estado: nuevoEstado, ultima_comanda: new Date().toISOString(), camarero_id: camareroId }).eq('id', mesa.id).eq('restaurante_id', rid)
 
       if (brainResult.tipo === '86') {
         await supabase.from('productos_86').insert(
