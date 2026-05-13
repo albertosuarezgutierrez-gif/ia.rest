@@ -218,6 +218,18 @@ Stripe TEST: base=price_1TUPaTK5xixGkeRIEU1x3sqG (STRIPE_MODE=test activo)
 - ✅ Circuit breaker offline: useOfflineQueue, banner en /edge, auto-sync al reconectar
 - ✅ Página estado pública: www.iarest.es/estado (uptime 30d, 5 servicios, sin login)
 - ✅ Auditoría seguridad: 0 createClient directos en API routes, multi-tenant 100%
+- ✅ Fichaje jornada (RD-ley 8/2019): modal login, FicharSalidaBtn /edge+/kds, FichajesTab /owner→Auditoría→Fichajes, RPCs fichar_entrada+fichar_salida, export CSV
+
+### Módulo fichaje — detalles técnicos
+- **Flujo**: PIN correcto → FicharEntradaModal → "¿Fichar entrada?" → Sí/Entrar sin fichar
+- **Salida**: /edge Config → FicharSalidaBtn (contador horas en tiempo real, confirmar salida)
+- **KDS**: botón ⏏ pregunta fichar salida con window.confirm antes de logout
+- **Owner**: /owner → Auditoría → Fichajes (quién trabaja ahora, historial 7d, export CSV, notas)
+- **RPCs**: `fichar_entrada(camarero_id, restaurante_id, ip)` — evita doble fichaje mismo día
+- **RPCs**: `fichar_salida(camarero_id, restaurante_id, ip)` — calcula horas_totales automático
+- **APIs**: POST /api/turnos/fichar (entrada), DELETE (salida), GET /api/turnos/activo, GET|PATCH /api/turnos/historial
+- **BD turnos**: añadidas columnas restaurante_id, camarero_id, entrada_at, salida_at, horas_totales, tipo, notas, ip_entrada, ip_salida
+- **"Turno demo"**: marcado como cerrado (legacy)
 
 ---
 
