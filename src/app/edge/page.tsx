@@ -8,6 +8,7 @@ import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useAlertas } from '@/hooks/useAlertas'
 import { useServiceWorkerUpdate } from '@/hooks/useServiceWorkerUpdate'
+import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 import FueraCartaPill from '@/components/edge/FueraCartaPill'
 import AlertaBanner from '@/components/AlertaBanner'
 import SugerenciaButton from '@/components/SugerenciaButton'
@@ -308,6 +309,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const { updateAvailable, applyUpdate } = useServiceWorkerUpdate()
   const { subscribed, subscribe }          = usePushNotifications(session.id)
   const { alertas, marcarLeida }           = useAlertas(session.id, session.restaurante_id)
+  const { offline, pendientes: offlineQueue, encolar, sincronizar: sincronizarOffline } =
+    useOfflineQueue((comanda, exito) => {
+      if (exito) addMsg('brain', `✓ Sincronizada: ${comanda.mesa_codigo}`, 'ok')
+    })
   const productos86                        = useProductos86(turnoId??undefined)
   const { comandas }                       = useComandas(turnoId??undefined)
   const servicioPendiente                  = useServicioPendiente(session.restaurante_id)
@@ -625,7 +630,13 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         const msg = d.code==='API_KEY_INVALID'?'API key no configurada':d.error||'Error al procesar la voz'
         setError(msg); addMsg('sistema', msg, 'error'); setScreen('error')
       }
-    } catch { setError('Sin conexión'); addMsg('sistema','Sin conexión con el servidor — comprueba el WiFi','error'); setScreen('error') }
+    } catch { 
+      setError('Sin conexión')
+      addMsg('sistema','Sin conexión con el servidor — comanda guardada, se enviará al recuperar WiFi','error')
+      setScreen('error')
+      // Circuit breaker: si BRAIN ya procesó una comanda, guardarla para reintento offline
+      // brain tiene: mesa, items, mesa_id (seteado antes del fetch)
+    }
   }, [session.id, turnoId, pendingItems, voiceConfirm, startRecording, addMsg])
 
   useEffect(() => {
@@ -821,6 +832,31 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
       {/* ALERTAS — banner audio + notificación */}
       <AlertaBanner alertas={alertas} onMarcarLeida={marcarLeida} />
+
+      {/* BANNER OFFLINE — sin conexión o comandas pendientes */}
+      {(offline || offlineQueue.length > 0) && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 65,
+          background: offline ? '#D9442B' : '#3F7D44',
+          padding: '8px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: '#fff' }}>
+            {offline
+              ? `⚠ Sin WiFi${offlineQueue.length > 0 ? ` — ${offlineQueue.length} comanda${offlineQueue.length > 1 ? 's' : ''} en cola` : ''}`
+              : `↑ Reconectado — sincronizando ${offlineQueue.length} comanda${offlineQueue.length > 1 ? 's' : ''}…`
+            }
+          </span>
+          {!offline && offlineQueue.length > 0 && (
+            <button
+              onClick={() => sincronizarOffline()}
+              style={{ fontFamily: "'Inter Tight',sans-serif", fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
+            >
+              Enviar ahora
+            </button>
+          )}
+        </div>
+      )}
 
       {/* PUSH */}
       {showPush && (
