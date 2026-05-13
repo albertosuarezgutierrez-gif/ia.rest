@@ -35,6 +35,7 @@ export interface MesaPlano {
   minutos_abierta?: number | null
   es_mia?: boolean
   servicio_pendiente?: boolean   // 🍞 running no ha llevado el cubierto aún
+  nombre_cuenta?: string | null  // alias opcional de la comanda (ej: "Pepe")
 }
 
 export interface ZonaInfo {
@@ -163,13 +164,15 @@ function MesaIcon({
             {mesa.capacidad}
           </div>
         )}
-        {/* Código */}
+        {/* Código o nombre cuenta */}
         <div style={{
-          fontFamily: "'JetBrains Mono',monospace",
+          fontFamily: mesa.nombre_cuenta ? "'Newsreader',serif" : "'JetBrains Mono',monospace",
+          fontStyle: mesa.nombre_cuenta ? 'italic' : 'normal',
           fontSize: 7 * scale, color: isSel ? '#D9442B' : pal.fg,
           lineHeight: 1, opacity: .85,
+          maxWidth: sz.w - 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {mesa.codigo}
+          {mesa.nombre_cuenta ? `★${mesa.nombre_cuenta}` : mesa.codigo}
         </div>
         {/* Tiempo */}
         {tiempo && mesa.estado !== 'libre' && (
