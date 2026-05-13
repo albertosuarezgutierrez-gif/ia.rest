@@ -491,6 +491,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const mediaRef    = useRef<MediaRecorder|null>(null)
   const chunksRef   = useRef<Blob[]>([])
   const recordingRef = useRef(false)
+  const silenceTimerRef  = useRef<ReturnType<typeof setTimeout>|null>(null)
+  const analyserRef      = useRef<AnalyserNode|null>(null)
+  const audioCtxRef      = useRef<AudioContext|null>(null)
+  const vadFrameRef      = useRef<number|null>(null)
 
   // ── Auriculares 3.5mm — PTT por botón de cable ──────────────────
   const silentAudioRef       = useRef<HTMLAudioElement|null>(null)
@@ -539,12 +543,58 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       mr.start(100); mediaRef.current=mr; recordingRef.current=true
       setScreen('recording')
       if (navigator.vibrate) navigator.vibrate(50)
+
+      // ── VAD: auto-stop por silencio (~1.5s sin voz) ──────────────
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 512
+        const source = audioCtx.createMediaStreamSource(stream)
+        source.connect(analyser)
+        audioCtxRef.current = audioCtx
+        analyserRef.current = analyser
+        const buf = new Uint8Array(analyser.frequencyBinCount)
+        let silentMs = 0
+        const SILENCE_THRESHOLD = 8      // RMS < 8 → silencio
+        const SILENCE_DURATION  = 1500   // 1.5s de silencio → parar
+        const FRAME_INTERVAL    = 80     // muestrear cada 80ms
+        let lastFrame = Date.now()
+        const vadLoop = () => {
+          if (!recordingRef.current) return
+          analyser.getByteTimeDomainData(buf)
+          let sum = 0
+          for (let i = 0; i < buf.length; i++) sum += Math.abs(buf[i] - 128)
+          const rms = sum / buf.length
+          const now = Date.now()
+          const delta = now - lastFrame
+          lastFrame = now
+          if (rms < SILENCE_THRESHOLD) {
+            silentMs += delta
+            if (silentMs >= SILENCE_DURATION) {
+              // Silencio sostenido → parar grabación
+              if (recordingRef.current) stopRecording()
+              return
+            }
+          } else {
+            silentMs = 0
+          }
+          vadFrameRef.current = setTimeout(vadLoop, FRAME_INTERVAL) as unknown as number
+        }
+        // Empezar VAD después de 400ms para evitar falso-positivo inicial
+        vadFrameRef.current = setTimeout(vadLoop, 400) as unknown as number
+      } catch { /* VAD no disponible, modo normal sin auto-stop */ }
+      // ─────────────────────────────────────────────────────────────
     } catch { setError('Sin acceso al micrófono'); setScreen('error') }
   }, [screen])
 
   const stopRecording = useCallback(async () => {
     if (!recordingRef.current || !mediaRef.current) return
     recordingRef.current = false; setScreen('processing')
+    // Limpiar VAD
+    if (vadFrameRef.current) { clearTimeout(vadFrameRef.current); vadFrameRef.current = null }
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+    if (audioCtxRef.current) { try { audioCtxRef.current.close() } catch {} audioCtxRef.current = null }
+    analyserRef.current = null
     const mr = mediaRef.current
     await new Promise<void>(resolve => { mr.onstop=()=>resolve(); mr.stop() })
     mr.stream.getTracks().forEach(t=>t.stop())
@@ -658,10 +708,16 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         if (autoConfirm && conf * 100 >= autoThreshold && d.comanda_id) {
           setScreen('sent')
           addMsg('brain', `✓ Auto-enviado · ${d.brain?.mesa||'?'}`, 'ok')
-        } else if (!ttsOff && voiceConfirm && hasTTS) {
+        } else if (voiceConfirm && !ttsOff && hasTTS) {
+          // Confirmación por voz ON + TTS disponible → BRAIN lee la comanda antes de confirmar
           setScreen('speaking')
-        } else {
+        } else if (voiceConfirm) {
+          // Confirmación por voz ON pero TTS desactivado → mostrar pantalla de confirmación visual
           setScreen('confirm')
+        } else {
+          // Confirmación por voz OFF → enviar directamente sin confirmación
+          setScreen('sent')
+          addMsg('brain', `✓ Enviado · ${d.brain?.mesa||'?'}`, 'ok')
         }
         if (navigator.vibrate) navigator.vibrate([30,50,30])
       } else {
@@ -1171,18 +1227,6 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                 <div style={{width:48,height:48,borderRadius:'50%',background:C.grS,display:'flex',alignItems:'center',justifyContent:'center',border:`2px solid ${C.gr}`}}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.gr} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 12 10 18 20 6"/></svg>
                 </div>
-                {lastComandaId && !pedidoCuenta.factura && (
-                  <button onClick={pedirCuenta} disabled={pedidoCuenta.loading}
-                    style={{background:C.bg2,border:`1px solid ${C.rule}`,color:C.ink,padding:'9px 18px',borderRadius:8,fontFamily:SN,fontSize:12,fontWeight:600,cursor:'pointer'}}>
-                    {pedidoCuenta.loading?'Generando…':'Generar cuenta · Verifactu'}
-                  </button>
-                )}
-                {pedidoCuenta.factura && (
-                  <div style={{background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:10,padding:12,textAlign:'center'}}>
-                    <div style={{fontFamily:SM,fontSize:8,color:C.ink3,marginBottom:3}}>FACTURA VERIFACTU</div>
-                    <div style={{fontFamily:SE,fontSize:22,fontWeight:600,color:C.ink}}>{pedidoCuenta.factura.importe_total.toFixed(2).replace('.',',')} €</div>
-                  </div>
-                )}
                 <button onClick={reset} style={{background:'transparent',border:`1px solid ${C.rule}`,color:C.ink3,padding:'8px 20px',borderRadius:8,fontFamily:SN,fontSize:12,fontWeight:600,cursor:'pointer'}}>Nueva comanda</button>
               </div>
             )}
@@ -1213,9 +1257,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
               <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',border:`1.5px solid ${isListening?C.verm+'60':'#D9442B22'}`,animation:'hout 2s ease-out infinite'}}/>
               <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',border:`1.5px solid ${isListening?C.verm+'60':'#D9442B22'}`,animation:'hout 2s ease-out .7s infinite'}}/>
               <button
-                onPointerDown={e=>{e.preventDefault();activateMediaSession();startRecording()}}
-                onPointerUp={e=>{e.preventDefault();stopRecording()}}
-                onPointerLeave={e=>{e.preventDefault();if(recordingRef.current)stopRecording()}}
+                onClick={e=>{e.preventDefault(); if(screen==='recording'){stopRecording()}else{activateMediaSession();startRecording()}}}
                 disabled={isProcessing}
                 style={{width:76,height:76,borderRadius:'50%',
                   background:isListening?C.verm:`linear-gradient(145deg,#E85540,${C.verm})`,
@@ -1232,7 +1274,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
               </button>
             </div>
             <span style={{fontFamily:SM,fontSize:10,fontWeight:600,color:isListening?C.verm:C.ink3,textTransform:'uppercase',letterSpacing:'1.5px',animation:isListening?'sttPulse .8s infinite alternate':'none'}}>
-              {isListening?'escuchando…':isProcessing?'procesando…':'mantén para hablar'}
+              {isListening?'escuchando…':isProcessing?'procesando…':'toca para hablar'}
             </span>
             {headphoneConnected && !isListening && !isProcessing && (
               <span style={{fontFamily:SM,fontSize:9,fontWeight:500,color:C.gr,letterSpacing:'1px',display:'flex',alignItems:'center',gap:4}}>
