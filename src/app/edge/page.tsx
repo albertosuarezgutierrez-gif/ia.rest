@@ -347,7 +347,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
   const ultimasComandas = Object.values(
     comandas
-      .filter(c => c.camarero_id === session.id && ['nueva','en_cocina'].includes(c.estado))
+      .filter(c => c.camarero_id === session.id && ['nueva','en_cocina','lista'].includes(c.estado))
       .reduce((acc, c) => {
         // Quedarse con la comanda más reciente por mesa
         if (!acc[c.mesa_id] || c.created_at > acc[c.mesa_id].created_at) acc[c.mesa_id] = c
@@ -520,7 +520,17 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
   const startRecording = useCallback(async () => {
     // Permitir grabar desde idle O desde asking (responder pregunta de BRAIN)
-    if (screen !== 'idle' && screen !== 'asking') return
+    // Si screen === 'sent', el camarero quiere la siguiente comanda → auto-reset y seguir
+    if (screen === 'sent') {
+      if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
+      speakingRef.current = false
+      setBrain(null); setTranscript(''); setError('')
+      setAlertas86([]); setAlertasAlerg([]); setPendingItems([])
+      setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
+      setChipsClarificacion([]); setMesaClarificacion(null)
+      setPedidoCuenta({ loading: false, error: '', factura: null })
+      // continúa sin return — empieza a grabar directamente
+    } else if (screen !== 'idle' && screen !== 'asking') return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})
       chunksRef.current = []
@@ -662,10 +672,19 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       setError('Sin conexión')
       addMsg('sistema','Sin conexión con el servidor — comanda guardada, se enviará al recuperar WiFi','error')
       setScreen('error')
-      // Circuit breaker: si BRAIN ya procesó una comanda, guardarla para reintento offline
-      // brain tiene: mesa, items, mesa_id (seteado antes del fetch)
+      // Circuit breaker: encolar para reintento offline si BRAIN ya procesó items
+      if (brain && brain.items?.length > 0 && brain.mesa) {
+        const sesHeader = localStorage.getItem('ia_rest_session') ?? ''
+        const mesaObj = mesasPlano.find(m => m.codigo === brain.mesa)
+        if (mesaObj) encolar({
+          mesa_codigo: brain.mesa,
+          mesa_id: mesaObj.id,
+          items: brain.items,
+          sesion_header: sesHeader,
+        })
+      }
     }
-  }, [session.id, turnoId, pendingItems, voiceConfirm, startRecording, addMsg])
+  }, [session.id, turnoId, pendingItems, voiceConfirm, startRecording, addMsg, ttsOff, autoConfirm, autoThreshold, servicioConfig, loadCuentasNominales, brain, mesasPlano, encolar])
 
   useEffect(() => {
     const dn = (e:KeyboardEvent) => { if(e.code==='Space'&&!e.repeat&&screen==='idle'){e.preventDefault();startRecording()} }
@@ -758,6 +777,14 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     return () => clearTimeout(t)
   }, [screen])
 
+  // ── Auto-reset sent → idle tras 3s ───────────────────────────────
+  // Permite pulsar PTT para la siguiente comanda sin tocar "Nueva comanda".
+  useEffect(() => {
+    if (screen !== 'sent') return
+    const t = setTimeout(() => setScreen('idle'), 3000)
+    return () => clearTimeout(t)
+  }, [screen])
+
   // ── window.resetPTT para el APK nativo ───────────────────────────
   // Permite al APK forzar vuelta a idle si detecta estado colgado
   useEffect(() => {
@@ -776,7 +803,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   // Marchar rápido desde doble-tap en plano
   const marcharRapido = async (mesa: MesaPlano) => {
     const comanda = mesasOcupadas[mesa.id]
-    if (!comanda || !['en_cocina','activa'].includes(comanda.estado ?? '')) return
+    if (!comanda || !['en_cocina','nueva','lista'].includes(comanda.estado ?? '')) return
     const items = (comanda.items ?? []).map((it: {nombre:string;cantidad:number}) => ({
       nombre: it.nombre, cantidad: it.cantidad,
     }))
@@ -1755,6 +1782,7 @@ function ConfigScreen({session,tabsVisibles,onTabsVisibles,voiceConfirm,onVoiceC
   ttsOff:boolean;       onTtsOff:(v:boolean)=>void
   onLogout:()=>void
 }) {
+  const [tabsOpen, setTabsOpen] = React.useState(false)
   const Toggle = ({on,onT}:{on:boolean;onT:()=>void}) => (
     <div onClick={onT} style={{width:44,height:26,borderRadius:13,background:on?C.verm:C.bg3,border:`1px solid ${on?C.vermD:C.rule}`,position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0}}>
       <div style={{position:'absolute',top:3,left:on?20:3,width:18,height:18,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 3px rgba(26,23,20,.2)',transition:'left .2s'}}/>
@@ -1790,34 +1818,47 @@ function ConfigScreen({session,tabsVisibles,onTabsVisibles,voiceConfirm,onVoiceC
       <div style={{padding:'0 20px'}}>
         {/* ── MIS TABS ── */}
         <div style={{padding:'13px 0',borderBottom:`1px solid ${C.rule}`}}>
-          <div style={{fontSize:13,fontWeight:500,color:C.ink,marginBottom:3}}>Mis tabs</div>
-          <div style={{fontSize:11,color:C.ink4,marginBottom:10}}>Personaliza qué botones ves en la barra inferior</div>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {ALL_TABS.map(t => {
-              const on = tabsVisibles.includes(t.id)
-              const fijo = !!t.fijo
-              return (
-                <div key={t.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={on?C.verm:C.ink4} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      {t.path.split('M').filter(Boolean).map((seg,i) => <path key={i} d={`M${seg}`}/>)}
-                    </svg>
-                    <span style={{fontSize:13,fontWeight:500,color:on?C.ink:C.ink3}}>{t.lbl}</span>
-                    {fijo && <span style={{fontSize:10,color:C.ink4,background:C.bg2,padding:'2px 6px',borderRadius:10}}>siempre</span>}
-                  </div>
-                  <div
-                    onClick={()=>{
-                      if (fijo) return
-                      const next = on ? tabsVisibles.filter(x=>x!==t.id) : [...tabsVisibles, t.id]
-                      onTabsVisibles(next)
-                    }}
-                    style={{width:44,height:26,borderRadius:13,background:on?C.verm:C.bg3,border:`1px solid ${on?C.vermD:C.rule}`,position:'relative',cursor:fijo?'default':'pointer',transition:'background .2s',flexShrink:0,opacity:fijo?.5:1}}>
-                    <div style={{position:'absolute',top:3,left:on?20:3,width:18,height:18,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 3px rgba(26,23,20,.2)',transition:'left .2s'}}/>
-                  </div>
-                </div>
-              )
-            })}
+          <div onClick={()=>setTabsOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:C.ink}}>Mis tabs</div>
+              {!tabsOpen && <div style={{fontSize:11,color:C.ink4,marginTop:1}}>{tabsVisibles.filter(t=>!ALL_TABS.find(a=>a.id===t)?.fijo).length} activas</div>}
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{transition:'transform .2s',transform:tabsOpen?'rotate(180deg)':'rotate(0deg)',flexShrink:0}}>
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
           </div>
+          {tabsOpen && (
+            <div style={{marginTop:10}}>
+              <div style={{fontSize:11,color:C.ink4,marginBottom:10}}>Personaliza qué botones ves en la barra inferior</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {ALL_TABS.map(t => {
+                  const on = tabsVisibles.includes(t.id)
+                  const fijo = !!t.fijo
+                  return (
+                    <div key={t.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={on?C.verm:C.ink4} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          {t.path.split('M').filter(Boolean).map((seg,i) => <path key={i} d={`M${seg}`}/>)}
+                        </svg>
+                        <span style={{fontSize:13,fontWeight:500,color:on?C.ink:C.ink3}}>{t.lbl}</span>
+                        {fijo && <span style={{fontSize:10,color:C.ink4,background:C.bg2,padding:'2px 6px',borderRadius:10}}>siempre</span>}
+                      </div>
+                      <div
+                        onClick={()=>{
+                          if (fijo) return
+                          const next = on ? tabsVisibles.filter(x=>x!==t.id) : [...tabsVisibles, t.id]
+                          onTabsVisibles(next)
+                        }}
+                        style={{width:44,height:26,borderRadius:13,background:on?C.verm:C.bg3,border:`1px solid ${on?C.vermD:C.rule}`,position:'relative',cursor:fijo?'default':'pointer',transition:'background .2s',flexShrink:0,opacity:fijo?.5:1}}>
+                        <div style={{position:'absolute',top:3,left:on?20:3,width:18,height:18,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 3px rgba(26,23,20,.2)',transition:'left .2s'}}/>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
         <div style={{padding:'13px 0',borderBottom:`1px solid ${C.rule}`}}>
           <div style={{fontSize:13,fontWeight:500,color:C.ink,marginBottom:4}}>Zona asignada</div>
