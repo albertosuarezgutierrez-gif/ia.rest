@@ -1832,7 +1832,7 @@ function ConfigScreen({session,tabsVisibles,onTabsVisibles,voiceConfirm,onVoiceC
             <div style={{marginTop:10}}>
               <div style={{fontSize:11,color:C.ink4,marginBottom:10}}>Personaliza qué botones ves en la barra inferior</div>
               <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                {ALL_TABS.map(t => {
+                {ALL_TABS.filter(t=>!t.fijo).map(t => {
                   const on = tabsVisibles.includes(t.id)
                   const fijo = !!t.fijo
                   return (
