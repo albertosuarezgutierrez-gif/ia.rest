@@ -1292,9 +1292,11 @@ export default function OnboardingPage() {
 
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
 
-  // Check if onboarding already done
+  // Check if onboarding already done (skip con ?preview)
   useEffect(() => {
     if (!session) return
+    const isPreview = new URLSearchParams(window.location.search).has('preview')
+    if (isPreview) return
     fetch('/api/owner/restaurante', { headers: sh() })
       .then(r => r.json())
       .then(d => {
