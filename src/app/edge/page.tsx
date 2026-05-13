@@ -488,9 +488,14 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     return () => { speakingRef.current = false }
   }, [screen, brain]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mediaRef    = useRef<MediaRecorder|null>(null)
-  const chunksRef   = useRef<Blob[]>([])
+  const mediaRef     = useRef<MediaRecorder|null>(null)
+  const chunksRef    = useRef<Blob[]>([])
   const recordingRef = useRef(false)
+  // ── Anti-duplicado: lock global + cooldown + duración mínima ────────
+  const fetchInFlightRef  = useRef(false)           // bloquea si hay fetch activo
+  const cooldownRef       = useRef(false)            // 1.5s tras stop antes de nuevo start
+  const recordStartRef    = useRef(0)                // timestamp inicio grabación
+  const recordingIdRef    = useRef('')               // idempotency key por grabación
 
   // ── Auriculares 3.5mm — PTT por botón de cable ──────────────────
   const silentAudioRef       = useRef<HTMLAudioElement|null>(null)
@@ -519,6 +524,11 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   }, [])
 
   const startRecording = useCallback(async () => {
+    // Bloquear si hay fetch activo (anti-duplicado principal)
+    if (fetchInFlightRef.current) return
+    // Bloquear durante cooldown post-grab (evita doble-tap accidental)
+    if (cooldownRef.current) return
+
     // Permitir grabar desde idle O desde asking (responder pregunta de BRAIN)
     // Si screen === 'sent', el camarero quiere la siguiente comanda → auto-reset y seguir
     if (screen === 'sent') {
@@ -532,6 +542,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       // continúa sin return — empieza a grabar directamente
     } else if (screen !== 'idle' && screen !== 'asking') return
     try {
+      // Generar ID único por grabación (idempotencia servidor)
+      recordingIdRef.current = crypto.randomUUID()
+      recordStartRef.current = Date.now()
       const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})
       chunksRef.current = []
       const mr = new MediaRecorder(stream, {mimeType:'audio/webm;codecs=opus'})
@@ -544,20 +557,44 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
   const stopRecording = useCallback(async () => {
     if (!recordingRef.current || !mediaRef.current) return
+
+    // ── Duración mínima 600ms — evita blobs de ruido por tap accidental ──
+    const durMs = Date.now() - recordStartRef.current
+    if (durMs < 600) {
+      // Grabación demasiado corta — cancelar silenciosamente
+      recordingRef.current = false
+      const mr = mediaRef.current
+      mr.onstop = () => {}; mr.stop()
+      mr.stream.getTracks().forEach(t => t.stop())
+      chunksRef.current = []
+      setScreen('idle')
+      // Cooldown breve para evitar que el rebote del tap vuelva a arrancar
+      cooldownRef.current = true
+      setTimeout(() => { cooldownRef.current = false }, 500)
+      return
+    }
+
     recordingRef.current = false; setScreen('processing')
     const mr = mediaRef.current
     await new Promise<void>(resolve => { mr.onstop=()=>resolve(); mr.stop() })
     mr.stream.getTracks().forEach(t=>t.stop())
     if (!chunksRef.current.length) { setScreen('idle'); return }
 
+    // ── Cooldown 1.5s — impide nueva grabación mientras procesa ─────────
+    cooldownRef.current = true
+    setTimeout(() => { cooldownRef.current = false }, 1500)
+
     const blob = new Blob(chunksRef.current, {type:'audio/webm'})
     const fd   = new FormData()
     fd.append('audio', blob, 'audio.webm')
     fd.append('camarero_id', session.id)
     fd.append('turno_id', turnoId||'demo')
+    fd.append('recording_id', recordingIdRef.current)  // idempotency key
     if (pendingItems.length > 0) fd.append('pending_items', JSON.stringify(pendingItems))
     if (clarificacionCtx)        fd.append('pending_context', clarificacionCtx)
 
+    // ── Lock global: bloquea cualquier nuevo fetch hasta terminar ────────
+    fetchInFlightRef.current = true
     try {
       const r = await fetch('/api/transcribe', {method:'POST', body:fd})
       const d = await r.json()
@@ -683,6 +720,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           sesion_header: sesHeader,
         })
       }
+    } finally {
+      // ── Siempre liberar el lock, pase lo que pase ───────────────────
+      fetchInFlightRef.current = false
     }
   }, [session.id, turnoId, pendingItems, voiceConfirm, startRecording, addMsg, ttsOff, autoConfirm, autoThreshold, servicioConfig, loadCuentasNominales, brain, mesasPlano, encolar])
 
