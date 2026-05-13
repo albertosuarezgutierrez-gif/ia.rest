@@ -1645,6 +1645,71 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 }
 
 /* ─── CONFIG ─────────────────────────────────────────────────── */
+// ── ForceUpdateRow: comprueba SW + versión y fuerza recarga ──────
+function ForceUpdateRow() {
+  const [state, setState] = React.useState<'idle'|'checking'|'updating'|'latest'>('idle')
+
+  const handleUpdate = async () => {
+    setState('checking')
+    try {
+      // 1. Activar SW en espera si existe
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration()
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+          setState('updating')
+          setTimeout(() => window.location.reload(), 800)
+          return
+        }
+        // 2. Forzar comprobación de actualización del SW
+        await reg?.update()
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+          setState('updating')
+          setTimeout(() => window.location.reload(), 800)
+          return
+        }
+      }
+      // 3. Comprobar version.json para APK nativa
+      const r = await fetch('/app/version.json?t=' + Date.now(), { cache: 'no-store' })
+      if (r.ok) {
+        const { version } = await r.json()
+        const current = (window as any).__APP_VERSION__ ?? null
+        if (current && version !== current) {
+          setState('updating')
+          setTimeout(() => window.location.reload(), 500)
+          return
+        }
+      }
+      // 4. Hard reload como fallback
+      setState('updating')
+      setTimeout(() => window.location.reload(), 300)
+    } catch {
+      setState('updating')
+      setTimeout(() => window.location.reload(), 300)
+    }
+  }
+
+  return (
+    <div style={{padding:'13px 0',borderBottom:`1px solid ${C.rule}`}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:500,color:C.ink}}>Versión de la app</div>
+          <div style={{fontSize:11,color:C.ink4,marginTop:2}}>
+            {state==='checking'?'Comprobando…':state==='updating'?'Actualizando…':state==='latest'?'Ya tienes la última versión':'Fuerza la descarga de cambios'}
+          </div>
+        </div>
+        <button
+          onClick={handleUpdate}
+          disabled={state==='checking'||state==='updating'}
+          style={{background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:600,color:state==='updating'?C.gr:C.ink3,cursor:'pointer',minWidth:80,opacity:state==='checking'||state==='updating'?0.6:1}}>
+          {state==='updating'?'↻ …':state==='checking'?'…':'↻ Actualizar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ConfigScreen({session,tabsVisibles,onTabsVisibles,voiceConfirm,onVoiceConfirm,zonasAsignadas,onZonasAsignadas,zonasDisponibles,fontBig,onFontBig,alergenosMesa,onAlergenosMesa,subscribed,onSubscribe,hasInstall,onInstall,autoConfirm,onAutoConfirm,autoThreshold,onAutoThreshold,ttsOff,onTtsOff,onLogout}:{
   session:{id:string;nombre:string;rol:string}
   tabsVisibles:Tab[];    onTabsVisibles:(v:Tab[])=>void
@@ -1807,6 +1872,8 @@ function ConfigScreen({session,tabsVisibles,onTabsVisibles,voiceConfirm,onVoiceC
           <Row label="Instalar app" sub="Añadir a pantalla de inicio"
             right={<button onClick={onInstall} style={{background:C.bg2,border:`1px solid ${C.rule}`,borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:600,color:C.ink3,cursor:'pointer'}}>Instalar</button>}/>
         )}
+        {/* ── Actualizar app ── */}
+        <ForceUpdateRow />
         <div style={{paddingTop:20,paddingBottom:32}}>
           {/* Fichaje */}
           <FicharSalidaBtn session={session} />
