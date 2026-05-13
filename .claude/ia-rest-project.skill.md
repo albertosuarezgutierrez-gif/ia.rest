@@ -268,6 +268,15 @@ Stripe TEST: base=price_1TUPaTK5xixGkeRIEU1x3sqG (STRIPE_MODE=test activo)
 
 ## Convenciones
 
+0. **REGLA ANTI-DEPLOY-LIMIT (CRÍTICA)**: acumular TODOS los commits de la sesión localmente y hacer **UN SOLO `git push` al final**. Nunca push tras cada commit individual. Cada push a main = 1 deploy en Vercel (límite: 100/día). Flujo correcto:
+   ```
+   git commit -m "feat: A"
+   git commit -m "fix: B"
+   git commit -m "fix: C"
+   git push origin main   ← solo aquí, una vez al final
+   ```
+   Excepción: si Alberto pide explícitamente ver algo en producción de inmediato, push intermedio justificado.
+
 1. Archivos siempre completos — nunca diffs
 2. SQL con RLS — toda tabla nueva necesita políticas
 3. `{ error: string, code?: string }` en respuestas de error
