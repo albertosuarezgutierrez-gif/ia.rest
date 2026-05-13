@@ -71,11 +71,12 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
 
   // Añadir camarero_id al array leido_por si no está ya
-  await supabase.rpc('marcar_mensaje_leido', {
+  const { error: rpcErr } = await supabase.rpc('marcar_mensaje_leido', {
     p_mensaje_id:   id,
     p_camarero_id:  session.id,
     p_restaurante_id: rid,
   })
+  if (rpcErr) console.error('[mensajes PATCH] marcar_mensaje_leido:', rpcErr.message)
 
   return NextResponse.json({ ok: true })
 }
