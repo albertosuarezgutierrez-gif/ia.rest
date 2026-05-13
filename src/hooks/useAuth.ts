@@ -42,7 +42,8 @@ export function useAuth(requiredRoles?: Rol | Rol[]) {
     const s = readSession()
 
     if (!s) {
-      window.location.href = '/login'
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/login?return=${returnUrl}`
       return
     }
 

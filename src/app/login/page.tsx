@@ -121,6 +121,13 @@ export default function LoginPage() {
       const d = await r.json()
       if (d.camarero) {
         localStorage.setItem('ia_rest_session', JSON.stringify(d.camarero))
+        // Usar returnUrl si viene del hook useAuth
+        const params = new URLSearchParams(window.location.search)
+        const returnUrl = params.get('return')
+        if (returnUrl) {
+          window.location.href = decodeURIComponent(returnUrl)
+          return
+        }
         // Owner nuevo → guía de onboarding
         if (d.camarero.rol === 'owner' && d.camarero.onboarding_completado !== true) {
           window.location.href = '/onboarding'
