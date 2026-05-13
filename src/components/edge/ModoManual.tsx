@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 const C = {
   bg:'#14110E', e1:'#1F1A15', e2:'#2A241D', e3:'#2F2820',
@@ -74,6 +74,10 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
   const [zonaFiltro, setZonaFiltro] = useState('todas')
   const [nombreMesa, setNombreMesa] = useState('')
   const [editandoNombre, setEditandoNombre] = useState(false)
+
+  // Scroll-safe tap: evita abrir mesa al hacer scroll sobre la tarjeta
+  const touchStartY = useRef(0)
+  const hasMoved    = useRef(false)
 
   const sh = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -271,13 +275,18 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
           ))}
         </div>
       </div>
-      <div style={{ flex:1, overflow:'auto', padding:'10px 14px 20px' }}>
+      <div style={{ flex:1, overflow:'auto', padding:'10px 14px 20px' }}
+        onTouchStart={e => { touchStartY.current = e.touches[0].clientY; hasMoved.current = false }}
+        onTouchMove={e  => { if (Math.abs(e.touches[0].clientY - touchStartY.current) > 8) hasMoved.current = true }}
+      >
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(80px, 1fr))', gap:9 }}>
           {mesasFiltradas.map(m => {
             const isSel = mesaSel?.id === m.id
             const bgEst = ESTADO_BG_LIGHT[m.estado] ?? L.bg2
             return (
-              <button key={m.id} onPointerDown={() => { setMesaSel(m); setStep('carta') }}
+              <button key={m.id}
+                onTouchEnd={() => { if (!hasMoved.current) { setMesaSel(m); setStep('carta') } }}
+                onClick={() => { setMesaSel(m); setStep('carta') }}
                 style={{
                   padding:'12px 6px 10px', borderRadius:12, border:'none',
                   background: isSel ? '#F4D8CF' : bgEst,
