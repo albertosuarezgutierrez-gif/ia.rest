@@ -233,7 +233,31 @@ Stripe TEST: base=price_1TUPaTK5xixGkeRIEU1x3sqG (STRIPE_MODE=test activo)
 
 ---
 
-## Pendientes prioritarios
+## UX /edge — mayo 2026
+
+### Tab Cuentas → Alias de mesa
+- Tab "Cuentas" **eliminada** de ALL_TABS en `/edge`
+- Cualquier mesa puede tener un alias opcional: `comandas.nombre_cuenta TEXT`
+- **PlanoSala**: muestra `★Pepe` en cursiva si la comanda tiene nombre_cuenta
+- **MesaDetalleSheet**: botón `+ alias de mesa` → PATCH `/api/comanda/[id]/nombre`
+- **ModoManual**: campo `+ nombre` inline en header al estar en step='carta'
+- **Voz**: BRAIN mapea "mesa de Pepe" → busca comanda activa con nombre_cuenta='Pepe'
+
+### Header /edge en tab Manual
+- Header global (`ia.rest` + pill usuario) **oculto** cuando `tab === 'manual'`
+- `ManualComanda.tsx` header simplificado: solo breadcrumb `← MESAS` + paso actual
+- Sin logo, sin nombre de usuario, sin botón Voz (redundantes con nav global)
+
+### Scroll-safe tap en grid de mesas (ModoManual)
+- `onPointerDown` reemplazado por touch delta en el contenedor scroll
+- `onTouchStart`: guarda Y inicial, resetea `hasMoved`
+- `onTouchMove`: marca `hasMoved=true` si delta > 8px
+- `onTouchEnd` en cada tarjeta: solo abre mesa si `!hasMoved`
+- `onClick` desktop sigue funcionando igual
+
+---
+
+
 
 1. STRIPE_MODE=live (primer cliente real)
 2. STRIPE_CLIENT_ID + WEBHOOK_SECRET_QR en Vercel
