@@ -242,6 +242,9 @@ export default function LoginPage() {
         .pk{width:76px;height:76px;border-radius:999px;background:#FBF8F1;border:none;box-shadow:rgba(184,169,139,0.5) 0px 0px 0px 1px, rgba(184,169,139,0.15) 0px 2px 8px;color:#1A1714;font-family:'Inter Tight',system-ui,sans-serif;font-size:24px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:background .1s,transform .08s;}
         .pk:active{background:#EFE7D6;transform:scale(.9);}
         @media(max-height:700px){.pk{width:64px;height:64px;font-size:20px}}
+        @media(max-height:600px){.pk{width:56px;height:56px;font-size:18px}}
+        @media(max-width:360px){.pk{width:68px;height:68px;font-size:22px}}
+        input{font-size:16px!important}
         @keyframes pulse{50%{opacity:.3}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
         .cam-btn{width:100%;max-width:260px;padding:14px 16px;background:#FBF8F1;border:none;box-shadow:rgba(184,169,139,0.5) 0px 0px 0px 1px;border-radius:12px;color:#1A1714;font-family:'Inter Tight',system-ui,sans-serif;font-size:15px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;transition:background .1s;-webkit-tap-highlight-color:transparent;}

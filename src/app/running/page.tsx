@@ -372,6 +372,10 @@ export default function RunningPage() {
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
         * { box-sizing:border-box; }
         button:hover { filter: brightness(0.96); }
+        .run-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+        @media (max-width: 600px) {
+          .run-cards { grid-template-columns: 1fr; gap: 10px; }
+        }
       `}</style>
 
       <div style={{ minHeight: '100dvh', background: C.bg, fontFamily: SN, display: 'flex', flexDirection: 'column' }}>

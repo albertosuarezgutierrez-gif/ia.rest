@@ -86,7 +86,7 @@ export default async function EstadoPage() {
         </span>
       </div>
 
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 24px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: 'clamp(20px,4vw,40px) clamp(14px,4vw,24px)' }}>
 
         {/* Banner estado general */}
         <div style={{

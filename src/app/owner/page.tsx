@@ -2049,16 +2049,16 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
                 </div>
               </div>
 
-              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as 'touch' }}>
-              <div style={{ minWidth: 560, border: `1px solid ${C.rule}`, borderRadius: 8, overflow: 'hidden', background: C.bone }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 120px 40px',
-                  padding: '10px 16px', borderBottom: `1px solid ${C.rule}`,
-                  fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
-                  <span>Nombre</span><span>Categoría</span><span>Precio</span><span>Descripción</span><span/>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as 'touch', borderRadius: 8, border: `1px solid ${C.rule}` }}>
+              <div style={{ minWidth: 480, background: C.bone }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 90px 40px',
+                  padding: '10px 14px', borderBottom: `1px solid ${C.rule}`,
+                  fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' as const }}>
+                  <span>Nombre</span><span>Categoría</span><span>Precio</span><span/>
                 </div>
                 {extracted.map((p) => (
-                  <div key={p._key} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 100px 120px 40px',
-                    padding: '8px 16px', gap: 8, alignItems: 'center',
+                  <div key={p._key} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 90px 40px',
+                    padding: '8px 14px', gap: 6, alignItems: 'center',
                     borderBottom: `1px solid ${C.rule}` }}>
                     <input value={p.nombre} onChange={e => updateDraft(p._key, 'nombre', e.target.value)}
                       style={{ fontFamily: SN, fontSize: 13, background: C.paper, border: `1px solid ${C.rule}`,
@@ -2075,10 +2075,6 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
                       placeholder="—" type="number" step="0.01"
                       style={{ fontFamily: SM, fontSize: 13, background: C.paper, border: `1px solid ${C.rule}`,
                         borderRadius: 4, padding: '5px 8px', color: C.ink, outline: 'none', width: '100%' }} />
-                    <input value={p.descripcion || ''} onChange={e => updateDraft(p._key, 'descripcion', e.target.value || null)}
-                      placeholder="—"
-                      style={{ fontFamily: SN, fontSize: 12, background: C.paper, border: `1px solid ${C.rule}`,
-                        borderRadius: 4, padding: '5px 8px', color: C.ink3, outline: 'none', width: '100%' }} />
                     <button onClick={() => removeDraft(p._key)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink4, display: 'flex', padding: 4 }}>
                       <Icon d={ICONS.x} size={14}/>
@@ -2758,33 +2754,29 @@ function ImpresorasTab() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: C.ink3, textTransform: 'uppercase', marginBottom: 12 }}>Últimos jobs · polling 5s</div>
           <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, background: C.bone, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as 'touch' }}>
-          <div style={{ minWidth: 480 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 90px 60px 60px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}`, fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.ink3, textTransform: 'uppercase' }}>
-              <span>Impresora · Sección</span><span>Estado</span><span>Creado</span><span>Enviado</span><span>Intentos</span>
-            </div>
             {jobs.slice(0, 12).map((job, i) => {
               const sc = JOB_STATUS_COLORS[job.status] ?? { bg: C.paper2, text: C.ink3 }
               return (
-                <div key={job.id} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 90px 60px 60px', padding: '11px 20px', alignItems: 'center', borderBottom: i < Math.min(jobs.length, 12) - 1 ? `1px solid ${C.rule}` : 'none' }}>
-                  <div>
+                <div key={job.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '11px 16px', flexWrap: 'wrap' as const,
+                  borderBottom: i < Math.min(jobs.length, 12) - 1 ? `1px solid ${C.rule}` : 'none'
+                }}>
+                  <div style={{ flex: 1, minWidth: 120 }}>
                     <div style={{ fontFamily: SN, fontSize: 13, color: C.ink, fontWeight: 500 }}>
                       {job.impresoras?.nombre ?? '—'}
                     </div>
-                    <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, letterSpacing: '.04em' }}>{job.seccion_id}</div>
+                    <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4 }}>{job.seccion_id}</div>
                     {job.error_msg && <div style={{ fontFamily: SM, fontSize: 10, color: C.red, marginTop: 2 }}>{job.error_msg}</div>}
                   </div>
-                  <span>
-                    <span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', background: sc.bg, color: sc.text, padding: '3px 8px', borderRadius: 3 }}>
-                      {job.status.toUpperCase()}
-                    </span>
+                  <span style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, background: sc.bg, color: sc.text, padding: '3px 8px', borderRadius: 3, whiteSpace: 'nowrap' as const }}>
+                    {job.status.toUpperCase()}
                   </span>
-                  <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{fmtAgo(job.created_at)}</span>
-                  <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{job.sent_at ? fmtAgo(job.sent_at) : '—'}</span>
-                  <span style={{ fontFamily: SM, fontSize: 11, color: job.attempts > 1 ? C.amber : C.ink4 }}>{job.attempts}</span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3, whiteSpace: 'nowrap' as const }}>{fmtAgo(job.created_at)}</span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: job.attempts > 1 ? C.amber : C.ink4, marginLeft: 'auto' }}>×{job.attempts}</span>
                 </div>
               )
             })}
-          </div>{/* /minWidth printjobs */}
           </div>
         </div>
       )}
@@ -3440,7 +3432,7 @@ function FlujoTab() {
       {modal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:16 }}
           onClick={e=>{ if (e.target===e.currentTarget) setModal(false) }}>
-          <div style={{ background:C.paper, borderRadius:14, padding:24, width:'100%', maxWidth:500, boxShadow:'0 8px 32px rgba(26,23,20,.2)', maxHeight:'92vh', overflowY:'auto' }}>
+          <div style={{ background:C.paper, borderRadius:14, padding:'20px 16px', width:'100%', maxWidth:500, boxShadow:'0 8px 32px rgba(26,23,20,.2)', maxHeight:'92dvh', overflowY:'auto' }}>
 
             <div style={{ fontFamily:SE, fontSize:18, fontWeight:700, color:C.ink, marginBottom:16 }}>Nueva regla de flujo</div>
 
@@ -4121,7 +4113,7 @@ function ModificacionesTab({ restauranteId }: { restauranteId: string }) {
         </div>
       )}
       {kpis&&(
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:20}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:12,marginBottom:20}}>
           {[
             {v:kpis.total,     l:'Modificaciones hoy',   c:C.ink2, a:false},
             {v:kpis.cancelados,l:'Ítems eliminados',      c:C.red,  a:kpis.cancelados>10},
@@ -6018,8 +6010,9 @@ export default function OwnerPage() {
     <div style={{ minHeight: '100dvh', background: C.paper, fontFamily: SN }}>
       <style>{`
         * { box-sizing: border-box; }
+        input, select, textarea { font-size: 16px; } /* evita zoom en iOS */
         input:focus, select:focus { border-color: ${C.red} !important; box-shadow: 0 0 0 3px rgba(217,68,43,.15); }
-        button { font-family: ${SN}; }
+        button { font-family: ${SN}; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         .owner-tabs { display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
         .owner-tabs::-webkit-scrollbar { display:none; }
@@ -6192,13 +6185,13 @@ export default function OwnerPage() {
             return (
               <button key={g.id}
                 onClick={() => setTab(g.tabs[0].id)}
-                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6,
-                  padding:'9px 16px', borderRadius:6, border:'none', cursor:'pointer',
+                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:5,
+                  padding:'8px 12px', borderRadius:6, border:'none', cursor:'pointer',
                   background: activo ? C.ink : C.paper2,
                   color: activo ? C.paper : C.ink3,
                   fontFamily:SN, fontSize:13, fontWeight:600,
                   transition:'all .15s', whiteSpace:'nowrap' }}>
-                <Icon d={g.icon} size={15}/>
+                <Icon d={g.icon} size={14}/>
                 <span className="owner-tab-lbl">{g.label}</span>
               </button>
             )

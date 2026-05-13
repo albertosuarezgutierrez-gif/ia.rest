@@ -1347,13 +1347,16 @@ export default function OnboardingPage() {
           .ob-grid-2  { grid-template-columns: 1fr !important; }
           .ob-grid-3  { grid-template-columns: 1fr !important; }
           .ob-grid-imp { grid-template-columns: 1fr !important; }
-          .ob-header  { padding: 12px 16px !important; }
+          .ob-header  { padding: 10px 14px !important; }
+          .ob-header-lbl { display: none; }
           .ob-dots    { display: none !important; }
-          .ob-content { padding: 24px 16px 80px !important; }
+          .ob-content { padding: 20px 14px 80px !important; }
           .ob-btns    { flex-direction: column !important; }
           .ob-btns button { width: 100% !important; justify-content: center !important; }
-          .ob-h1      { font-size: 26px !important; }
-          .ob-upload  { padding: 24px 16px !important; }
+          .ob-h1      { font-size: 24px !important; }
+          .ob-upload  { padding: 20px 14px !important; }
+          .ob-step-title { font-size: 20px !important; }
+          .ob-max-width { max-width: 100% !important; padding: 0 !important; }
         }
       `}</style>
 

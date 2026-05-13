@@ -332,6 +332,8 @@ export default function CobrarSheet({ comandaId, mesaLabel, total, session, onCe
         <style>{`
           @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
           button:active { opacity: 0.85; transform: scale(0.97); }
+          button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+          input { font-size: 16px; }
         `}</style>
         <div style={{width:36,height:3,background:C.rule,borderRadius:2,margin:'10px auto 0',flexShrink:0}}/>
 

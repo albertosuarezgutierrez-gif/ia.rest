@@ -294,20 +294,26 @@ export default function JefeSalaPage() {
           .jefe-bottom{display:none!important}
           .jefe-main{padding:20px!important}
         }
-        .jefe-bottom button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;background:transparent;border:none;cursor:pointer;font-size:9px;font-weight:600;letter-spacing:.04em;color:${C.ink4};font-family:${SN}}
+        @media(max-width:767px){
+          .jefe-hdr-name{display:none!important}
+          .jefe-hdr-btn-lbl{display:none!important}
+        }
+        .jefe-bottom button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;background:transparent;border:none;cursor:pointer;font-size:9px;font-weight:600;letter-spacing:.04em;color:${C.ink4};font-family:${SN};-webkit-tap-highlight-color:transparent;}
         .jefe-bottom button.act{color:${C.ink};border-top:2px solid ${C.red}}
         .jefe-sidebar button{display:flex;align-items:center;gap:9px;padding:9px 10px;background:transparent;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:${C.ink2};text-align:left;font-family:${SN};width:100%}
         .jefe-sidebar button.act{background:${C.paper2};color:${C.ink};font-weight:600}
+        input, select, textarea { font-size: 16px; }
+        button, a { touch-action: manipulation; }
       `}</style>
       <SugerenciaButton session={session} tema="light"/>
 
       {/* HEADER */}
-      <div style={{height:52,padding:'0 16px',borderBottom:`1px solid ${C.rule}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:C.bone,flexShrink:0,position:'sticky',top:0,zIndex:10}}>
+      <div style={{height:52,padding:'0 14px',borderBottom:`1px solid ${C.rule}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:C.bone,flexShrink:0,position:'sticky',top:0,zIndex:10}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontFamily:SE,fontStyle:'italic',fontSize:20,color:C.red}}>ia.rest</span>
-          <span style={{fontFamily:SN,fontSize:12,color:C.ink3}}>· Jefe de sala</span>
+          <span className="jefe-hdr-name" style={{fontFamily:SN,fontSize:12,color:C.ink3}}>· Jefe de sala</span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
           {productos86.length>0 && (
             <span style={{fontFamily:SM,fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:3,background:C.redS,color:C.redD}}>
               86 {productos86[0].nombre}
@@ -316,8 +322,8 @@ export default function JefeSalaPage() {
           <span style={{fontFamily:SM,fontSize:13,fontWeight:700,color:C.ink}}>
             {ahora.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}
           </span>
-          <span style={{fontSize:13,color:C.ink3,fontWeight:500}}>{session.nombre}</span>
-          <button onClick={logout} style={{fontFamily:SN,fontSize:10,fontWeight:600,color:C.ink3,background:'transparent',border:`1px solid ${C.rule}`,borderRadius:3,padding:'3px 7px',cursor:'pointer'}}>
+          <span className="jefe-hdr-name" style={{fontSize:13,color:C.ink3,fontWeight:500}}>{session.nombre}</span>
+          <button onClick={logout} style={{fontFamily:SN,fontSize:10,fontWeight:600,color:C.ink3,background:'transparent',border:`1px solid ${C.rule}`,borderRadius:3,padding:'4px 8px',cursor:'pointer'}}>
             Salir
           </button>
         </div>

@@ -324,59 +324,37 @@ export default function MensajesOwnerTab({ sh }: { sh: () => Record<string, stri
                   const visto = (m.leido_por ?? []).length > 1
                   return (
                     <div key={m.id} style={{
-                      display: 'grid',
-                      gridTemplateColumns: '110px 1fr 100px 80px',
-                      gap: 12, alignItems: 'start',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
                       padding: '10px 14px',
                       background: C.bg1,
                       borderRadius: 8,
                       border: `1px solid ${C.rule}`,
                       marginBottom: 4,
                     }}>
-                      {/* Hora */}
-                      <div style={{ fontFamily: SM, fontSize: 11, color: C.ink4, paddingTop: 2, whiteSpace: 'nowrap' }}>
-                        {fmtTime(m.created_at)}
-                        {m.mesa_ref && (
-                          <div style={{ fontWeight: 700, color: C.ink3, marginTop: 2 }}>{m.mesa_ref}</div>
-                        )}
+                      {/* Cabecera: hora + quien + estado */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                        <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4, whiteSpace: 'nowrap' as const }}>
+                          {fmtTime(m.created_at)}
+                          {m.mesa_ref && ` · ${m.mesa_ref}`}
+                        </span>
+                        <span style={{ fontFamily: SN, fontSize: 10, fontWeight: 700,
+                          color: rolColor(m.rol_origen), textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>
+                          {rolLabel(m.rol_origen)}
+                        </span>
+                        <span style={{ fontFamily: SN, fontSize: 12, color: C.ink2 }}>{m.nombre_origen}</span>
+                        <span style={{ fontFamily: SN, fontSize: 11, color: C.ink4 }}>→</span>
+                        <span style={{ fontFamily: SN, fontSize: 11, color: C.ink3 }}>{rolLabel(m.rol_destino)}</span>
+                        <span style={{ marginLeft: 'auto', fontFamily: SN, fontSize: 11, fontWeight: 600, color: visto ? C.green : C.ink4 }}>
+                          {visto ? '✓✓' : '✓'}
+                        </span>
+                        {m.tipo === 'alerta' && <span style={{ fontFamily: SN, fontSize: 10, color: C.amber }}>⚠</span>}
                       </div>
 
                       {/* Mensaje */}
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <span style={{ fontFamily: SN, fontSize: 10, fontWeight: 700,
-                            color: rolColor(m.rol_origen), textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            {rolLabel(m.rol_origen)}
-                          </span>
-                          <span style={{ fontFamily: SN, fontSize: 12, color: C.ink2 }}>{m.nombre_origen}</span>
-                          <span style={{ fontFamily: SN, fontSize: 11, color: C.ink4 }}>→</span>
-                          <span style={{ fontFamily: SN, fontSize: 11, color: C.ink3 }}>{rolLabel(m.rol_destino)}</span>
-                        </div>
-                        <div style={{ fontFamily: SE, fontStyle: 'italic', fontSize: 14,
-                          color: C.ink, lineHeight: 1.4 }}>
-                          &ldquo;{m.texto}&rdquo;
-                        </div>
-                      </div>
-
-                      {/* Tipo */}
-                      <div style={{
-                        fontFamily: SN, fontSize: 10, color: C.ink4,
-                        textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 2,
-                      }}>
-                        {m.tipo === 'alerta' ? (
-                          <span style={{ color: C.amber }}>⚠ Alerta</span>
-                        ) : m.tipo === 'sistema' ? (
-                          <span style={{ color: C.ink4 }}>Sistema</span>
-                        ) : 'Texto'}
-                      </div>
-
-                      {/* Estado leído */}
-                      <div style={{
-                        fontFamily: SN, fontSize: 11, fontWeight: 600,
-                        color: visto ? C.green : C.ink4,
-                        paddingTop: 2,
-                      }}>
-                        {visto ? '✓✓ Visto' : '✓ Enviado'}
+                      <div style={{ fontFamily: SE, fontStyle: 'italic', fontSize: 14, color: C.ink, lineHeight: 1.4 }}>
+                        &ldquo;{m.texto}&rdquo;
                       </div>
                     </div>
                   )

@@ -209,18 +209,30 @@ export default function SuperPage() {
         }
         .super-rest-actions { display: flex; align-items: center; gap: 8px; }
         .super-header-name { display: block; }
+        /* Tabla restaurantes */
+        .super-rest-table-hdr { display: grid; grid-template-columns: 1fr 110px 90px 90px 80px 90px; }
+        .super-rest-table-row { display: grid; grid-template-columns: 1fr 110px 90px 90px 80px 90px; }
+        /* Tabla historico */
+        .super-hist-hdr { display: grid; grid-template-columns: 120px 1fr 100px 80px; }
+        .super-hist-row { display: grid; grid-template-columns: 120px 1fr 100px 80px; }
+        /* Layout ticket */
+        .super-ticket-layout { display: grid; gap: 24px; align-items: start; }
         @media (max-width: 768px) {
-          .super-rest-row {
-            grid-template-columns: 1fr;
-            gap: 12px;
-          }
-          .super-rest-actions {
-            flex-wrap: wrap;
-            gap: 6px;
-          }
+          .super-rest-row { grid-template-columns: 1fr; gap: 12px; }
+          .super-rest-actions { flex-wrap: wrap; gap: 6px; }
           .super-form-grid { grid-template-columns: 1fr !important; }
-          .super-header { padding: 0 16px !important; }
-          .super-content { padding: clamp(16px,4vw,32px) clamp(12px,4vw,24px) !important; }
+          .super-header { padding: 0 14px !important; }
+          .super-content { padding: clamp(14px,3vw,28px) clamp(12px,3vw,20px) !important; }
+          /* Tablas → scroll */
+          .super-rest-table-hdr { display: none; }
+          .super-rest-table-row { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px !important; }
+          .super-rest-table-row .sr-col-hide { display: none; }
+          .super-hist-hdr { display: none; }
+          .super-hist-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px !important; }
+          /* Ticket layout: sidebar encima en móvil */
+          .super-ticket-layout { grid-template-columns: 1fr !important; }
+          /* Tabs super */
+          .super-tab-lbl { display: none; }
         }
         @media (max-width: 480px) {
           .super-header-name { display: none; }
@@ -768,7 +780,7 @@ function Cobro({ session, C, SE, SN, SM }: { session: any; C: any; SE: string; S
         <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, letterSpacing: '.1em', marginBottom: 14 }}>RESTAURANTES · MES ACTUAL</div>
         <div style={{ background: C.dark2, borderRadius: 14, border: `1px solid ${C.rule}`, overflow: 'hidden' }}>
           {/* Header tabla */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 90px 90px 80px 90px', gap: 0, padding: '10px 20px', borderBottom: `1px solid ${C.rule}` }}>
+          <div className="super-rest-table-hdr" style={{ gap: 0, padding: '10px 20px', borderBottom: `1px solid ${C.rule}` }}>
             {['Restaurante', 'Ciudad', 'Volumen', 'Comisión', 'Txn', 'Descuento'].map(h => (
               <div key={h} style={{ fontFamily: SM, fontSize: 9, color: C.ink3, letterSpacing: '.08em' }}>{h.toUpperCase()}</div>
             ))}
@@ -777,7 +789,7 @@ function Cobro({ session, C, SE, SN, SM }: { session: any; C: any; SE: string; S
             <div style={{ padding: '24px 20px', fontFamily: SN, fontSize: 13, color: C.ink3 }}>Sin cobros QR registrados este mes</div>
           )}
           {(restaurantes || []).map((r: any, i: number) => (
-            <div key={r.restaurante_id} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 90px 90px 80px 90px', gap: 0, padding: '12px 20px', borderBottom: i < restaurantes.length - 1 ? `1px solid ${C.rule}` : 'none', background: i % 2 === 0 ? 'transparent' : C.dark }}>
+            <div key={r.restaurante_id} className="super-rest-table-row" style={{ gap: 0, padding: '12px 20px', borderBottom: i < restaurantes.length - 1 ? `1px solid ${C.rule}` : 'none', background: i % 2 === 0 ? 'transparent' : C.dark }}>
               <div>
                 <div style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, color: C.ink }}>{r.restaurante_nombre}</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
@@ -803,7 +815,7 @@ function Cobro({ session, C, SE, SN, SM }: { session: any; C: any; SE: string; S
         <div>
           <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, letterSpacing: '.1em', marginBottom: 14 }}>HISTÓRICO · PLATAFORMA COMPLETA</div>
           <div style={{ background: C.dark2, borderRadius: 14, border: `1px solid ${C.rule}`, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px 80px', padding: '10px 20px', borderBottom: `1px solid ${C.rule}` }}>
+            <div className="super-hist-hdr" style={{ padding: '10px 20px', borderBottom: `1px solid ${C.rule}` }}>
               {['Mes', 'Volumen', 'Comisión', 'Txn'].map(h => (
                 <div key={h} style={{ fontFamily: SM, fontSize: 9, color: C.ink3, letterSpacing: '.08em' }}>{h.toUpperCase()}</div>
               ))}
@@ -812,7 +824,7 @@ function Cobro({ session, C, SE, SN, SM }: { session: any; C: any; SE: string; S
               const d = new Date(h.mes + 'T12:00:00Z')
               const label = d.toLocaleString('es', { month: 'long', year: 'numeric' })
               return (
-                <div key={h.mes} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px 80px', padding: '11px 20px', borderBottom: i < historico.length - 1 ? `1px solid ${C.rule}` : 'none' }}>
+                <div key={h.mes} className="super-hist-row" style={{ padding: '11px 20px', borderBottom: i < historico.length - 1 ? `1px solid ${C.rule}` : 'none' }}>
                   <div style={{ fontFamily: SN, fontSize: 12, color: C.ink2, textTransform: 'capitalize' }}>{label}</div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -981,7 +993,7 @@ function SoporteSuperTab({ session, C, SE, SN, SM, onBadge }: { session: any; C:
   const ESTADO_COLOR: Record<string, string> = { escalado: C.red, abierto: C.amber, resuelto: C.green }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: ticketActivo ? '320px 1fr' : '1fr', gap: 24, alignItems: 'start' }}>
+    <div className="super-ticket-layout" style={{ gridTemplateColumns: ticketActivo ? '320px 1fr' : '1fr', gap: 24, alignItems: 'start' }}>
       {/* Lista tickets */}
       <div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>

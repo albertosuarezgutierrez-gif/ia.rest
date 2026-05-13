@@ -265,7 +265,7 @@ export default function SuperRestaurantePage() {
                 Resumen del restaurante desde el panel super admin
               </p>
               {stats && (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:32}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))',gap:16,marginBottom:32}}>
                   {[
                     {l:'Camareros',v:stats.camareros,c:C.blue},
                     {l:'Mesas',v:stats.mesas,c:C.amber},

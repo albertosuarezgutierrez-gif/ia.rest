@@ -401,10 +401,12 @@ function KDSInner() {
         @media(min-width:640px){.kds-grid{grid-template-columns:repeat(2,1fr)!important}}
         @media(min-width:1024px){.kds-grid{grid-template-columns:repeat(3,1fr)!important}}
         @media(min-width:1400px){.kds-grid{grid-template-columns:repeat(4,1fr)!important}}
-        .sec-tab{cursor:pointer;padding:4px 10px;border-radius:3px;font-family:${SM};font-size:9px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:background .15s,color .15s}
-        .kds-view-tab{cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;padding:9px 14px;font-family:${SN};font-size:12px;font-weight:500;color:${K.fg3};letter-spacing:.02em;transition:color .15s,border-color .15s;white-space:nowrap;margin-bottom:-1px}
+        .sec-tab{cursor:pointer;padding:4px 10px;border-radius:3px;font-family:${SM};font-size:9px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:background .15s,color .15s;-webkit-tap-highlight-color:transparent;}
+        .kds-view-tab{cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;padding:9px 14px;font-family:${SN};font-size:12px;font-weight:500;color:${K.fg3};letter-spacing:.02em;transition:color .15s,border-color .15s;white-space:nowrap;margin-bottom:-1px;-webkit-tap-highlight-color:transparent;}
         .kds-view-tab.kds-vact{color:${K.fg};font-weight:600;border-bottom-color:${K.red}}
         .kds-view-tab:hover:not(.kds-vact){color:${K.fg2}}
+        button{touch-action:manipulation;}
+        input, select{font-size:16px;}
       `}</style>
 
       {/* ══ HEADER ══ */}

@@ -915,6 +915,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         @keyframes pushIn{from{transform:translateY(-100%)}to{transform:translateY(0)}}
         @keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
         @keyframes a86{0%{opacity:0;transform:translateY(-100%)}10%{opacity:1;transform:translateY(0)}85%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-100%)}}
+        * { -webkit-tap-highlight-color: transparent; }
+        button, a { touch-action: manipulation; }
+        input, select, textarea { font-size: 16px; } /* evita zoom en iOS */
       `}</style>
 
       {/* ALERTAS — banner audio + notificación */}
@@ -969,7 +972,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         <div style={{position:'fixed',inset:0,background:'rgba(26,23,20,.7)',zIndex:200,display:'flex',flexDirection:'column',padding:20,gap:12}}>
           <div style={{fontFamily:SM,fontSize:10,color:C.amb,letterSpacing:'.12em',fontWeight:700,textTransform:'uppercase'}}>ALÉRGENOS DE MESA · EU 1169/2011</div>
           <div style={{fontFamily:SN,fontSize:12,color:C.bg,lineHeight:1.4}}>El cliente ha indicado intolerancia / alergia a:</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,flex:1}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))',gap:8,flex:1}}>
             {['Gluten','Crustáceos','Huevos','Pescado','Cacahuetes','Soja','Lactosa','Frutos secos','Apio','Mostaza','Sésamo','Sulfitos','Altramuces','Moluscos'].map(al=>{
               const on = alergenosMesa.includes(al)
               return (
