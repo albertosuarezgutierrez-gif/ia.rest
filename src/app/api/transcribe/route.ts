@@ -397,6 +397,20 @@ export async function POST(req: NextRequest) {
       await supabase.from('alergeno_confirmaciones').insert(logs)
     }
 
+    // ── Log de aprendizaje: guardar casos de baja confianza para mejora del modelo ──
+    if ((brainResult.confianza ?? 1) < 0.65 || brainResult.items.length === 0) {
+      try {
+        await supabase.from('ia_training_log').insert({
+          restaurante_id: rid,
+          texto_original: texto,
+          resultado_brain: brainResult,
+          fuente_brain: (brainResult as { fuente?: string }).fuente ?? 'desconocido',
+          confianza: brainResult.confianza ?? 0,
+          revisado: false,
+        })
+      } catch { /* no bloquear la respuesta si falla el log */ }
+    }
+
     const okResult = { ok: true, texto, brain: brainResult, fuente_brain: brainResult.fuente, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, latencia_brain_ms: brainResult.latencia_brain_ms, comanda_id: comandaId, mesa_id: mesa?.id ?? null, nombre_cuenta: nombreCuentaUsada, alertas_86: alertas86, alertas_alergenos: alertasAlergenos }
     // Cachear resultado para idempotencia (si vuelve la misma recording_id, devuelve esto)
     if (recordingId) recentRecordings.set(recordingId, { ts: Date.now(), result: okResult })
@@ -404,6 +418,18 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const is401 = msg.includes('401') || (err as { status?: number })?.status === 401
+
+    // ── Registrar error en system_errors para auditoría y aprendizaje ──
+    try {
+      const supabaseErr = createServerClient()
+      const ridErr = req.headers.get('x-restaurante-id') ?? 'unknown'
+      await supabaseErr.from('system_errors').insert({
+        restaurante_id: ridErr !== 'unknown' ? ridErr : null,
+        origen: 'transcribe',
+        mensaje: msg.substring(0, 500),
+        contexto: JSON.stringify({ is401, url: req.url }),
+      })
+    } catch { /* no propagar errores de logging */ }
 
     if (is401) {
       const missingGroq = !process.env.GROQ_API_KEY

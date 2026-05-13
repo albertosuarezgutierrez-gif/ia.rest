@@ -488,6 +488,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const cooldownRef       = useRef(false)            // 1.5s tras stop antes de nuevo start
   const recordStartRef    = useRef(0)                // timestamp inicio grabación
   const recordingIdRef    = useRef('')               // idempotency key por grabación
+  const pttManualRef      = useRef(false)            // true = usuario mantiene botón pulsado → VAD desactivado
 
   // ── Auriculares 3.5mm — PTT por botón de cable ──────────────────
   const silentAudioRef       = useRef<HTMLAudioElement|null>(null)
@@ -565,6 +566,12 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         let lastFrame = Date.now()
         const vadLoop = () => {
           if (!recordingRef.current) return
+          // Si el camarero mantiene el botón pulsado → NO auto-stop (él controla con soltar)
+          if (pttManualRef.current) {
+            silentMs = 0
+            vadFrameRef.current = setTimeout(vadLoop, FRAME_INTERVAL) as unknown as number
+            return
+          }
           analyser.getByteTimeDomainData(buf)
           let sum = 0
           for (let i = 0; i < buf.length; i++) sum += Math.abs(buf[i] - 128)
@@ -575,7 +582,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           if (rms < SILENCE_THRESHOLD) {
             silentMs += delta
             if (silentMs >= SILENCE_DURATION) {
-              // Silencio sostenido → parar grabación
+              // Silencio sostenido (auricular, no botón) → parar grabación
               if (recordingRef.current) stopRecording()
               return
             }
@@ -846,8 +853,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   // cuando el botón del auricular es interceptado por MediaSession nativo.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    ;(window as any).startPTT = () => { activateMediaSession(); startRecording() }
-    ;(window as any).stopPTT  = () => stopRecording()
+    ;(window as any).startPTT = () => { pttManualRef.current=true; activateMediaSession(); startRecording() }
+    ;(window as any).stopPTT  = () => { pttManualRef.current=false; stopRecording() }
     return () => {
       delete (window as any).startPTT
       delete (window as any).stopPTT
@@ -1324,7 +1331,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
               <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',border:`1.5px solid ${isListening?C.verm+'60':'#D9442B22'}`,animation:'hout 2s ease-out infinite'}}/>
               <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',border:`1.5px solid ${isListening?C.verm+'60':'#D9442B22'}`,animation:'hout 2s ease-out .7s infinite'}}/>
               <button
-                onClick={e=>{e.preventDefault(); if(screen==='recording'){stopRecording()}else{activateMediaSession();startRecording()}}}
+                onPointerDown={e=>{e.preventDefault(); if(!isProcessing){pttManualRef.current=true; activateMediaSession(); startRecording()}}}
+                onPointerUp={e=>{e.preventDefault(); pttManualRef.current=false; stopRecording()}}
+                onPointerLeave={e=>{e.preventDefault(); if(recordingRef.current){pttManualRef.current=false; stopRecording()}}}
                 disabled={isProcessing}
                 style={{width:76,height:76,borderRadius:'50%',
                   background:isListening?C.verm:`linear-gradient(145deg,#E85540,${C.verm})`,
@@ -1341,7 +1350,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
               </button>
             </div>
             <span style={{fontFamily:SM,fontSize:10,fontWeight:600,color:isListening?C.verm:C.ink3,textTransform:'uppercase',letterSpacing:'1.5px',animation:isListening?'sttPulse .8s infinite alternate':'none'}}>
-              {isListening?'escuchando…':isProcessing?'procesando…':'toca para hablar'}
+              {isListening?'escuchando…':isProcessing?'procesando…':'mantén para hablar'}
             </span>
             {headphoneConnected && !isListening && !isProcessing && (
               <span style={{fontFamily:SM,fontSize:9,fontWeight:500,color:C.gr,letterSpacing:'1px',display:'flex',alignItems:'center',gap:4}}>
