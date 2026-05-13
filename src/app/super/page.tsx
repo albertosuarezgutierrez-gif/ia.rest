@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth, Session } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import SugerenciasPanel from '@/components/SugerenciasPanel'
@@ -64,11 +64,12 @@ export default function SuperPage() {
   const [form, setForm] = useState({ nombre: '', slug: '', codigo_acceso: '', plan: 'starter', ciudad: 'Madrid' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'leads'|'sugerencias'|'ia_training'|'sistema'|'cobro'>('restaurantes')
+  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'leads'|'sugerencias'|'ia_training'|'sistema'|'cobro'|'soporte'>('restaurantes')
   const [sugerencias, setSugerencias] = useState<any[]>([])
   const [loadingSug, setLoadingSug] = useState(false)
   const [filtroSug, setFiltroSug] = useState<string>('todas')
   const [badgeSug, setBadgeSug] = useState(0)
+  const [badgeSoporte, setBadgeSoporte] = useState(0)
   const [cuentas, setCuentas] = useState<CuentaVista[]>([])
   const [loadingCuentas, setLoadingCuentas] = useState(false)
   const [showFormCuenta, setShowFormCuenta] = useState(false)
@@ -118,6 +119,11 @@ export default function SuperPage() {
     useEffect(() => { if (session) { 
     fetch('/api/sugerencias', { headers: { 'x-ia-session': JSON.stringify(session) } })
       .then(r => r.json()).then(d => setBadgeSug((d.sugerencias ?? []).filter((s: any) => !s.leida).length))
+  }}, [session])
+
+  useEffect(() => { if (session) {
+    fetch('/api/super/soporte', { headers: { 'x-ia-session': JSON.stringify(session) } })
+      .then(r => r.json()).then(d => setBadgeSoporte((d.tickets ?? []).filter((t: any) => t.estado === 'escalado').length))
   }}, [session])
 
   const loadCuentas = async () => {
@@ -261,6 +267,7 @@ export default function SuperPage() {
             { id: 'sugerencias',  label: 'Sugerencias', badge: badgeSug },
             { id: 'ia_training',  label: 'IA Training' },
             { id: 'sistema',      label: 'Sistema' },
+            { id: 'soporte',      label: 'Soporte', badge: badgeSoporte },
           ] as any[]).map((t: any) => (
             <button key={t.id} onClick={() => setTabSuper(t.id as any)}
               style={{
@@ -688,6 +695,10 @@ export default function SuperPage() {
           </div>
         )}
 
+        {tabSuper === 'soporte' && (
+          <SoporteSuperTab session={session} C={C} SE={SE} SN={SN} SM={SM} onBadge={setBadgeSoporte} />
+        )}
+
         {/* Footer info */}
         <div style={{
           marginTop: 64, paddingTop: 24, borderTop: `1px solid ${C.rule}`,
@@ -908,6 +919,157 @@ function LeadsTab({ C, SN, SM }: { C: any; SE: string; SN: string; SM: string })
               </button>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Panel de soporte para Alberto en /super ──────────────────────────────────
+function SoporteSuperTab({ session, C, SE, SN, SM, onBadge }: { session: any; C: any; SE: string; SN: string; SM: string; onBadge: (n: number) => void }) {
+  const [tickets, setTickets] = React.useState<any[]>([])
+  const [ticketActivo, setTicketActivo] = React.useState<any>(null)
+  const [mensajes, setMensajes] = React.useState<any[]>([])
+  const [respuesta, setRespuesta] = React.useState('')
+  const [enviando, setEnviando] = React.useState(false)
+  const [filtro, setFiltro] = React.useState<'todos'|'escalado'|'abierto'|'resuelto'>('escalado')
+  const finRef = React.useRef<HTMLDivElement>(null)
+
+  const cargar = React.useCallback(async () => {
+    const url = filtro === 'todos' ? '/api/super/soporte' : `/api/super/soporte?estado=${filtro}`
+    const r = await fetch(url, { headers: { 'x-ia-session': JSON.stringify(session) } })
+    const d = await r.json()
+    setTickets(d.tickets ?? [])
+    onBadge((d.tickets ?? []).filter((t: any) => t.estado === 'escalado').length)
+  }, [session, filtro, onBadge])
+
+  React.useEffect(() => { cargar() }, [cargar])
+
+  async function abrirTicket(ticket: any) {
+    setTicketActivo(ticket)
+    const r = await fetch(`/api/owner/soporte?ticket_id=${ticket.id}`, {
+      headers: { 'x-ia-restaurante-id': ticket.restaurante_id },
+    })
+    const d = await r.json()
+    setMensajes(d.mensajes ?? [])
+    setTimeout(() => finRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+
+  async function responder() {
+    if (!respuesta.trim() || !ticketActivo || enviando) return
+    setEnviando(true)
+    await fetch('/api/super/soporte', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-ia-session': JSON.stringify(session) },
+      body: JSON.stringify({ ticket_id: ticketActivo.id, texto: respuesta.trim() }),
+    })
+    setMensajes(prev => [...prev, { rol: 'alberto', texto: respuesta.trim(), created_at: new Date().toISOString() }])
+    setRespuesta('')
+    setEnviando(false)
+  }
+
+  async function cerrar(ticketId: string) {
+    await fetch('/api/super/soporte', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-ia-session': JSON.stringify(session) },
+      body: JSON.stringify({ ticket_id: ticketId, estado: 'resuelto' }),
+    })
+    setTicketActivo(null)
+    cargar()
+  }
+
+  const ESTADO_COLOR: Record<string, string> = { escalado: C.red, abierto: C.amber, resuelto: C.green }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: ticketActivo ? '320px 1fr' : '1fr', gap: 24, alignItems: 'start' }}>
+      {/* Lista tickets */}
+      <div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+          {(['escalado', 'abierto', 'resuelto', 'todos'] as const).map(f => (
+            <button key={f} onClick={() => setFiltro(f)} style={{
+              fontFamily: SM, fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase',
+              padding: '5px 12px', borderRadius: 20, cursor: 'pointer', border: `1px solid ${filtro === f ? C.red : C.rule}`,
+              background: filtro === f ? C.red : C.bg2, color: filtro === f ? '#fff' : C.ink3,
+            }}>{f}</button>
+          ))}
+        </div>
+
+        {tickets.length === 0 ? (
+          <div style={{ fontFamily: SN, fontSize: 13, color: C.ink4, padding: '32px 0', textAlign: 'center' }}>
+            Sin tickets {filtro !== 'todos' ? `con estado "${filtro}"` : ''}
+          </div>
+        ) : tickets.map((t: any) => (
+          <button key={t.id} onClick={() => abrirTicket(t)} style={{
+            width: '100%', textAlign: 'left', background: ticketActivo?.id === t.id ? C.bg3 : C.bg2,
+            border: `1px solid ${ticketActivo?.id === t.id ? C.red : C.rule}`,
+            borderRadius: 8, padding: '12px 14px', marginBottom: 6, cursor: 'pointer',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontFamily: SN, fontSize: 12, fontWeight: 600, color: C.ink2 }}>
+                {(t.restaurantes as any)?.nombre ?? '—'}
+              </span>
+              <span style={{ fontFamily: SM, fontSize: 9, color: ESTADO_COLOR[t.estado] ?? C.ink4, textTransform: 'uppercase', fontWeight: 700 }}>
+                {t.estado}
+              </span>
+            </div>
+            <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t.asunto || 'Sin título'}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Chat activo */}
+      {ticketActivo && (
+        <div style={{ background: C.bg2, border: `1px solid ${C.rule}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: C.ink }}>{(ticketActivo.restaurantes as any)?.nombre ?? '—'}</div>
+              <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>{ticketActivo.asunto}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => cerrar(ticketActivo.id)} style={{ fontFamily: SN, fontSize: 11, background: C.greenS, color: C.green, border: `1px solid ${C.green}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>✓ Cerrar</button>
+              <button onClick={() => setTicketActivo(null)} style={{ fontFamily: SN, fontSize: 11, background: C.bg3, color: C.ink3, border: `1px solid ${C.rule}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer' }}>✕</button>
+            </div>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {mensajes.map((m: any, i: number) => (
+              <div key={i} style={{ alignSelf: m.rol === 'usuario' ? 'flex-start' : m.rol === 'alberto' ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+                {m.rol !== 'usuario' && (
+                  <div style={{ fontFamily: SM, fontSize: 9, color: m.rol === 'alberto' ? C.red : C.ink4, marginBottom: 2, textAlign: m.rol === 'alberto' ? 'right' : 'left' }}>
+                    {m.rol === 'alberto' ? 'ALBERTO' : 'IA'}
+                  </div>
+                )}
+                <div style={{
+                  background: m.rol === 'usuario' ? C.bg3 : m.rol === 'alberto' ? C.redS : C.bone,
+                  border: `1px solid ${m.rol === 'alberto' ? C.red : C.rule}`,
+                  borderRadius: 8, padding: '8px 12px',
+                  fontFamily: SN, fontSize: 13, color: C.ink2, lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                }}>
+                  {m.texto}
+                </div>
+              </div>
+            ))}
+            <div ref={finRef} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <textarea
+              value={respuesta}
+              onChange={e => setRespuesta(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); responder() } }}
+              placeholder="Escribe tu respuesta… (Enter para enviar)"
+              rows={2}
+              style={{ flex: 1, fontFamily: SN, fontSize: 13, color: C.ink, background: C.bg, border: `1px solid ${C.rule}`, borderRadius: 6, padding: '8px 12px', resize: 'none', outline: 'none' }}
+            />
+            <button onClick={responder} disabled={!respuesta.trim() || enviando} style={{
+              fontFamily: SN, fontSize: 12, fontWeight: 600, background: respuesta.trim() ? C.red : C.bg3,
+              color: respuesta.trim() ? '#fff' : C.ink4, border: 'none', borderRadius: 6, padding: '8px 14px', cursor: 'pointer',
+            }}>
+              {enviando ? '…' : 'Enviar'}
+            </button>
+          </div>
         </div>
       )}
     </div>
