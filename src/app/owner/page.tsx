@@ -5012,6 +5012,9 @@ function QRTabOwner({ restauranteId, sh }: { restauranteId: string; sh: () => Re
         })}
       </div>
 
+      {/* ── Métodos de pago ── */}
+      <MetodosPagoSection restauranteId={restauranteId} sh={sh} />
+
       {/* ── ia.rest cobro ── */}
       <CobroConfigSection restauranteId={restauranteId} sh={sh} />
 
@@ -5161,6 +5164,103 @@ function CobroConfigSection({ restauranteId, sh }: { restauranteId: string; sh: 
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ── Sección: métodos de pago configurables ────────────────────
+interface MetodoPagoConfig {
+  id: string; nombre: string; tipo: string
+  icono: string; color: string; activo: boolean; orden: number
+}
+
+function MetodosPagoSection({ restauranteId, sh }: { restauranteId: string; sh: () => Record<string,string> }) {
+  const [metodos, setMetodos] = useState<MetodoPagoConfig[]>([])
+  const [saving, setSaving] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/owner/metodos-pago', { headers: sh() })
+      .then(r => r.json())
+      .then(d => { if (d.metodos) setMetodos(d.metodos) })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restauranteId])
+
+  const toggle = async (m: MetodoPagoConfig) => {
+    if (saving) return
+    setSaving(m.id)
+    const next = !m.activo
+    setMetodos(prev => prev.map(x => x.id === m.id ? { ...x, activo: next } : x))
+    try {
+      const r = await fetch('/api/owner/metodos-pago', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...sh() },
+        body: JSON.stringify({ id: m.id, activo: next }),
+      })
+      if (!r.ok) setMetodos(prev => prev.map(x => x.id === m.id ? { ...x, activo: !next } : x))
+    } catch {
+      setMetodos(prev => prev.map(x => x.id === m.id ? { ...x, activo: !next } : x))
+    }
+    setSaving(null)
+  }
+
+  if (metodos.length === 0) return null
+
+  return (
+    <div style={{ margin: '0 16px 16px', borderRadius: 16, background: C.paper, border: `1px solid ${C.rule}`, overflow: 'hidden' }}>
+      <div style={{ padding: '14px 18px 10px', borderBottom: `1px solid ${C.rule}` }}>
+        <div style={{ fontFamily: SE, fontSize: 18, fontWeight: 500, color: C.ink }}>Métodos de pago</div>
+        <div style={{ fontFamily: SN, fontSize: 11, color: C.ink3, marginTop: 2 }}>
+          Activa o desactiva los métodos que aparecen al cobrar
+        </div>
+      </div>
+      <div style={{ padding: '12px 16px 16px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+        {metodos.map(m => {
+          const on = m.activo
+          const isSaving = saving === m.id
+          return (
+            <button
+              key={m.id}
+              onClick={() => toggle(m)}
+              disabled={isSaving}
+              style={{
+                padding: '12px 8px 10px',
+                borderRadius: 12,
+                background: on ? `${m.color}15` : C.bg,
+                border: `2px solid ${on ? m.color : C.rule}`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                cursor: isSaving ? 'wait' : 'pointer',
+                transition: 'all .15s',
+                position: 'relative',
+                opacity: isSaving ? 0.6 : 1,
+              }}>
+              <div style={{
+                position: 'absolute', top: 6, right: 6,
+                width: 28, height: 16, borderRadius: 8,
+                background: on ? m.color : C.rule,
+                transition: 'background .15s',
+                display: 'flex', alignItems: 'center', padding: '0 2px',
+                justifyContent: on ? 'flex-end' : 'flex-start',
+              }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
+              </div>
+              <span style={{ fontSize: 22, lineHeight: 1 }}>{m.icono}</span>
+              <span style={{
+                fontFamily: SN, fontSize: 11, fontWeight: on ? 700 : 400,
+                color: on ? m.color : C.ink3,
+                textAlign: 'center' as const, lineHeight: 1.2,
+              }}>
+                {m.nombre}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ padding: '0 18px 14px' }}>
+        <div style={{ fontFamily: SN, fontSize: 10, color: C.ink4 }}>
+          Los cambios se aplican de inmediato. El camarero verá solo los métodos activos.
+        </div>
+      </div>
     </div>
   )
 }
