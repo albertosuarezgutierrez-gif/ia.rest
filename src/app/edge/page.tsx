@@ -1335,69 +1335,6 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       {tab==='hablar' && (
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
-          {/* ── Mis comandas activas ─────────────────────────── */}
-          <div style={{
-            height:44,flexShrink:0,background:C.bg1,
-            borderBottom:`1px solid ${C.rule}`,
-            display:'flex',alignItems:'center',gap:6,
-            padding:'0 12px',overflowX:'auto',scrollbarWidth:'none' as const,
-          }}>
-            <span style={{fontFamily:SM,fontSize:8,color:C.ink4,flexShrink:0,letterSpacing:'.06em'}}>MIS MESAS</span>
-            {ultimasComandas.length === 0 && (
-              <span style={{fontFamily:SN,fontSize:11,color:C.ink4,fontStyle:'italic'}}>sin mesas activas</span>
-            )}
-            {ultimasComandas.map(c => {
-              const mesa  = c.mesa?.codigo || '?'
-              const min   = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 60000)
-              const col   = min >= 45 ? C.verm : min >= 30 ? '#D26414' : min >= 15 ? C.amb : C.gr
-              const esFijada = mesaFijada === c.mesa_id
-              return (
-                <div key={c.id}
-                  onTouchStart={e=>{mesaTouchRef.current={startY:e.touches[0].clientY,moved:false}}}
-                  onTouchMove={e=>{if(Math.abs(e.touches[0].clientY-mesaTouchRef.current.startY)>8)mesaTouchRef.current.moved=true}}
-                  onTouchEnd={e=>{if(!mesaTouchRef.current.moved){e.preventDefault();setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}}}
-                  onClick={()=>setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}
-                  onContextMenu={e=>{e.preventDefault();setMesaFijada(mesaFijada===c.mesa_id?null:c.mesa_id)}}
-                  style={{
-                    flexShrink:0,display:'flex',alignItems:'center',gap:5,
-                    padding:'4px 9px',borderRadius:8,cursor:'pointer',
-                    background: esFijada ? `${col}22` : `${col}10`,
-                    border:`${esFijada?2:1}px solid ${col}${esFijada?'':' 55'}`,
-                    animation: min>=45 ? 'urgPulse 1.8s ease-in-out infinite' : 'none',
-                  }}>
-                  {esFijada && <span style={{fontSize:9,color:col}}>→</span>}
-                  <div style={{width:5,height:5,borderRadius:'50%',background:col,flexShrink:0}}/>
-                  <div>
-                    <div style={{fontFamily:SE,fontStyle:'italic',fontSize:14,fontWeight:500,color:col,lineHeight:1}}>{mesa}</div>
-                    <div style={{fontFamily:SM,fontSize:7,color:col,textTransform:'uppercase',lineHeight:1,marginTop:1}}>
-                      {c.estado==='en_cocina'?'cocina':c.estado==='lista'?'lista ✓':c.estado==='cuenta_pedida'?'cuenta ⏳':'activa'} · {min}m
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-            {mesaFijada && (
-              <div style={{marginLeft:'auto',flexShrink:0,fontFamily:SM,fontSize:8,color:C.verm,letterSpacing:'.05em'}}>
-                → fijada · mantén para soltar
-              </div>
-            )}
-            <button
-              onClick={() => {
-                setMesaRapidaForm({ zona: zonasPlano[0]?.tipo || '', alias: '', telefono: '' })
-                setMesaRapidaErr('')
-                setMesaRapidaModal(true)
-              }}
-              style={{
-                flexShrink:0, marginLeft: mesaFijada ? 6 : 'auto',
-                display:'flex', alignItems:'center', gap:4,
-                background:'transparent', border:`1px solid ${C.rule}`,
-                borderRadius:8, padding:'4px 9px', cursor:'pointer',
-                fontFamily:SM, fontSize:8, color:C.ink3, letterSpacing:'.05em',
-              }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14"/></svg>
-              Mesa rápida
-            </button>
-          </div>
 
           {/* ── Chat ─────────────────────────────────────────── */}
           <div style={{flex:1,overflowY:'auto',scrollbarWidth:'none' as const,padding:'10px 14px',display:'flex',flexDirection:'column',justifyContent:'flex-end',gap:8}}>
