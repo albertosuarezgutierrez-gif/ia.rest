@@ -449,7 +449,14 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     const checkCuentas = () =>
       fetch('/api/edge/mis-cuentas', { headers: { 'x-ia-session': ses } })
         .then(r => r.json())
-        .then(d => { if (Array.isArray(d.cuentas)) setCuentasCount(d.cuentas.length) })
+        .then(d => {
+          if (Array.isArray(d.cuentas)) {
+            // Badge solo cuenta cuentas urgentes (pedidas) — no todas las mesas activas
+            const urgentes = (d.cuentas as {estado:string;tipo:string}[])
+              .filter(c => c.estado === 'cuenta_pedida' || c.tipo === 'cuenta').length
+            setCuentasCount(urgentes)
+          }
+        })
         .catch(() => {})
     checkCuentas()
     const iv = setInterval(checkCuentas, 30_000)
@@ -1105,7 +1112,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
   const marcharRapido = async (mesa: MesaPlano) => {
     const comanda = mesasOcupadas[mesa.id]
-    if (!comanda || !['en_cocina','nueva','lista'].includes(comanda.estado ?? '')) return
+    if (!comanda || !['en_cocina','nueva','lista','cuenta_pedida'].includes(comanda.estado ?? '')) return
     const items = (comanda.items ?? []).map((it: {nombre:string;cantidad:number}) => ({
       nombre: it.nombre, cantidad: it.cantidad,
     }))

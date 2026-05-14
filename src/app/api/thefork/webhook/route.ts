@@ -93,6 +93,8 @@ export async function POST(req: NextRequest) {
     }
     pax?: number
     startTime?: string
+    tableNumber?: string | number
+    tableId?: string | number
   }
 
   try {
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { orderId, mealStatus, customer, pax } = body
+  const { orderId, mealStatus, customer, pax, tableNumber, tableId } = body
 
   // Solo procesar llegadas / sentados
   const estadosActivos = ['ARRIVED', 'SEATED', 'PARTIALLY_SEATED']
@@ -117,17 +119,45 @@ export async function POST(req: NextRequest) {
   ]
   const alergenosMesa = mapAlergias(alergiasRaw)
 
-  // Buscar una mesa disponible o la primera libre
-  // TheFork no siempre envía número de mesa — usamos la primera libre del restaurante
-  // TODO: cuando TheFork envíe tableNumber en el body, mapear por mesa.codigo
-  const { data: mesa } = await supabase
-    .from('mesas')
-    .select('id, codigo')
-    .eq('restaurante_id', rid)
-    .in('estado', ['libre', 'disponible'])
-    .order('codigo', { ascending: true })
-    .limit(1)
-    .single()
+  // Buscar mesa: primero por tableNumber/tableId si lo envía TheFork,
+  // fallback a primera mesa libre del restaurante
+  const codigoTheFork = tableNumber != null ? String(tableNumber)
+    : tableId != null ? String(tableId)
+    : null
+
+  let mesa: { id: string; codigo: string } | null = null
+
+  if (codigoTheFork) {
+    // Intentar encontrar la mesa por código exacto o por número parcial
+    const { data: mesaPorCodigo } = await supabase
+      .from('mesas')
+      .select('id, codigo')
+      .eq('restaurante_id', rid)
+      .or(`codigo.eq.${codigoTheFork},codigo.ilike.%${codigoTheFork}`)
+      .limit(1)
+      .single()
+
+    if (mesaPorCodigo) {
+      mesa = mesaPorCodigo
+      console.log('[TheFork] Mesa encontrada por tableNumber:', codigoTheFork, '→', mesaPorCodigo.codigo)
+    } else {
+      console.warn('[TheFork] tableNumber', codigoTheFork, 'no encontrado — usando primera libre')
+    }
+  }
+
+  // Fallback: primera mesa libre si no se encontró por tableNumber
+  if (!mesa) {
+    const { data: mesaLibre } = await supabase
+      .from('mesas')
+      .select('id, codigo')
+      .eq('restaurante_id', rid)
+      .in('estado', ['libre', 'disponible'])
+      .order('codigo', { ascending: true })
+      .limit(1)
+      .single()
+
+    mesa = mesaLibre ?? null
+  }
 
   if (!mesa) {
     console.warn('[TheFork] Sin mesa disponible para restaurante', rid)
