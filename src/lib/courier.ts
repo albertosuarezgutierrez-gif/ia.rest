@@ -59,61 +59,61 @@ const CMD = {
 export function generarEscPos(payload: PrintPayload): Buffer {
   const now = new Date(payload.ts)
   const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  const SEP  = '-'.repeat(42)
+  const SEP  = '-'.repeat(32)
   const bufs: Buffer[] = []
 
-  const t = (s: string) => Buffer.from(s, 'utf8')
+  const t = (s: string) => Buffer.from(s, 'latin1')
   const b = (...bytes: number[]) => Buffer.from(bytes)
 
-  // Comandos ESC/POS como bytes puros
   const ESC = 0x1B, GS = 0x1D, LF = 0x0A
-  const init       = b(ESC, 0x40)
-  const bold_on    = b(ESC, 0x45, 0x01)
-  const bold_off   = b(ESC, 0x45, 0x00)
-  const center     = b(ESC, 0x61, 0x01)
-  const left       = b(ESC, 0x61, 0x00)
-  const big        = b(GS,  0x21, 0x11)
-  const medium     = b(GS,  0x21, 0x01)
-  const normal     = b(GS,  0x21, 0x00)
-  const cut        = b(GS,  0x56, 0x41, 0x10)
-  const lf         = b(LF)
 
-  // Inicializar
-  bufs.push(init)
+  // Init + charset PC437 (ASCII seguro)
+  bufs.push(b(ESC, 0x40))        // ESC @ init
+  bufs.push(b(ESC, 0x74, 0x00))  // ESC t 0 - codepage PC437
 
-  // Cabecera: SECCIÓN
-  bufs.push(center, big, bold_on)
-  bufs.push(t(payload.seccion.toUpperCase()), lf)
-  bufs.push(normal, bold_off, left)
-  bufs.push(t(SEP), lf)
+  // Seccion
+  bufs.push(b(ESC, 0x61, 0x01))  // center
+  bufs.push(b(ESC, 0x45, 0x01))  // bold on
+  bufs.push(t(payload.seccion.toUpperCase()), b(LF))
+  bufs.push(b(ESC, 0x45, 0x00))  // bold off
+  bufs.push(b(ESC, 0x61, 0x00))  // left
 
-  // Mesa + ticket
-  bufs.push(medium, bold_on)
+  bufs.push(t(SEP), b(LF))
+
+  // Mesa y ticket
   const mesaStr   = ('MESA ' + payload.mesa).padEnd(18)
   const ticketStr = '#' + String(payload.ticket_num).padStart(4, '0')
-  bufs.push(t(mesaStr + ticketStr), bold_off, lf, normal)
+  bufs.push(b(ESC, 0x45, 0x01))
+  bufs.push(t(mesaStr + ticketStr), b(LF))
+  bufs.push(b(ESC, 0x45, 0x00))
 
-  // Hora + camarero
-  bufs.push(t(hora + '  ' + payload.camarero.toUpperCase()), lf)
-  bufs.push(t(SEP), lf, lf)
+  // Hora y camarero
+  bufs.push(t(hora + '  ' + payload.camarero.toUpperCase()), b(LF))
+  bufs.push(t(SEP), b(LF), b(LF))
 
   // Items
   for (const item of payload.items) {
     const qty  = String(item.cantidad).padStart(2)
     const name = item.nombre.toUpperCase()
-    bufs.push(bold_on, t(qty + 'x  ' + name), bold_off, lf)
+    bufs.push(b(ESC, 0x45, 0x01))
+    bufs.push(t(qty + 'x  ' + name), b(LF))
+    bufs.push(b(ESC, 0x45, 0x00))
     if (item.notas) {
-      bufs.push(t('     > ' + item.notas), lf)
+      bufs.push(t('     > ' + item.notas), b(LF))
     }
   }
 
-  // Marchar
   if (payload.tipo === 'marchar') {
-    bufs.push(lf, center, bold_on, t('*** MARCHAR ***'), bold_off, left, lf)
+    bufs.push(b(LF))
+    bufs.push(b(ESC, 0x61, 0x01), b(ESC, 0x45, 0x01))
+    bufs.push(t('*** MARCHAR ***'), b(LF))
+    bufs.push(b(ESC, 0x45, 0x00), b(ESC, 0x61, 0x00))
   }
 
-  // Pie
-  bufs.push(lf, t(SEP), lf, lf, lf, lf, cut)
+  // Feed y corte
+  bufs.push(b(LF), t(SEP), b(LF))
+  bufs.push(b(LF), b(LF), b(LF))
+  bufs.push(b(GS, 0x56, 0x01))  // GS V 1 - corte parcial
 
   return Buffer.concat(bufs)
 }
