@@ -492,6 +492,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const abortFetchRef     = useRef<AbortController|null>(null)  // cancela fetch en vuelo
   const maxRecTimerRef    = useRef<ReturnType<typeof setTimeout>|null>(null)  // auto-stop 90s
   const watchdogRef       = useRef<ReturnType<typeof setTimeout>|null>(null)  // watchdog processing
+  const mesaTouchRef      = useRef({startY:0, moved:false})                   // scroll-safe tap mesas
   const [audioLevel, setAudioLevel] = useState(0)  // nivel RMS visual (0-100)
   const levelTimerRef     = useRef<ReturnType<typeof setTimeout>|null>(null)
 
@@ -1196,7 +1197,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
               const esFijada = mesaFijada === c.mesa_id
               return (
                 <div key={c.id}
-                  onClick={()=>setMesaDetalle({id:c.mesa_id, codigo:mesa, capacidad:(c.mesa as {capacidad?:number})?.capacidad})}
+                  onTouchStart={e=>{mesaTouchRef.current={startY:e.touches[0].clientY,moved:false}}}
+                  onTouchMove={e=>{if(Math.abs(e.touches[0].clientY-mesaTouchRef.current.startY)>8)mesaTouchRef.current.moved=true}}
+                  onTouchEnd={e=>{if(!mesaTouchRef.current.moved){e.preventDefault();setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}}}
+                  onClick={()=>setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}
                   onContextMenu={e=>{e.preventDefault();setMesaFijada(mesaFijada===c.mesa_id?null:c.mesa_id)}}
                   style={{
                     flexShrink:0,display:'flex',alignItems:'center',gap:5,
@@ -1493,6 +1497,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                 const label  = isLista ? '✓ Lista para servir' : isCocina ? 'En cocina…' : 'Nueva'
                 return (
                   <div key={c.id}
+                    onTouchStart={e=>{mesaTouchRef.current={startY:e.touches[0].clientY,moved:false}}}
+                    onTouchMove={e=>{if(Math.abs(e.touches[0].clientY-mesaTouchRef.current.startY)>8)mesaTouchRef.current.moved=true}}
+                    onTouchEnd={e=>{if(!mesaTouchRef.current.moved){e.preventDefault();setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}}}
                     onClick={()=>setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}
                     style={{background:C.bg1,border:`1px solid ${col}44`,borderLeft:`3px solid ${col}`,borderRadius:10,overflow:'hidden',cursor:'pointer',boxShadow:'0 1px 4px rgba(26,23,20,.06)'}}>
                     {/* Cabecera comanda */}
