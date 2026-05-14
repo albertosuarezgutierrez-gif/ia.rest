@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   // ── 1. Verificar comanda ────────────────────────────────
   const { data: comanda } = await supabase
-    .from('comandas').select('id, estado, restaurante_id, camarero_id, turno_id')
+    .from('comandas').select('id, estado, restaurante_id, camarero_id, turno_id, mesa_id')
     .eq('id', comanda_id).eq('restaurante_id', restaurante_id).single()
 
   if (!comanda) return NextResponse.json({ error: 'Comanda no encontrada' }, { status: 404 })
@@ -147,10 +147,14 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // ── 9. Marcar comanda cerrada ───────────────────────────
+  // ── 9. Marcar comanda cerrada + liberar mesa ────────────
   await supabase.from('comandas').update({ estado: 'cerrada' }).eq('id', comanda_id)
-  await supabase.from('mesas').update({ estado: 'libre', camarero_id: null, ultima_comanda: new Date().toISOString() })
-    .eq('id', (await supabase.from('comandas').select('mesa_id').eq('id', comanda_id).single()).data?.mesa_id ?? '')
+  if (comanda.mesa_id) {
+    await supabase.from('mesas')
+      .update({ estado: 'libre', camarero_id: null, ultima_comanda: new Date().toISOString() })
+      .eq('id', comanda.mesa_id)
+      .eq('restaurante_id', restaurante_id)
+  }
 
   console.log(`[factura/cerrar] ✓ Factura ${numero} · ${importe_total}€ · propina ${propina_val}€ · ${metodo.nombre} · cambio ${cambio}€`)
 

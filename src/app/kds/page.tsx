@@ -320,7 +320,10 @@ function KDSInner() {
   }, [session, fetchData, fetchSecciones, fetchRunnings])
 
   const toggle = async (itemId: string, estado: string) => {
-    await supabase.from('comanda_items').update({ estado: estado === 'listo' ? 'pendiente' : 'listo' }).eq('id', itemId)
+    await supabase.from('comanda_items')
+      .update({ estado: estado === 'listo' ? 'pendiente' : 'listo' })
+      .eq('id', itemId)
+      .eq('restaurante_id', session!.restaurante_id)
     fetchData()
   }
 
