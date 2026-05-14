@@ -94,34 +94,17 @@ echo  Bridge descargado OK
 echo.
 
 
-REM ── Wizard de impresoras (solo primera vez) ──────────────
-set WIZARD_DONE=%INSTALL_DIR%\.wizard_done
-if exist "%WIZARD_DONE%" goto :skip_wizard
-
-echo  PASO 4 - Buscar impresoras en red
-echo  ─────────────────────────────────────────────────────
-echo  El wizard escaneara el puerto 9100 en tu red local
-echo  y registrara las impresoras automaticamente en ia.rest.
-echo.
-choice /c SN /n /m " Buscar impresoras ahora? [S=Si, N=Saltar]: "
-if errorlevel 2 goto :skip_wizard
-
+REM ── Wizard de impresoras (siempre) ──────────────────────
+echo  PASO 4 - Configurando impresoras...
 set WIZARD_FILE=%INSTALL_DIR%\bridge-wizard.ps1
-powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/albertosuarezgutierrez-gif/ia.rest/main/scripts/bridge-wizard.ps1' -OutFile '%WIZARD_FILE%'" >nul 2>&1
-if not exist "%WIZARD_FILE%" (
-    echo  Aviso: No se pudo descargar el wizard. Configura impresoras desde /owner.
-    goto :skip_wizard
+powershell -Command "Invoke-WebRequest -Uri 'https://www.iarest.es/bridge-wizard.ps1' -OutFile '%WIZARD_FILE%'" >nul 2>&1
+if exist "%WIZARD_FILE%" (
+    powershell -ExecutionPolicy Bypass -File "%WIZARD_FILE%" -Token "%BRIDGE_TOKEN%" -API "%IAREST_API%"
+) else (
+    echo  Aviso: No se pudo descargar el wizard.
+    echo  Configura impresoras desde /owner → Hardware.
+    pause
 )
-
-powershell -ExecutionPolicy Bypass -File "%WIZARD_FILE%" -Token "%BRIDGE_TOKEN%" -API "%IAREST_API%"
-echo done > "%WIZARD_DONE%"
-
-echo.
-echo  Para repetir el wizard: borra %WIZARD_DONE%
-echo.
-pause
-
-:skip_wizard
 
 REM ── Crear acceso directo en escritorio ───────────────────
 set SHORTCUT=%USERPROFILE%\Desktop\ia.rest Bridge.lnk
