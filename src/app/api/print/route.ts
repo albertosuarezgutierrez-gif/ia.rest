@@ -149,7 +149,9 @@ export async function POST(req: NextRequest) {
     const rawData = esTcp
       ? generarEscPosPrueba(imp.nombre ?? 'Impresora', imp.ip_address ?? '', imp.port ?? 9100)
       : generarTextoPlano(payload)
-    const printData = Buffer.from(rawData, 'binary').toString('base64')
+    const printData = esTcp
+      ? (rawData as Buffer).toString('base64')
+      : Buffer.from(rawData as string, 'utf8').toString('base64')
 
     const { data: job, error } = await sb
       .from('print_jobs')
@@ -208,20 +210,21 @@ export async function POST(req: NextRequest) {
 }
 
 // ── Ticket de prueba ESC/POS mejorado (80mm, autocutter full) ──
-function generarEscPosPrueba(nombre: string, ip: string, port: number): string {
-  const ESC = '\x1B'
-  const GS  = '\x1D'
-  const LF  = '\x0A'
+function generarEscPosPrueba(nombre: string, ip: string, port: number): Buffer {
+  const ESC = 0x1B, GS = 0x1D, LF = 0x0A
+  const t = (s: string) => Buffer.from(s, 'latin1')
+  const b = (...bytes: number[]) => Buffer.from(bytes)
 
-  const init     = ESC + '@'
-  const center   = ESC + 'a\x01'
-  const left     = ESC + 'a\x00'
-  const bold_on  = ESC + 'E\x01'
-  const bold_off = ESC + 'E\x00'
-  const big      = GS  + '!\x11'   // 2x ancho + 2x alto
-  const medium   = GS  + '!\x10'   // 2x ancho
-  const normal   = GS  + '!\x00'
-  const cut_full = GS  + 'V\x00'   // Autocorte completo
+  const init     = b(ESC, 0x40)
+  const center   = b(ESC, 0x61, 0x01)
+  const left     = b(ESC, 0x61, 0x00)
+  const bold_on  = b(ESC, 0x45, 0x01)
+  const bold_off = b(ESC, 0x45, 0x00)
+  const big      = b(GS,  0x21, 0x11)
+  const medium   = b(GS,  0x21, 0x10)
+  const normal   = b(GS,  0x21, 0x00)
+  const cut_full = b(GS,  0x56, 0x01)
+  const lf       = b(LF)
 
   const SEP  = '-'.repeat(42)
   const SEP2 = '-'.repeat(42)
@@ -229,50 +232,32 @@ function generarEscPosPrueba(nombre: string, ip: string, port: number): string {
   const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const fecha = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
-  const lines: string[] = []
+  const bufs: Buffer[] = []
 
-  lines.push(init)
+  bufs.push(init)
 
   // Cabecera marca
-  lines.push(center)
-  lines.push(LF)
-  lines.push(big + bold_on)
-  lines.push('ia.rest' + LF)
-  lines.push(normal + bold_off)
-  lines.push('Sistema TPV por voz' + LF)
-  lines.push(LF)
+  bufs.push(center, lf, big, bold_on, t('ia.rest'), lf, normal, bold_off)
+  bufs.push(t('Sistema TPV por voz'), lf, lf)
+  bufs.push(left, t(SEP2), lf)
 
-  lines.push(left)
-  lines.push(SEP2 + LF)
-
-  // Estado OK en grande centrado
-  lines.push(center)
-  lines.push(medium + bold_on)
-  lines.push('IMPRESORA OK' + LF)
-  lines.push(normal + bold_off)
-  lines.push(LF)
+  // Estado OK
+  bufs.push(center, medium, bold_on, t('IMPRESORA OK'), lf, normal, bold_off, lf)
 
   // Detalles
-  lines.push(left)
-  lines.push(SEP + LF)
-  lines.push(bold_on + 'Nombre:   ' + bold_off + nombre + LF)
-  lines.push(bold_on + 'IP:       ' + bold_off + ip + ':' + String(port) + LF)
-  lines.push(bold_on + 'Protocolo:' + bold_off + ' ESC/POS TCP' + LF)
-  lines.push(bold_on + 'Hora:     ' + bold_off + hora + LF)
-  lines.push(bold_on + 'Fecha:    ' + bold_off + fecha + LF)
-  lines.push(SEP + LF)
-  lines.push(LF)
+  bufs.push(left, t(SEP), lf)
+  bufs.push(bold_on, t('Nombre:   '), bold_off, t(nombre), lf)
+  bufs.push(bold_on, t('IP:       '), bold_off, t(ip + ':' + String(port)), lf)
+  bufs.push(bold_on, t('Protocolo:'), bold_off, t(' ESC/POS TCP'), lf)
+  bufs.push(bold_on, t('Hora:     '), bold_off, t(hora), lf)
+  bufs.push(bold_on, t('Fecha:    '), bold_off, t(fecha), lf)
+  bufs.push(t(SEP), lf, lf)
 
   // Nota al pie
-  lines.push(center)
-  lines.push('Si ves esto, todo funciona.' + LF)
-  lines.push('Listo para marchar.' + LF)
-  lines.push(LF)
-  lines.push(LF)
-  lines.push(LF)
+  bufs.push(center)
+  bufs.push(t('Si ves esto, todo funciona.'), lf)
+  bufs.push(t('Listo para marchar.'), lf, lf, lf, lf)
+  bufs.push(cut_full)
 
-  // Corte completo (Seiko + Sunmi soportan GS V 0)
-  lines.push(cut_full)
-
-  return lines.join('')
+  return Buffer.concat(bufs)
 }
