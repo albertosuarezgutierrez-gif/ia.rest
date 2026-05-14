@@ -158,11 +158,11 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
       const d = await r.json()
       if (d.ok) {
         // Marchar automaticamente para imprimir ticket
-        if (d.comanda_id) {
+        if (d.comanda_id && mesaSel?.codigo) {
           fetch('/api/marchar', {
             method: 'POST',
             headers: sh(),
-            body: JSON.stringify({ comanda_id: d.comanda_id }),
+            body: JSON.stringify({ comanda_id: d.comanda_id, mesa_codigo: mesaSel.codigo }),
           }).catch(() => {})
         }
         setTicketNum(d.numero_ticket)

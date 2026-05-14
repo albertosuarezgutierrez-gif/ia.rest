@@ -128,11 +128,11 @@ export default function ManualComanda({
       const d = await r.json()
       if (d.ok) {
         // Marchar automaticamente para que salga el ticket de impresion
-        if (d.comanda_id) {
+        if (d.comanda_id && mesaSel?.codigo) {
           fetch('/api/marchar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...h() },
-            body: JSON.stringify({ comanda_id: d.comanda_id }),
+            body: JSON.stringify({ comanda_id: d.comanda_id, mesa_codigo: mesaSel.codigo }),
           }).catch(() => {})
         }
         setSent(true)
