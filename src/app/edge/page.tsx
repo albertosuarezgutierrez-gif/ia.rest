@@ -2065,6 +2065,8 @@ const FRASES_CALIBRACION = [
 
 /** Captura audio del micrófono como WAV PCM 16kHz mono (formato requerido por Azure) */
 async function capturarWAV(duracionMs: number): Promise<Blob> {
+  // Pequeño delay para que Android libere el micrófono entre frases consecutivas
+  await new Promise(r => setTimeout(r, 350))
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
   })
@@ -2161,8 +2163,9 @@ function VoiceProfileSection({ session }: { session: { id: string; restaurante_i
         setPaso(p => p + 1)
       }
     } catch (err) {
-      setMsgError(err instanceof Error ? err.message : 'Error al grabar')
-      setEstado('error')
+      // No cambiar el estado global del perfil — solo mostrar el error de esta frase
+      // para que el usuario pueda reintentar sin romper el progreso ya acumulado
+      setMsgError(err instanceof Error ? err.message : 'Error al grabar. Inténtalo de nuevo')
     } finally {
       grabRef.current = false
       setGrabando(false)
@@ -2244,7 +2247,7 @@ function VoiceProfileSection({ session }: { session: { id: string; restaurante_i
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>Calibración de voz</div>
                 <div style={{ fontSize: 12, color: C.ink4, marginTop: 2 }}>
-                  Lee cada frase en voz alta mientras mantienes pulsado el botón
+                  Pulsa el botón y lee la frase en voz alta — grabará 6 segundos automáticamente
                 </div>
               </div>
               <button onClick={() => setModal(false)} style={{
@@ -2313,7 +2316,7 @@ function VoiceProfileSection({ session }: { session: { id: string; restaurante_i
                     </button>
                   )}
                   <div style={{ fontSize: 11, color: grabando ? C.teal : C.ink4, letterSpacing: '.08em' }}>
-                    {grabando ? '● GRABANDO — 6 segundos' : procesando ? '…' : 'PULSA PARA GRABAR'}
+                    {grabando ? '● GRABANDO…' : procesando ? 'Enviando…' : 'PULSA Y HABLA (6s)'}
                   </div>
                 </div>
               </>
