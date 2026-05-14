@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getRestauranteId } from '@/lib/session'
+import { crearPrintJobs } from '@/lib/courier'
 
 // POST /api/comanda — comanda manual (sin voz)
 export async function POST(req: NextRequest) {
@@ -59,6 +60,13 @@ export async function POST(req: NextRequest) {
         }))
       )
 
+      // Imprimir ticket automaticamente
+      try {
+        const itemsPrint = items.map((i: { nombre: string; cantidad: number; notas?: string; seccion_id?: string }) => ({
+          nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, seccion_id: i.seccion_id,
+        }))
+        await crearPrintJobs({ id: comanda.id, tipo, mesa_codigo: nombre_cuenta.trim(), camarero_nombre: 'Sala', restaurante_id: rid }, itemsPrint)
+      } catch (e) { console.error('[COMANDA] Print error:', e) }
       return NextResponse.json({ ok: true, comanda_id: comanda.id, numero_ticket: comanda.numero_ticket, nombre_cuenta: nombre_cuenta.trim() })
     }
     // ────────────────────────────────────────────────────────────────────────
@@ -183,6 +191,17 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // Imprimir ticket automaticamente
+    try {
+      const { data: mesaData } = await supabase.from('mesas').select('codigo, zona').eq('id', mesa_id).single()
+      const itemsPrint = items.map((i: { nombre: string; cantidad: number; notas?: string; seccion_id?: string }) => ({
+        nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, seccion_id: i.seccion_id,
+      }))
+      await crearPrintJobs({
+        id: comanda.id, tipo, mesa_codigo: mesaData?.codigo ?? 'Mesa',
+        camarero_nombre: 'Sala', restaurante_id: rid, zona_tipo: mesaData?.zona ?? null,
+      }, itemsPrint)
+    } catch (e) { console.error('[COMANDA] Print error:', e) }
     return NextResponse.json({
       ok: true, comanda_id: comanda.id,
       numero_ticket: comanda.numero_ticket,
