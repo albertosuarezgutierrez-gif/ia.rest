@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [dev]
+    branches: [main, dev]
   pull_request:
     branches: [main]
 
@@ -51,7 +51,7 @@ jobs:
         run: npm run build
 
   # ── Aviso en PR hacia main ──────────────────────────────────────────────────
-  # Si el CI pasa, Claude puede hacer merge dev→main con seguridad
+  # Si el CI pasa, es seguro hacer merge dev→main
   ready-to-merge:
     name: Ready to merge
     needs: check

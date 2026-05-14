@@ -9,7 +9,8 @@
 
 ## 🟢 Estado actual (mayo 2026)
 - Clientes reales: **0** (STRIPE_MODE=test)
-- CI activo: lint + typecheck + build en rama `dev`
+- Plan Vercel: **Pro** — 6.000 deploys/día, sin restricciones
+- CI activo: lint + typecheck + build en ramas `main` y `dev`
 - Tests E2E: ninguno (deliberado — ver decisión abajo)
 
 ---
@@ -34,7 +35,6 @@
   - Cobro → factura VeriFactu generada
   - Panel owner: carta + supervisor
 - **Monitoring básico**: uptime check en Vercel, alertas de Edge Function failures
-- Revisar límite de 100 deploys/día Vercel — considerar upgrade de plan
 
 ---
 
@@ -52,17 +52,17 @@
 **Activar:**
 - **Tests de carga básicos** (k6 o Artillery) — simular 20 restaurantes con comandas simultáneas
 - **CDN para assets** estáticos (imágenes de carta, APK)
-- Revisar plan Vercel (límites de bandwidth y funciones)
+- Revisar plan Vercel (límites de bandwidth y funciones serverless)
 - Documentación de onboarding para que Alberto no tenga que hacer setup manual de cada cliente
 
 ---
 
 ### 🚀 50 clientes reales
 **Activar (ya preparado en BD):**
-- **Fine-tuning propio** con `ia_training_log` — suficientes datos para modelo propio de interpretación de comandas hosteleras
+- **Fine-tuning propio** con `ia_training_log` — suficientes datos para modelo propio
 - **API pública (#12)** — integraciones con TPV legacy, TheFork, reservas
 - **Forecaster IA (#14)** — predicción de stock y demanda por restaurante
-- Revisar si merece la pena **multi-región** Supabase (latencia para clientes fuera de España)
+- Revisar si merece la pena **multi-región** Supabase (latencia clientes fuera de España)
 - Contratar soporte técnico externo o primer empleado
 
 ---
@@ -70,10 +70,10 @@
 ### 💎 100 clientes reales
 **Revisar arquitectura completa:**
 - Supabase Pro plan obligatorio (o self-hosted)
-- Vercel Pro/Enterprise (SLA, más deploys, support)
+- Vercel Pro ya activo — revisar SLA y soporte
 - Separar base de datos por región si hay clientes internacionales
 - Sistema de versioning de la API pública
-- Proceso formal de QA antes de cada release (no solo CI)
+- Proceso formal de QA antes de cada release
 
 ---
 
@@ -85,6 +85,7 @@
 | STRIPE_MODE=test hasta primer cliente | No arriesgar cobros reales antes de validar con cliente |
 | Sin Sentry hasta primer cliente | Sin usuarios reales, los errores los detecta Alberto directamente |
 | CI básico (lint+types+build) desde ya | ROI inmediato, 0 mantenimiento, protege contra deploys rotos |
+| Plan Vercel Pro desde mayo 2026 | 6.000 deploys/día — flujo de desarrollo sin restricciones |
 
 ---
 
