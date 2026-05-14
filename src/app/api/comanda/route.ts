@@ -192,14 +192,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Imprimir ticket automaticamente
+    // Reutilizamos mesaData ya cargada arriba (tiene codigo y zona_id)
     try {
-      const { data: mesaData } = await supabase.from('mesas').select('codigo, zona').eq('id', mesa_id).single()
       const itemsPrint = items.map((i: { nombre: string; cantidad: number; notas?: string; seccion_id?: string }) => ({
         nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, seccion_id: i.seccion_id,
       }))
       await crearPrintJobs({
         id: comanda.id, tipo, mesa_codigo: mesaData?.codigo ?? 'Mesa',
-        camarero_nombre: 'Sala', restaurante_id: rid, zona_tipo: mesaData?.zona ?? null,
+        camarero_nombre: 'Sala', restaurante_id: rid, zona_tipo: (mesaData as Record<string, unknown>)?.zona_tipo as string ?? null,
       }, itemsPrint)
     } catch (e) { console.error('[COMANDA] Print error:', e) }
     return NextResponse.json({

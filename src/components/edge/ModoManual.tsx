@@ -157,14 +157,7 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
       })
       const d = await r.json()
       if (d.ok) {
-        // Marchar automaticamente para imprimir ticket
-        if (d.comanda_id && mesaSel?.codigo) {
-          fetch('/api/marchar', {
-            method: 'POST',
-            headers: sh(),
-            body: JSON.stringify({ comanda_id: d.comanda_id, mesa_codigo: mesaSel.codigo }),
-          }).catch(() => {})
-        }
+        // /api/comanda ya crea los print_jobs internamente — no llamar /api/marchar aquí
         setTicketNum(d.numero_ticket)
         setStep('enviado')
       } else {

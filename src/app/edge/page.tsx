@@ -376,7 +376,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   }, [productos86.length, addMsg])
 
   useEffect(() => {
-    fetch('/api/turno').then(r=>r.json()).then(d => { if (d.turno) setTurnoId(d.turno.id) })
+    const ses = localStorage.getItem('ia_rest_session') ?? ''
+    fetch('/api/turno', { headers: { 'x-ia-session': ses } }).then(r=>r.json()).then(d => { if (d.turno) setTurnoId(d.turno.id) })
     try {
       const cfg = JSON.parse(localStorage.getItem('ia_cfg')||'{}')
       if (cfg.voiceConfirm !== undefined) setVoiceConfirm(cfg.voiceConfirm)
@@ -696,10 +697,21 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     setTimeout(() => { cooldownRef.current = false }, 1500)
 
     const blob = new Blob(chunksRef.current, {type:'audio/webm'})
+
+    // ── Guardia: sin turno activo no se puede crear comanda ─────────────
+    if (!turnoId) {
+      processingRef.current = false
+      const aviso = 'Sin turno activo — abre el turno en el panel antes de tomar comandas'
+      setError(aviso)
+      addMsg('sistema', aviso, 'error')
+      setScreenSafe('error')
+      return
+    }
+
     const fd   = new FormData()
     fd.append('audio', blob, 'audio.webm')
     fd.append('camarero_id', session.id)
-    fd.append('turno_id', turnoId||'demo')
+    fd.append('turno_id', turnoId)
     fd.append('recording_id', recordingIdRef.current)  // idempotency key
     if (pendingItems.length > 0) fd.append('pending_items', JSON.stringify(pendingItems))
     if (clarificacionCtx)        fd.append('pending_context', clarificacionCtx)
