@@ -31,6 +31,7 @@ const SM = "'JetBrains Mono',ui-monospace,monospace"
 
 /* ─── Types ─── */
 type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean; seccion_id?: string | null }
+type VpEstado = 'sin_calibrar' | 'calibrando' | 'activo' | 'error'
 type Mesa = { id: string; codigo: string; nombre: string | null; zona: string; capacidad: number; estado: string; pos_x: number | null; pos_y: number | null; forma: 'round' | 'square' | 'bar' | null }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
 type TurnoStats = { total_comandas: number; avg_latencia_ms: number | null; mesas_activas: { codigo: string; count: number }[] }
@@ -179,6 +180,7 @@ function CamarerosTab() {
   const [camareros, setCamareros] = useState<Camarero[]>([])
   const [secciones, setSecciones] = useState<Seccion[]>([])
   const [loading, setLoading] = useState(true)
+  const [voiceProfiles, setVoiceProfiles] = useState<Record<string, VpEstado>>({})
   const [modal, setModal] = useState<null | 'create' | { edit: Camarero } | { del: Camarero } | { qr: Camarero }>(null)
   const [form, setForm] = useState({ nombre: '', pin: '', rol: 'camarero', activo: true, seccion_id: '' })
   const [showPins, setShowPins] = useState<Record<string, boolean>>({})
@@ -194,6 +196,21 @@ function CamarerosTab() {
     if (rs.ok) { const ds = await rs.json(); setSecciones(ds.secciones || []) }
     const rr = await fetch('/api/owner/restaurante', { headers: sh() })
     if (rr.ok) { const dr = await rr.json(); setCodigoAcceso(dr.restaurante?.codigo_acceso ?? '') }
+    // Cargar estados de perfil de voz para todos los camareros
+    try {
+      const ids = (d.camareros || []).map((c: Camarero) => c.id)
+      const vpResults = await Promise.all(
+        ids.map((id: string) =>
+          fetch(`/api/voice-profile/status?camarero_id=${id}`, { headers: sh() })
+            .then(r => r.json())
+            .then(j => ({ id, estado: (j.estado ?? 'sin_calibrar') as VpEstado }))
+            .catch(() => ({ id, estado: 'sin_calibrar' as VpEstado }))
+        )
+      )
+      const map: Record<string, VpEstado> = {}
+      vpResults.forEach(({ id, estado }: { id: string; estado: VpEstado }) => { map[id] = estado })
+      setVoiceProfiles(map)
+    } catch { /* no bloquear carga principal */ }
     setLoading(false)
   }, [])
 
@@ -278,7 +295,16 @@ function CamarerosTab() {
               borderBottom: i < camareros.length - 1 ? `1px solid ${C.rule}` : 'none',
               background: !c.activo ? C.paper : 'transparent' }}>
               <span style={{ fontFamily: SN, fontSize: 14, fontWeight: 600, color: c.activo ? C.ink : C.ink4 }}>{c.nombre}</span>
-              <span><Badge color={c.rol === 'jefe_sala' ? C.redS : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge></span>
+              <span style={{display:'flex',alignItems:'center',gap:6}}>
+                <Badge color={c.rol === 'jefe_sala' ? C.redS : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge>
+                {(() => {
+                  const vp = voiceProfiles[c.id]
+                  if (vp === 'activo')     return <span title="Voz calibrada"   style={{width:8,height:8,borderRadius:'50%',background:C.green,flexShrink:0}}/>
+                  if (vp === 'calibrando') return <span title="Calibrando voz"  style={{width:8,height:8,borderRadius:'50%',background:'#D4920A',flexShrink:0}}/>
+                  if (vp === 'error')      return <span title="Error en perfil" style={{width:8,height:8,borderRadius:'50%',background:C.red,flexShrink:0}}/>
+                  return null
+                })()}
+              </span>
               <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>{c.seccion_id ? secciones.find(s => s.id === c.seccion_id)?.nombre || c.seccion_id : '—'}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontFamily: SM, fontSize: 13, color: C.ink2 }}>{showPins[c.id] ? c.pin : '••••'}</span>
@@ -312,6 +338,23 @@ function CamarerosTab() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
                   <div style={{ fontFamily: SN, fontSize: 15, fontWeight: 700, color: C.ink }}>{c.nombre}</div>
                   <Badge color={c.rol === 'jefe_sala' ? C.redS : C.paper2}>{ROL_LABEL[c.rol] || c.rol}</Badge>
+                  {(() => {
+                    const vp = voiceProfiles[c.id]
+                    const cfg =
+                      vp === 'activo'     ? { dot: C.green,   label: '🎙 Voz activa',    bg: C.greenS,  border: '#A8C9AB' } :
+                      vp === 'calibrando' ? { dot: '#D4920A', label: '🎙 Calibrando',    bg: '#FFF3CD', border: '#D4920A' } :
+                      vp === 'error'      ? { dot: C.red,     label: '🎙 Error',         bg: C.redS,    border: C.red }    :
+                      null
+                    if (!cfg) return null
+                    return (
+                      <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px',
+                        borderRadius:999, background:cfg.bg, border:`1px solid ${cfg.border}55`,
+                        fontSize:10, fontWeight:700, color:cfg.dot, flexShrink:0 }}>
+                        <span style={{width:6,height:6,borderRadius:'50%',background:cfg.dot}}/>
+                        {cfg.label}
+                      </div>
+                    )
+                  })()}
                 </div>
                 <button onClick={() => toggleActivo(c)}
                   style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, letterSpacing: '.08em',
