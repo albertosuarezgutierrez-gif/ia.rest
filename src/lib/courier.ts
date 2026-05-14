@@ -283,6 +283,7 @@ export async function crearPrintJobs(
   }
 
   const hayReglas = reglas.length > 0
+  console.log('[COURIER] reglas:', reglas.length, 'impresoras:', (impresoras??[]).length, 'restaurante_id:', comanda.restaurante_id)
 
   // 3. Cargar impresoras activas (siempre las necesitamos)
   const impresorasQuery = supabase.from('impresoras')
@@ -343,7 +344,7 @@ export async function crearPrintJobs(
       } else {
         const imp = impresoraMap[seccion] ?? impresoraMap['otras']
         if (!imp) {
-          console.warn(`[COURIER] Sin regla ni impresora para sección "${seccion}" — ítem omitido`)
+          console.warn(`[COURIER] Sin regla ni impresora para sección "${seccion}" — ítem omitido. hayReglas:${hayReglas} impresoraMap:${JSON.stringify(Object.keys(impresoraMap))}`)
           continue
         }
         destino_tipo  = 'impresora'
