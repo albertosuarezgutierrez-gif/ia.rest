@@ -4,6 +4,7 @@ import { routearComanda } from '@/lib/brain-router'
 import { crearPrintJobs } from '@/lib/courier'
 import { createServerClient } from '@/lib/supabase'
 import { getRestauranteId } from '@/lib/session'
+import { azureDisponible, verificarAzure } from '@/lib/azure-speaker'
 
 // ── Cache de idempotencia en memoria (dura hasta redeploy) ──────────────
 // Protege contra peticiones duplicadas que lleguen en rafaga (red lenta + reintento)
@@ -37,6 +38,32 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerClient()
     const rid = getRestauranteId(req)
+
+    // ── VOICE PROFILE: verificación no bloqueante ────────────────────────────
+    // Si el camarero tiene perfil activo, verificamos que la voz coincide.
+    // NUNCA bloquea la comanda — solo registra el score para auditoría.
+    let speakerMatch: number | null = null
+    if (azureDisponible()) {
+      try {
+        const { data: vp } = await supabase
+          .from('voice_profiles')
+          .select('azure_profile_id, estado')
+          .eq('camarero_id', camareroId)
+          .eq('estado', 'activo')
+          .maybeSingle()
+
+        if (vp?.azure_profile_id) {
+          speakerMatch = await verificarAzure(vp.azure_profile_id, audio)
+          if (speakerMatch !== null) {
+            supabase.from('voice_profiles').update({
+              ultimo_score:    speakerMatch,
+              ultimo_score_at: new Date().toISOString(),
+            }).eq('camarero_id', camareroId).then(() => {/* fire and forget */})
+          }
+        }
+      } catch { /* no bloquear la comanda bajo ningún concepto */ }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const { texto: textoRaw, latencia_ms: latenciaEar } = await transcribir(audio)
     // Si hay contexto previo de clarificación, se lo pasamos a BRAIN para que resuelva
@@ -380,6 +407,7 @@ export async function POST(req: NextRequest) {
       texto_brain: brainResult, latencia_ms: latenciaTotal, comanda_id: comandaId, restaurante_id: rid,
       fuente_brain: brainResult.fuente,
       latencia_brain_ms: brainResult.latencia_brain_ms,
+      speaker_match: speakerMatch,
     })
 
     if (alertasAlergenos.length > 0 && comandaId && mesa) {

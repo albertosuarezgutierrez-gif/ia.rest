@@ -1796,6 +1796,297 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   )
 }
 
+/* ─── VOICE PROFILE ─────────────────────────────────────────── */
+// Frases que el camarero lee durante la calibración (WAV 16kHz, ~5s c/u)
+const FRASES_CALIBRACION = [
+  'Mesa cuatro, dos cañas y una tónica por favor',
+  'Marchar los segundos de la mesa seis, venga',
+  'Cuenta para la mesa tres, pago con tarjeta',
+  '86 la paella, sin existencias para hoy',
+  'Una ración de patatas bravas para la barra uno',
+]
+
+/** Captura audio del micrófono como WAV PCM 16kHz mono (formato requerido por Azure) */
+async function capturarWAV(duracionMs: number): Promise<Blob> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+  })
+  const AudioCtx = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)
+  const audioCtx = new AudioCtx({ sampleRate: 16000 })
+  const source   = audioCtx.createMediaStreamSource(stream)
+  const proc     = audioCtx.createScriptProcessor(4096, 1, 1)
+  const chunks: Float32Array[] = []
+
+  proc.onaudioprocess = (e: AudioProcessingEvent) => {
+    chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))
+  }
+  source.connect(proc)
+  proc.connect(audioCtx.destination)
+
+  await new Promise(r => setTimeout(r, duracionMs))
+
+  proc.disconnect(); source.disconnect()
+  stream.getTracks().forEach(t => t.stop())
+  await audioCtx.close()
+
+  // Concatenar PCM
+  const total = chunks.reduce((a, c) => a + c.length, 0)
+  const all   = new Float32Array(total)
+  let off = 0
+  for (const c of chunks) { all.set(c, off); off += c.length }
+
+  // Construir WAV
+  const buf  = new ArrayBuffer(44 + all.length * 2)
+  const view = new DataView(buf)
+  const ws   = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)) }
+  ws(0, 'RIFF'); view.setUint32(4, 36 + all.length * 2, true); ws(8, 'WAVE')
+  ws(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
+  view.setUint32(24, 16000, true); view.setUint32(28, 32000, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
+  ws(36, 'data'); view.setUint32(40, all.length * 2, true)
+  let o2 = 44
+  for (let i = 0; i < all.length; i++) {
+    const s = Math.max(-1, Math.min(1, all[i]))
+    view.setInt16(o2, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o2 += 2
+  }
+  return new Blob([buf], { type: 'audio/wav' })
+}
+
+type VPEstado = 'cargando'|'sin_calibrar'|'calibrando'|'activo'|'error'
+
+function VoiceProfileSection({ session }: { session: { id: string; restaurante_id: string } }) {
+  const [estado,    setEstado]    = React.useState<VPEstado>('cargando')
+  const [frases,    setFrases]    = React.useState(0)
+  const [modal,     setModal]     = React.useState(false)
+  const [paso,      setPaso]      = React.useState(0)       // 0-4 frase actual
+  const [grabando,  setGrabando]  = React.useState(false)
+  const [procesando,setProcesando]= React.useState(false)
+  const [msgError,  setMsgError]  = React.useState('')
+  const grabRef = React.useRef(false)
+
+  // Cargar estado inicial
+  React.useEffect(() => {
+    fetch(`/api/voice-profile/status?camarero_id=${session.id}`)
+      .then(r => r.json())
+      .then(d => {
+        setEstado(d.estado ?? 'sin_calibrar')
+        setFrases(d.frases_completadas ?? 0)
+      })
+      .catch(() => setEstado('sin_calibrar'))
+  }, [session.id])
+
+  const grabarFrase = async () => {
+    if (grabRef.current || procesando) return
+    grabRef.current = true
+    setGrabando(true)
+    setMsgError('')
+    try {
+      const wav = await capturarWAV(6000) // 6 segundos por frase
+      setGrabando(false)
+      setProcesando(true)
+
+      const fd = new FormData()
+      fd.append('audio', wav, 'frase.wav')
+      fd.append('camarero_id', session.id)
+
+      const r = await fetch('/api/voice-profile/enroll', {
+        method: 'POST',
+        headers: { 'x-restaurante-id': session.restaurante_id },
+        body: fd,
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Error al procesar')
+
+      setFrases(d.frases_completadas)
+      setEstado(d.estado)
+      if (d.estado === 'activo') {
+        setModal(false)
+      } else {
+        setPaso(p => p + 1)
+      }
+    } catch (err) {
+      setMsgError(err instanceof Error ? err.message : 'Error al grabar')
+      setEstado('error')
+    } finally {
+      grabRef.current = false
+      setGrabando(false)
+      setProcesando(false)
+    }
+  }
+
+  const resetPerfil = async () => {
+    await fetch(`/api/voice-profile/reset?camarero_id=${session.id}`, {
+      method: 'DELETE',
+      headers: { 'x-restaurante-id': session.restaurante_id },
+    })
+    setEstado('sin_calibrar')
+    setFrases(0)
+    setPaso(0)
+    setMsgError('')
+  }
+
+  const abrirModal = () => { setPaso(frases); setModal(true); setMsgError('') }
+
+  // Badge de estado
+  const badge = estado === 'activo'
+    ? { color: C.gr,   bg: C.gr + '22',  txt: '✓ Perfil activo' }
+    : estado === 'calibrando'
+    ? { color: C.amb,  bg: C.amb + '22', txt: `Calibrando ${frases}/5` }
+    : estado === 'error'
+    ? { color: C.verm, bg: C.verm + '22',txt: 'Error' }
+    : estado === 'cargando'
+    ? { color: C.ink4, bg: C.bg2,         txt: '...' }
+    : { color: C.ink4, bg: C.bg2,         txt: 'Sin calibrar' }
+
+  return (
+    <>
+      {/* ── Fila en Config ── */}
+      <div style={{ padding: '13px 0', borderBottom: `1px solid ${C.rule}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>Perfil de voz</div>
+            <div style={{ fontSize: 11, color: C.ink4, marginTop: 2 }}>
+              {estado === 'activo'
+                ? 'Filtro activo en comandas · no bloqueante'
+                : 'Calibra para que el sistema reconozca tu voz'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+              color: badge.color, background: badge.bg,
+            }}>
+              {badge.txt}
+            </div>
+            {estado !== 'cargando' && (
+              <button
+                onClick={estado === 'activo' ? resetPerfil : abrirModal}
+                style={{
+                  background: C.bg2, border: `1px solid ${C.rule}`,
+                  borderRadius: 8, padding: '6px 12px', fontSize: 12,
+                  fontWeight: 600, color: estado === 'activo' ? C.verm : C.ink3, cursor: 'pointer',
+                }}
+              >
+                {estado === 'activo' ? 'Eliminar' : estado === 'calibrando' ? 'Continuar' : 'Calibrar'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Modal de calibración ── */}
+      {modal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(20,17,14,.92)',
+          zIndex: 9999, display: 'flex', alignItems: 'flex-end',
+        }}>
+          <div style={{
+            width: '100%', background: C.bg2, borderRadius: '20px 20px 0 0',
+            padding: '24px 24px 40px', maxHeight: '85vh', overflowY: 'auto',
+          }}>
+            {/* Header modal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>Calibración de voz</div>
+                <div style={{ fontSize: 12, color: C.ink4, marginTop: 2 }}>
+                  Lee cada frase en voz alta mientras mantienes pulsado el botón
+                </div>
+              </div>
+              <button onClick={() => setModal(false)} style={{
+                background: 'none', border: 'none', fontSize: 22, color: C.ink4, cursor: 'pointer', padding: 4,
+              }}>✕</button>
+            </div>
+
+            {/* Progress */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+              {FRASES_CALIBRACION.map((_, i) => (
+                <div key={i} style={{
+                  flex: 1, height: 4, borderRadius: 2,
+                  background: i < frases ? C.gr : i === paso ? C.verm : C.rule,
+                  transition: 'background .3s',
+                }} />
+              ))}
+            </div>
+
+            {/* Frase actual */}
+            {paso < FRASES_CALIBRACION.length ? (
+              <>
+                <div style={{
+                  background: C.bg, borderRadius: 12, padding: '20px 16px',
+                  marginBottom: 24, textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 11, color: C.ink4, marginBottom: 8, letterSpacing: '.08em' }}>
+                    FRASE {paso + 1} DE {FRASES_CALIBRACION.length}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: C.ink, lineHeight: 1.4, fontStyle: 'italic' }}>
+                    &ldquo;{FRASES_CALIBRACION[paso]}&rdquo;
+                  </div>
+                </div>
+
+                {/* Botón PTT calibración */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  {msgError && (
+                    <div style={{ fontSize: 12, color: C.verm, textAlign: 'center' }}>{msgError}</div>
+                  )}
+                  {procesando ? (
+                    <div style={{ fontSize: 13, color: C.ink4, letterSpacing: '.1em' }}>
+                      Procesando…
+                    </div>
+                  ) : (
+                    <button
+                      onPointerDown={e => { e.preventDefault(); grabarFrase() }}
+                      disabled={grabando || procesando}
+                      style={{
+                        width: grabando ? 90 : 72, height: grabando ? 90 : 72,
+                        borderRadius: '50%',
+                        background: grabando ? C.teal : C.verm,
+                        border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: grabando
+                          ? `0 0 0 16px ${C.teal}33, 0 0 0 32px ${C.teal}11`
+                          : 'none',
+                        transition: 'all .2s cubic-bezier(0.34,1.56,0.64,1)',
+                        touchAction: 'none',
+                      }}
+                    >
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                        stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="3" width="6" height="12" rx="3" fill={grabando ? '#fff' : 'none'}/>
+                        <path d="M5 11a7 7 0 0 0 14 0"/>
+                        <line x1="12" y1="18" x2="12" y2="22"/>
+                      </svg>
+                    </button>
+                  )}
+                  <div style={{ fontSize: 11, color: grabando ? C.teal : C.ink4, letterSpacing: '.08em' }}>
+                    {grabando ? '● GRABANDO — 6 segundos' : procesando ? '…' : 'PULSA PARA GRABAR'}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Completado */
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🎙️</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.gr, marginBottom: 8 }}>
+                  ¡Perfil activado!
+                </div>
+                <div style={{ fontSize: 13, color: C.ink4 }}>
+                  El sistema ya reconoce tu voz en las comandas
+                </div>
+                <button onClick={() => setModal(false)} style={{
+                  marginTop: 24, padding: '12px 32px', background: C.gr,
+                  border: 'none', borderRadius: 10, fontSize: 14,
+                  fontWeight: 700, color: '#fff', cursor: 'pointer',
+                }}>
+                  Perfecto
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 /* ─── CONFIG ─────────────────────────────────────────────────── */
 // ── ForceUpdateRow: comprueba SW + versión y fuerza recarga ──────
 function ForceUpdateRow() {
@@ -1975,6 +2266,8 @@ function ConfigScreen({session,tabsVisibles,onTabsVisibles,voiceConfirm,onVoiceC
         </div>
         <Row label="Confirmación por voz" sub="BRAIN lee la comanda antes de confirmar"
           right={<Toggle on={voiceConfirm} onT={()=>onVoiceConfirm(!voiceConfirm)}/>}/>
+        {/* ── PERFIL DE VOZ ── */}
+        <VoiceProfileSection session={session}/>
         {/* ── AUTO-CONFIRMAR ── */}
         <Row label="Auto-confirmar" sub={`BRAIN envía sin preguntar si confianza ≥ ${autoThreshold}%`}
           right={<Toggle on={autoConfirm} onT={()=>onAutoConfirm(!autoConfirm)}/>}/>
