@@ -113,17 +113,25 @@ const MCOL: Record<string,string> = {
 /* ─── CHAT TAB — componente propio para cumplir Rules of Hooks ── */
 function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChatTexto, chatDestino, setChatDestino, chatEndRef, enviarMensaje }: {
   session: { id: string; nombre: string; rol: string }
-  mensajes: { id: string; camarero_id: string|null; rol_origen: string; nombre_origen: string; rol_destino: string; mesa_ref: string|null; leido_por: string[]; texto: string; created_at: string }[]
+  mensajes: { id: string; camarero_id: string|null; rol_origen: string; nombre_origen: string; rol_destino: string; mesa_ref: string|null; leido_por: string[]; texto: string; tipo?: string; created_at: string }[]
   marcarMensajeLeido: (id: string) => void
   chatTexto: string
   setChatTexto: (v: string) => void
   chatDestino: 'todos'|'cocina'|'camarero'|'jefe_sala'
   setChatDestino: (v: 'todos'|'cocina'|'camarero'|'jefe_sala') => void
   chatEndRef: React.RefObject<HTMLDivElement | null>
-  enviarMensaje: (texto: string, opts?: { rol_destino?: string }) => Promise<void>
+  enviarMensaje: (texto: string, opts?: { rol_destino?: string; tipo?: string }) => Promise<void>
 }) {
   const rolLabel = (r: string) => ({ camarero: 'Sala', cocina: 'Cocina', jefe_sala: 'Jefe', running: 'Running', super_admin: 'Admin' }[r] ?? r)
   const rolColor = (r: string) => ({ camarero: C.teal, cocina: C.verm, jefe_sala: C.amb, running: C.gr }[r] ?? C.ink3)
+
+  // — Audio recording state —
+  const [grabando, setGrabando]           = useState(false)
+  const [subiendoAudio, setSubiendoAudio] = useState(false)
+  const mediaRecRef  = useRef<MediaRecorder | null>(null)
+  const chunksRef    = useRef<Blob[]>([])
+  const grabTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [grabSecs, setGrabSecs]           = useState(0)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -138,6 +146,64 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
     if (!t) return
     setChatTexto('')
     await enviarMensaje(t, { rol_destino: chatDestino })
+  }
+
+  const iniciarGrabacion = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : 'audio/mp4'
+      const rec = new MediaRecorder(stream, { mimeType })
+      chunksRef.current = []
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      rec.start(200) // chunks cada 200ms
+      mediaRecRef.current = rec
+      setGrabando(true)
+      setGrabSecs(0)
+      grabTimerRef.current = setInterval(() => setGrabSecs(s => s + 1), 1000)
+    } catch {
+      alert('No se pudo acceder al micrófono')
+    }
+  }
+
+  const pararGrabacion = async () => {
+    const rec = mediaRecRef.current
+    if (!rec) return
+    clearInterval(grabTimerRef.current!)
+    setGrabando(false)
+    setGrabSecs(0)
+    await new Promise<void>(res => {
+      rec.onstop = () => res()
+      rec.stop()
+      rec.stream.getTracks().forEach(t => t.stop())
+    })
+    const blob = new Blob(chunksRef.current, { type: rec.mimeType })
+    if (blob.size < 1000) return // grabación muy corta, descartar
+    await subirAudio(blob, rec.mimeType)
+  }
+
+  const subirAudio = async (blob: Blob, mimeType: string) => {
+    setSubiendoAudio(true)
+    try {
+      const ext  = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm'
+      const file = new File([blob], `audio.${ext}`, { type: mimeType })
+      const fd   = new FormData()
+      fd.append('audio', file)
+      const ses = localStorage.getItem('ia_rest_session') ?? ''
+      const res = await fetch('/api/mensajes/audio', {
+        method: 'POST',
+        headers: { 'x-ia-session': ses },
+        body: fd,
+      })
+      if (!res.ok) { alert('Error al subir audio'); return }
+      const { url } = await res.json()
+      await enviarMensaje(url, { rol_destino: chatDestino, tipo: 'audio' })
+    } finally {
+      setSubiendoAudio(false)
+    }
   }
 
   return (
@@ -165,7 +231,8 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
           </div>
         )}
         {mensajes.map(m => {
-          const esMio = m.camarero_id === session.id
+          const esMio    = m.camarero_id === session.id
+          const esAudio  = m.tipo === 'audio'
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: esMio ? 'flex-end' : 'flex-start' }}>
               {!esMio && (
@@ -175,13 +242,30 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
                 </span>
               )}
               <div style={{
-                maxWidth: '80%', padding: '8px 12px', borderRadius: esMio ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                maxWidth: '80%', padding: esAudio ? '6px 10px' : '8px 12px',
+                borderRadius: esMio ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                 background: esMio ? C.verm : C.bg1,
                 border: esMio ? 'none' : `1px solid ${C.rule}`,
                 color: esMio ? '#fff' : C.ink,
                 fontFamily: SN, fontSize: 14, lineHeight: 1.4,
               }}>
-                {m.texto}
+                {esAudio ? (
+                  <audio
+                    src={m.texto}
+                    controls
+                    preload="metadata"
+                    style={{
+                      height: 32,
+                      minWidth: 180,
+                      maxWidth: '100%',
+                      filter: esMio
+                        ? 'invert(1) brightness(2) sepia(0.3)'
+                        : 'invert(0)',
+                    }}
+                  />
+                ) : (
+                  m.texto
+                )}
               </div>
               <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4, marginTop: 2, paddingRight: esMio ? 4 : 0, paddingLeft: esMio ? 0 : 4 }}>
                 {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
@@ -198,44 +282,116 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
         <div ref={chatEndRef} />
       </div>
 
-      {/* Plantillas rápidas */}
-      <div style={{ padding: '6px 12px', borderTop: `1px solid ${C.rule}`, background: C.bg, display: 'flex', gap: 6, overflowX: 'auto', flexShrink: 0 }}>
-        {['La mesa tiene prisa', '86 un producto', 'Alérgeno detectado tarde', '¿Cuánto falta?'].map(t => (
-          <button key={t} onClick={() => setChatTexto(t)} style={{
-            whiteSpace: 'nowrap', padding: '4px 10px', borderRadius: 20,
-            border: `1px solid ${C.rule}`, background: C.bg1,
-            fontFamily: SN, fontSize: 12, color: C.ink2, cursor: 'pointer', flexShrink: 0,
-          }}>{t}</button>
-        ))}
-      </div>
+      {/* Plantillas rápidas — solo si no está grabando */}
+      {!grabando && (
+        <div style={{ padding: '6px 12px', borderTop: `1px solid ${C.rule}`, background: C.bg, display: 'flex', gap: 6, overflowX: 'auto', flexShrink: 0 }}>
+          {['La mesa tiene prisa', '86 un producto', 'Alérgeno detectado tarde', '¿Cuánto falta?'].map(t => (
+            <button key={t} onClick={() => setChatTexto(t)} style={{
+              whiteSpace: 'nowrap', padding: '4px 10px', borderRadius: 20,
+              border: `1px solid ${C.rule}`, background: C.bg1,
+              fontFamily: SN, fontSize: 12, color: C.ink2, cursor: 'pointer', flexShrink: 0,
+            }}>{t}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Indicador de grabación */}
+      {grabando && (
+        <div style={{
+          padding: '8px 16px', borderTop: `1px solid ${C.rule}`, background: C.bg,
+          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+        }}>
+          {/* Dot pulsante */}
+          <div style={{
+            width: 10, height: 10, borderRadius: '50%', background: C.verm, flexShrink: 0,
+            animation: 'pulse-rec 1s ease-in-out infinite',
+          }} />
+          <span style={{ fontFamily: SM, fontSize: 13, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>
+            {String(Math.floor(grabSecs / 60)).padStart(2, '0')}:{String(grabSecs % 60).padStart(2, '0')}
+          </span>
+          <span style={{ fontFamily: SN, fontSize: 12, color: C.ink3 }}>grabando…</span>
+        </div>
+      )}
+
+      {/* Estilos animación */}
+      <style>{`
+        @keyframes pulse-rec {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.7); }
+        }
+      `}</style>
 
       {/* Input */}
       <div style={{ padding: '10px 12px', borderTop: `1px solid ${C.rule}`, background: C.bg1, display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-        <textarea
-          value={chatTexto}
-          onChange={e => setChatTexto(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviar() } }}
-          placeholder="Escribe un mensaje..."
-          rows={1}
-          style={{
-            flex: 1, padding: '8px 12px', borderRadius: 20,
-            border: `1px solid ${C.rule}`, background: C.bg,
-            fontFamily: SN, fontSize: 14, color: C.ink, resize: 'none',
-            outline: 'none', lineHeight: 1.4,
-          }}
-        />
+        {/* Textarea — oculto si está grabando */}
+        {!grabando && (
+          <textarea
+            value={chatTexto}
+            onChange={e => setChatTexto(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviar() } }}
+            placeholder="Escribe un mensaje…"
+            rows={1}
+            style={{
+              flex: 1, padding: '8px 12px', borderRadius: 20,
+              border: `1px solid ${C.rule}`, background: C.bg,
+              fontFamily: SN, fontSize: 14, color: C.ink, resize: 'none',
+              outline: 'none', lineHeight: 1.4,
+            }}
+          />
+        )}
+
+        {/* Botón enviar texto — solo si hay texto y no está grabando */}
+        {!grabando && chatTexto.trim() && (
+          <button
+            onClick={handleEnviar}
+            style={{
+              width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0,
+              background: C.verm, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}>
+              <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        )}
+
+        {/* Botón micrófono — inicia / para grabación */}
         <button
-          onClick={handleEnviar}
-          disabled={!chatTexto.trim()}
+          onClick={grabando ? pararGrabacion : iniciarGrabacion}
+          disabled={subiendoAudio}
+          title={grabando ? 'Parar y enviar audio' : 'Grabar audio'}
           style={{
-            width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0,
-            background: chatTexto.trim() ? C.verm : C.rule, cursor: chatTexto.trim() ? 'pointer' : 'default',
+            width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+            background: grabando ? C.verm : subiendoAudio ? C.rule : C.bg1,
+            border: grabando ? 'none' : `1px solid ${C.rule}`,
+            cursor: subiendoAudio ? 'default' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
+            transition: 'background .2s',
+            boxShadow: grabando ? `0 0 0 4px ${C.verm}33` : 'none',
+          } as React.CSSProperties}
         >
-          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={chatTexto.trim() ? '#fff' : C.ink4} strokeWidth={2}>
-            <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
+          {subiendoAudio ? (
+            /* Spinner mientras sube */
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth={2}
+              style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+            </svg>
+          ) : grabando ? (
+            /* Icono stop (cuadrado) mientras graba */
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="#fff">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+          ) : (
+            /* Icono micrófono */
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.ink2} strokeWidth={2}>
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          )}
         </button>
       </div>
     </div>
