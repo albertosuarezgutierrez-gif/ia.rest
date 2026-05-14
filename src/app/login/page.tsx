@@ -121,10 +121,11 @@ export default function LoginPage() {
       const d = await r.json()
       if (d.camarero) {
         localStorage.setItem('ia_rest_session', JSON.stringify(d.camarero))
-        // Usar returnUrl si viene del hook useAuth
+        // Usar returnUrl si viene del hook useAuth — solo roles sin modal de fichaje
         const params = new URLSearchParams(window.location.search)
         const returnUrl = params.get('return')
-        if (returnUrl) {
+        const rolesSinFichaje = ['owner', 'super_admin']
+        if (returnUrl && rolesSinFichaje.includes(d.camarero.rol)) {
           window.location.href = decodeURIComponent(returnUrl)
           return
         }
