@@ -5226,7 +5226,7 @@ function MetodosPagoSection({ restauranteId, sh }: { restauranteId: string; sh: 
               style={{
                 padding: '12px 8px 10px',
                 borderRadius: 12,
-                background: on ? `${m.color}15` : C.bg,
+                background: on ? `${m.color}15` : C.paper,
                 border: `2px solid ${on ? m.color : C.rule}`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 cursor: isSaving ? 'wait' : 'pointer',

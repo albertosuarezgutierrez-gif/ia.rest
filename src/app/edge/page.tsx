@@ -806,6 +806,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
             setMesaRapidaErr('')
             setMesaRapidaModal(true)
           }
+        }
           setScreenSafe('idle'); setBrain(null); brainRef.current = null; setTranscript('')
         // Excepción: si usó nombre_cuenta, la comanda ya se creó sin mesa
         const esNominal = !!(d.nombre_cuenta && d.comanda_id)
