@@ -61,32 +61,48 @@ export async function enviarEmailBienvenida({
   email,
   nombreRestaurante,
   bridgeToken,
+  urlAcceso,
+  pinOwner,
+  codigoAcceso,
 }: {
   email: string
   nombreRestaurante: string
   bridgeToken: string
+  urlAcceso?: string
+  pinOwner?: string
+  codigoAcceso?: string
 }) {
+  const loginUrl = urlAcceso || `${BASE}/owner`
+
   const html = layout(`
     <div class="card">
       <h1>Bienvenido a ia.rest, ${nombreRestaurante}.</h1>
-      <p>Tu cuenta está activa. Tienes <strong>14 días de prueba gratuita</strong> para probarlo todo sin límites.</p>
+      <p>Tu cuenta está activa. Tienes <strong>14 días de prueba gratuita</strong> para probarlo todo sin límites y sin tarjeta.</p>
       <hr class="divider">
-      <p><strong>Empieza aquí:</strong></p>
-      <div class="step"><div class="step-n">1</div><div class="step-txt">Configura tu carta, zonas y secciones de cocina en tu panel de control.</div></div>
-      <div class="step"><div class="step-n">2</div><div class="step-txt">Descarga el instalador para conectar tus impresoras de cocina.</div></div>
-      <div class="step"><div class="step-n">3</div><div class="step-txt">Da los PINs a tu equipo y empieza el primer servicio.</div></div>
-      <hr class="divider">
-      <a href="${BASE}/owner" class="btn">Abrir mi panel →</a>
+
+      <p style="font-size:13px;color:${C.fg3};text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px">Tu acceso al panel</p>
+      <div class="token-box" style="font-size:16px">
+        🔗 ${loginUrl}${pinOwner ? `<br>🔑 PIN: ${pinOwner}` : ''}
+      </div>
+      <a href="${loginUrl}" class="btn">Abrir mi panel →</a>
     </div>
 
     <div class="card">
-      <p style="font-size:13px;color:${C.fg3};margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Tu referencia de instalación</p>
-      <p>Necesitas este código para instalar el bridge en el ordenador del TPV y conectar tus impresoras.</p>
+      <p style="font-size:13px;color:${C.fg3};text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px">Conecta tus impresoras</p>
+      <p>Descarga el instalador en el ordenador del TPV. Detecta tus impresoras automáticamente en menos de 5 minutos.</p>
+      <p style="font-size:13px;color:${C.fg3};margin-bottom:6px">Tu referencia de instalación:</p>
       <div class="token-box">${bridgeToken}</div>
       <a href="${BASE}/instalar" class="btn">Descargar instalador →</a>
-      <p style="font-size:13px;color:${C.fg3};margin-top:12px">El instalador detecta tus impresoras automáticamente en menos de 5 minutos.</p>
     </div>
-  `, `Bienvenido a ia.rest — tu cuenta de ${nombreRestaurante} está lista`)
+
+    <div class="card">
+      <p style="font-size:13px;color:${C.fg3};margin-bottom:12px">Por dónde empezar:</p>
+      <div class="step"><div class="step-n">1</div><div class="step-txt"><strong>Entra en tu panel</strong> y sube una foto de tu carta — la IA extrae todos los productos en segundos.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-txt"><strong>Configura tus zonas</strong> (Sala, Terraza, Barra) y añade tu equipo con sus PINs.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-txt"><strong>Instala el bridge</strong> con el instalador para conectar las impresoras de cocina.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-txt"><strong>Primer turno</strong> — el camarero habla al micro y el ticket sale en cocina en medio segundo.</div></div>
+    </div>
+  `, `Bienvenido a ia.rest — ${nombreRestaurante} está listo`)
 
   return resend.emails.send({
     from: FROM,

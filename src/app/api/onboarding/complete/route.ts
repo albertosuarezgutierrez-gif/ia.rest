@@ -35,19 +35,31 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Obtener email y nombre del restaurante para el email de bienvenida
+  // Obtener email, nombre y código de acceso del restaurante
   try {
     const { data: rest } = await supabase
       .from('restaurantes')
-      .select('nombre, email_contacto, cuentas(email)')
+      .select('nombre, email_contacto, codigo_acceso, cuentas(email, pin_cuenta)')
       .eq('id', rid)
       .single()
 
     const email = (rest as any)?.email_contacto || (rest as any)?.cuentas?.email
     const nombre = rest?.nombre || 'tu restaurante'
+    const codigoAcceso = (rest as any)?.codigo_acceso || ''
+    const pinOwner = (rest as any)?.cuentas?.pin_cuenta || ''
+    const urlAcceso = codigoAcceso
+      ? `https://www.iarest.es/login?r=${codigoAcceso}`
+      : 'https://www.iarest.es/owner'
 
     if (email && bridgeToken) {
-      await enviarEmailBienvenida({ email, nombreRestaurante: nombre, bridgeToken })
+      await enviarEmailBienvenida({
+        email,
+        nombreRestaurante: nombre,
+        bridgeToken,
+        urlAcceso,
+        pinOwner,
+        codigoAcceso,
+      })
     }
   } catch {
     // Email no crítico — no bloqueamos si falla
