@@ -30,6 +30,5 @@
       "path": "/api/cron/cobro-descuento",
       "schedule": "0 2 1 * *"
     }
-  ],
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; fi; if echo \"$VERCEL_GIT_COMMIT_MESSAGE\" | grep -qE '\\[(skip ci|skip deploy|android|scripts)\\]'; then exit 0; fi; exit 1"
+  ]
 }
