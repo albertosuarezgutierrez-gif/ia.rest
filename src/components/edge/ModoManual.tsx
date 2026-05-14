@@ -78,9 +78,9 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
   const [nombreMesa, setNombreMesa] = useState('')
   const [editandoNombre, setEditandoNombre] = useState(false)
 
-  // Scroll-safe tap: evita abrir mesa al hacer scroll sobre la tarjeta
-  const touchStartY = useRef(0)
-  const hasMoved    = useRef(false)
+  // Scroll-safe: onScroll detecta scroll real, bloquea onClick 200ms tras scroll
+  const scrollingRef  = useRef(false)
+  const scrollTimer   = useRef<ReturnType<typeof setTimeout>|null>(null)
 
   const sh = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -279,7 +279,13 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
           ))}
         </div>
       </div>
-      <div style={{ flex:1, overflow:'auto', padding:'10px 14px 20px', touchAction:'pan-y' }}>
+      <div style={{ flex:1, overflow:'auto', padding:'10px 14px 20px', touchAction:'pan-y' }}
+        onScroll={() => {
+          scrollingRef.current = true
+          if (scrollTimer.current) clearTimeout(scrollTimer.current)
+          scrollTimer.current = setTimeout(() => { scrollingRef.current = false }, 200)
+        }}
+      >
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(80px, 1fr))', gap:9 }}>
           {mesasFiltradas.map(m => {
             const isSel = mesaSel?.id === m.id
@@ -287,6 +293,7 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
             return (
               <button key={m.id}
                 onClick={() => {
+                  if (scrollingRef.current) return
                   if (m.estado === 'reservada') return
                   setMesaSel(m); setStep('carta')
                 }}
@@ -299,7 +306,7 @@ export default function ModoManual({ session, turnoId, onBack }: Props) {
                   transition:'all .15s cubic-bezier(.4,0,.2,1)',
                   transform: isSel ? 'scale(0.95)' : 'scale(1)',
                   opacity: m.estado === 'reservada' ? 0.75 : 1,
-                  touchAction: 'auto',
+                  touchAction: 'manipulation',
                 }}>
                 <span style={{ fontFamily:SE, fontSize:20, fontWeight:500, color: m.estado === 'reservada' ? '#1D4ED8' : (isSel ? C.red : (L.fg)), lineHeight:1 }}>
                   {m.estado === 'reservada' ? '🔒' : m.codigo}
