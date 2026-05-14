@@ -2435,7 +2435,37 @@ function ImpresorasTab() {
   })
   const [err, setErr]   = useState('')
   const [saving, setSaving] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [scanState, setScanState] = useState<'idle'|'scanning'|'done'>('idle')
+
+  async function scanImpresoras() {
+    setScanState('scanning')
+    try {
+      const r = await fetch('/api/bridge/scan', { method: 'POST', headers: sh() })
+      const d = await r.json()
+      if (!d.ok) {
+        alert(d.error || 'No hay bridge configurado. Instala el bridge primero.')
+        setScanState('idle')
+        return
+      }
+      // Poll cada 3s hasta 40s esperando impresoras
+      let tries = 0
+      const poll = setInterval(async () => {
+        tries++
+        const r2 = await fetch('/api/owner/impresoras', { headers: sh() })
+        const d2 = await r2.json()
+        const prev = content.length
+        setImpresoras(d2.impresoras ?? [])
+        if ((d2.impresoras ?? []).length > 0 || tries >= 13) {
+          clearInterval(poll)
+          setScanState('done')
+          setTimeout(() => setScanState('idle'), 3000)
+        }
+      }, 3000)
+    } catch {
+      setScanState('idle')
+    }
+  }
 
   const loadAll = useCallback(async () => {
     const [rImp, rJobs, rBridge] = await Promise.all([
@@ -2604,6 +2634,10 @@ function ImpresorasTab() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Btn onClick={() => setModal('bridge')}><Icon d={ICONS.wifi} size={14}/>Bridge local</Btn>
+          <Btn onClick={scanImpresoras} disabled={scanState === 'scanning'}
+            style={{ background: scanState === 'done' ? C.green : undefined, color: scanState === 'done' ? C.ink : undefined }}>
+            {scanState === 'scanning' ? '⟳ Buscando...' : scanState === 'done' ? '✓ Listo' : '⊕ Buscar en red'}
+          </Btn>
           <Btn variant="primary" onClick={() => { setErr(''); setModal('create') }}>
             <Icon d={ICONS.plus} size={15}/>Añadir impresora
           </Btn>
@@ -2623,8 +2657,12 @@ function ImpresorasTab() {
       {/* Lista impresoras */}
       {impresoras.length === 0 ? (
         <div style={{ border: `1px dashed ${C.rule}`, borderRadius: 8, padding: '48px 24px', textAlign: 'center', color: C.ink4, fontFamily: SN, fontSize: 14, marginBottom: 32 }}>
-          <div style={{ color: C.ink3, fontWeight: 600, marginBottom: 4 }}>Sin impresoras configuradas</div>
-          <div style={{ fontSize: 13 }}>Añade la primera para empezar a imprimir tickets automáticamente</div>
+          <div style={{ color: C.ink3, fontWeight: 600, marginBottom: 8 }}>Sin impresoras configuradas</div>
+          <div style={{ fontSize: 13, marginBottom: 16 }}>Si tienes el bridge instalado, pulsa el botón para buscar impresoras en tu red</div>
+          <button onClick={scanImpresoras} disabled={scanState === 'scanning'}
+            style={{ background: C.red, color: C.ink, border: 'none', borderRadius: 8, padding: '10px 20px', fontFamily: SN, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            {scanState === 'scanning' ? '⟳ Buscando impresoras...' : '⊕ Buscar impresoras en red'}
+          </button>
         </div>
       ) : (
         <div style={{ border: `1px solid ${C.rule}`, borderRadius: 8, background: C.bone, marginBottom: 32 }}>

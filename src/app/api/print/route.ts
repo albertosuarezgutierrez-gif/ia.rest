@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   // Verificar token de bridge
   const { data: bridge } = await sb
     .from('bridge_tokens')
-    .select('id, activo, restaurante_id')
+    .select('id, activo, restaurante_id, scan_requested')
     .eq('token', token)
     .single()
 
@@ -52,6 +52,14 @@ export async function GET(req: NextRequest) {
     .update({ ultimo_ping: new Date().toISOString() })
     .eq('id', bridge.id)
 
+  // Si hay escaneo solicitado, informar al bridge y limpiar flag
+  const scanRequested = bridge.scan_requested === true
+  if (scanRequested) {
+    await sb.from('bridge_tokens')
+      .update({ scan_requested: false })
+      .eq('id', bridge.id)
+  }
+
   // Buscar impresoras TCP activas filtradas por restaurante del bridge
   const { data: impresoras } = await sb
     .from('impresoras')
@@ -61,7 +69,7 @@ export async function GET(req: NextRequest) {
     .eq('activa', true)
 
   if (!impresoras?.length) {
-    return NextResponse.json({ jobs: [] })
+    return NextResponse.json({ jobs: [], scan_requested: scanRequested })
   }
 
   const impresoraIds = impresoras.map(i => i.id)
@@ -97,7 +105,7 @@ export async function GET(req: NextRequest) {
     attempts:   j.attempts,
   }))
 
-  return NextResponse.json({ jobs: result })
+  return NextResponse.json({ jobs: result, scan_requested: scanRequested })
 }
 
 // ── POST — Bridge confirma / Owner dispara test ──────────────
