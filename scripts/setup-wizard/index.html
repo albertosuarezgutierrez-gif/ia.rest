@@ -152,14 +152,14 @@
     <div class="done-icon">✓</div>
     <div style="font-family:'Newsreader',serif;font-style:italic;font-size:26px;text-align:center" id="doneTitle">Todo listo.</div>
     <p style="font-size:13px;color:var(--fg3);text-align:center;line-height:1.6" id="doneSub"></p>
-    <div class="alert-info" style="width:100%" id="avastBlock">
-      <strong style="color:#8ab0d8;display:block;margin-bottom:6px">⚠ Si tienes Avast u otro antivirus —</strong>
-      Añade esta carpeta como excepción para que el bridge no se detenga al reiniciar el PC:<br>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;background:rgba(0,0,0,.2);border-radius:6px;padding:8px 10px;">
+    <div class="alert-info" style="width:100%" id="avBlock">
+      <strong style="color:#8ab0d8;display:block;margin-bottom:6px" id="avTitle">⚠ Añade la excepción en tu antivirus</strong>
+      <p id="avDesc" style="font-size:11px;margin-bottom:8px;color:rgba(138,176,216,.85)">Para que el bridge no se detenga al reiniciar el PC:</p>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border-radius:6px;padding:8px 10px;">
         <code id="exclPath" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#fff;flex:1;word-break:break-all"></code>
         <button onclick="copyPath()" style="background:rgba(138,176,216,.2);border:1px solid rgba(138,176,216,.3);color:#8ab0d8;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap" id="btnCopy">Copiar</button>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:rgba(138,176,216,.7)">Avast → Configuración → Excepciones → Añadir excepción → pega la ruta</div>
+      <div id="avSteps" style="margin-top:10px;font-size:11px;color:rgba(138,176,216,.8);line-height:1.8"></div>
     </div>
     <div class="alert-info" style="width:100%;margin-top:-8px">
       <strong style="color:#8ab0d8">Siguiente paso —</strong> entra en el panel como propietario y configura qué comandas van a cada impresora:<br>
@@ -420,10 +420,105 @@ function showDone(withAutostart, cfgDir) {
   const n=S.printers.length
   $('doneTitle').textContent=`${S.restaurantName} está listo.`
   $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · Bridge ${withAutostart?'con inicio automático':'instalado'}`
-  // Mostrar ruta de excepción antivirus
-  const path = cfgDir || `C:\Users\${window.location.hostname === 'localhost' ? '...' : '...'}\AppData\Roaming\.iarest`
-  $('exclPath').textContent = path
   setStep(4)
+  loadAVInstructions(cfgDir)
+}
+
+// ── Instrucciones por antivirus ──────────────────────────────
+const AV_INSTRUCTIONS = {
+  avast: {
+    nombre: 'Avast',
+    pasos: [
+      '1. Abre Avast → icono en la bandeja del sistema (abajo derecha)',
+      '2. Menú → Configuración → General → Excepciones',
+      '3. Haz clic en "Añadir excepción"',
+      '4. Pega la ruta copiada y confirma',
+    ]
+  },
+  kaspersky: {
+    nombre: 'Kaspersky',
+    pasos: [
+      '1. Abre Kaspersky → Configuración (engranaje)',
+      '2. Amenazas → Zona de confianza → Archivos y carpetas de confianza',
+      '3. Haz clic en "Añadir" y pega la ruta',
+    ]
+  },
+  mcafee: {
+    nombre: 'McAfee',
+    pasos: [
+      '1. Abre McAfee → Seguridad del PC → Tiempo real',
+      '2. Archivos excluidos → Añadir archivo',
+      '3. Pega la ruta copiada',
+    ]
+  },
+  norton: {
+    nombre: 'Norton',
+    pasos: [
+      '1. Abre Norton → Configuración → Antivirus',
+      '2. Exclusiones/Excepciones de bajo riesgo → Configurar',
+      '3. Añadir → pega la ruta',
+    ]
+  },
+  eset: {
+    nombre: 'ESET',
+    pasos: [
+      '1. Abre ESET → Configuración → Antivirus y antispyware',
+      '2. Exclusiones → Añadir',
+      '3. Pega la ruta copiada',
+    ]
+  },
+  bitdefender: {
+    nombre: 'Bitdefender',
+    pasos: [
+      '1. Abre Bitdefender → Protección → Antivirus',
+      '2. Configuración → Excepciones → Añadir excepción',
+      '3. Pega la ruta y confirma',
+    ]
+  },
+  default: {
+    nombre: 'tu antivirus',
+    pasos: [
+      '1. Abre tu antivirus → Configuración',
+      '2. Busca "Exclusiones" o "Excepciones" o "Lista blanca"',
+      '3. Añade la ruta copiada como excepción',
+    ]
+  }
+}
+
+function getAVKey(name) {
+  if (!name) return 'default'
+  const n = name.toLowerCase()
+  if (n.includes('avast'))      return 'avast'
+  if (n.includes('kaspersky'))  return 'kaspersky'
+  if (n.includes('mcafee'))     return 'mcafee'
+  if (n.includes('norton') || n.includes('symantec')) return 'norton'
+  if (n.includes('eset'))       return 'eset'
+  if (n.includes('bitdefender')) return 'bitdefender'
+  if (n.includes('windows defender') || n.includes('microsoft')) return null // ya cubierto automáticamente
+  return 'default'
+}
+
+async function loadAVInstructions(cfgDir) {
+  $('exclPath').textContent = cfgDir || 'C:\\Users\\...\\AppData\\Roaming\\.iarest'
+  try {
+    const r = await fetch('/api/antivirus')
+    const d = await r.json()
+    const avList = d.antivirus || []
+    // Filtrar Windows Defender (ya cubierto automáticamente)
+    const terceros = avList.filter(av => getAVKey(av) !== null)
+    if (terceros.length === 0) {
+      // Solo Windows Defender o sin AV — excepción ya añadida automáticamente
+      $('avBlock').style.display = 'none'
+      return
+    }
+    const key = getAVKey(terceros[0])
+    const inst = AV_INSTRUCTIONS[key] || AV_INSTRUCTIONS.default
+    $('avTitle').textContent = `⚠ Añade la excepción en ${inst.nombre}`
+    $('avDesc').textContent = `Se ha detectado ${terceros.join(', ')} en este PC. Añade la ruta antes de reactivarlo:`
+    $('avSteps').innerHTML = inst.pasos.map(p => `<div style="padding:2px 0">${p}</div>`).join('')
+  } catch {
+    // Si falla la detección, mostrar instrucciones genéricas
+  }
 }
 
 function copyPath() {

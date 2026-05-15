@@ -289,6 +289,22 @@ if (process.argv.includes('--bridge')) {
   startWizard()
 }
 
+// ── Detectar antivirus instalado (WMI) ───────────────────────
+function detectAntivirus() {
+  return new Promise(resolve => {
+    if (process.platform !== 'win32') return resolve([])
+    const cmd = `powershell -NoProfile -NonInteractive -Command "Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct | Select-Object displayName | ConvertTo-Json"`
+    exec(cmd, { timeout: 6000 }, (err, stdout) => {
+      if (err || !stdout) return resolve([])
+      try {
+        const raw = JSON.parse(stdout.trim())
+        const list = Array.isArray(raw) ? raw : [raw]
+        resolve(list.map(x => x.displayName).filter(Boolean))
+      } catch { resolve([]) }
+    })
+  })
+}
+
 // ── Wizard HTTP server ────────────────────────────────────────
 function startWizard() {
   const indexHTML = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
@@ -394,6 +410,12 @@ function startWizard() {
       if (!token) return json(res, { ok:false, error:'Token requerido' })
       saveConfig({ token })
       return json(res, launchBridgeNow(token))
+    }
+
+    // Detectar antivirus instalado
+    if (req.method === 'GET' && p === '/api/antivirus') {
+      const avList = await detectAntivirus()
+      return json(res, { ok: true, antivirus: avList })
     }
 
     if (req.method === 'GET' && p === '/api/check-autostart') {
