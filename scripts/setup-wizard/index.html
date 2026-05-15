@@ -28,8 +28,8 @@
   .card-sub{font-size:13px;color:var(--fg3);line-height:1.5;margin-top:-10px}
   .field{display:flex;flex-direction:column;gap:6px}
   .field label{font-size:10px;font-weight:700;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
-  .field input,.field select{background:var(--bg);border:1px solid var(--rule);border-radius:8px;color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:14px;padding:12px 14px;outline:none;transition:border-color .2s;width:100%}
-  .field input:focus,.field select:focus{border-color:var(--verm)}
+  .field input{background:var(--bg);border:1px solid var(--rule);border-radius:8px;color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:14px;padding:12px 14px;outline:none;transition:border-color .2s;width:100%}
+  .field input:focus{border-color:var(--verm)}
   .field input::placeholder{color:var(--fg3)}
   .btn{background:var(--verm);border:none;border-radius:10px;color:var(--fg);cursor:pointer;font-family:'Inter Tight',system-ui;font-size:14px;font-weight:700;padding:14px 24px;transition:background .15s,transform .1s;width:100%}
   .btn:hover{background:#C03A24}.btn:active{transform:scale(.98)}.btn:disabled{background:var(--bg3);color:var(--fg3);cursor:not-allowed}
@@ -57,9 +57,9 @@
   .alert-err{background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);color:#E57A70;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5}
   .alert-ok{background:var(--grS);border:1px solid rgba(63,125,68,.4);color:#6DBF74;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5}
   .alert-warn{background:var(--ambS);border:1px solid rgba(232,163,59,.3);color:var(--amb);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5}
+  .alert-info{background:rgba(100,130,200,.08);border:1px solid rgba(100,130,200,.2);color:#8ab0d8;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6}
   .done-icon{width:72px;height:72px;border-radius:50%;background:var(--grS);border:2px solid var(--gr);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto}
   .hidden{display:none!important}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes spin{to{transform:rotate(360deg)}}
   .spin{animation:spin 1s linear infinite;display:inline-block}
 </style>
@@ -78,17 +78,13 @@
     <div class="dot" id="d1"></div>
     <div class="dot" id="d2"></div>
     <div class="dot" id="d3"></div>
-    <div class="dot" id="d4"></div>
   </div>
 
   <!-- PASO 0: Preflight + Token -->
   <div id="s0" class="card">
     <div class="card-title">Bienvenido a ia.rest</div>
     <p class="card-sub">Comprobando tu ordenador antes de empezar...</p>
-    <div id="preflightList" style="display:flex;flex-direction:column;gap:8px;">
-      <div class="check-row" id="pf_internet"><div class="check-icon spin">⟳</div><div><div class="check-name">Conexión a ia.rest</div><div class="check-detail" id="pf_internet_d">Comprobando...</div></div></div>
-      <div class="check-row" id="pf_network"><div class="check-icon spin">⟳</div><div><div class="check-name">Red local</div><div class="check-detail" id="pf_network_d">Buscando interfaces...</div></div></div>
-    </div>
+    <div id="preflightList" style="display:flex;flex-direction:column;gap:8px;"></div>
     <div id="tokenSection" class="hidden" style="display:flex;flex-direction:column;gap:14px;">
       <div class="field">
         <label>Referencia de acceso</label>
@@ -102,7 +98,7 @@
   <!-- PASO 1: Scan -->
   <div id="s1" class="card hidden">
     <div class="card-title">Buscando impresoras</div>
-    <p class="card-sub" id="scanSub">Escaneando la red local en busca de impresoras térmicas...</p>
+    <p class="card-sub">Escaneando la red local en busca de impresoras térmicas...</p>
     <div class="scan-wrap"><div class="scan-bar" id="scanBar"></div></div>
     <div class="scan-lbl" id="scanLbl">Preparando...</div>
     <div id="printerList" class="hidden" style="display:flex;flex-direction:column;gap:8px;"></div>
@@ -119,19 +115,19 @@
     </div>
   </div>
 
-  <!-- PASO 2: Configurar -->
+  <!-- PASO 2: Nombre + aviso IP -->
   <div id="s2" class="card hidden">
-    <div class="card-title">Configurar impresoras</div>
-    <p class="card-sub">Asigna un nombre y sección a cada impresora.</p>
+    <div class="card-title">Configura la impresora</div>
+    <p class="card-sub">Dale un nombre que reconozcas fácilmente.</p>
     <div id="configList" style="display:flex;flex-direction:column;gap:14px;"></div>
     <div id="ipWarnings" style="display:flex;flex-direction:column;gap:8px;"></div>
-    <button class="btn" id="btnTest">Probar impresoras →</button>
+    <button class="btn" id="btnTest">Probar e instalar →</button>
   </div>
 
-  <!-- PASO 3: Test -->
+  <!-- PASO 3: Test + Autostart -->
   <div id="s3" class="card hidden">
     <div class="card-title">Probando conexión</div>
-    <p class="card-sub">Verificando el ciclo completo para cada impresora.</p>
+    <p class="card-sub">Verificando que la impresora responde.</p>
     <div id="testList" style="display:flex;flex-direction:column;gap:8px;"></div>
     <div id="confirmPrint" class="hidden" style="display:flex;flex-direction:column;gap:12px;">
       <div class="alert-warn">¿Ha salido el ticket de prueba por la impresora?</div>
@@ -141,41 +137,35 @@
       </div>
     </div>
     <div id="testErr" class="hidden"></div>
-  </div>
-
-  <!-- PASO 4: Autostart -->
-  <div id="s4" class="card hidden">
-    <div class="card-title">Instalar inicio automático</div>
-    <p class="card-sub">El bridge arrancará solo cada vez que enciendas el ordenador. <strong style="color:var(--fg2)">No necesita permisos de administrador.</strong></p>
-    <div class="check-row" id="svcRow">
-      <div class="check-icon" id="svcIcon">⟳</div>
-      <div><div class="check-name">Inicio con Windows</div><div class="check-detail" id="svcDetail">Se añade al inicio de sesión — sin admin</div></div>
+    <div id="autostartSection" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="check-row" id="svcRow">
+        <div class="check-icon" id="svcIcon">⟳</div>
+        <div><div class="check-name">Inicio automático con Windows</div><div class="check-detail" id="svcDetail">El bridge arrancará solo al encender el PC</div></div>
+      </div>
+      <button class="btn" id="btnInstall">Instalar inicio automático →</button>
+      <button class="btn-ghost" id="btnSkip">Saltar</button>
     </div>
-    <button class="btn" id="btnInstall">Instalar y arrancar bridge →</button>
-    <button class="btn-ghost" id="btnSkip">Saltar — lo instalaré más tarde</button>
   </div>
 
-  <!-- PASO 5: Listo -->
-  <div id="s5" class="card hidden" style="align-items:center;gap:16px;">
+  <!-- PASO 4: Listo -->
+  <div id="s4" class="card hidden" style="align-items:center;gap:16px;">
     <div class="done-icon">✓</div>
     <div style="font-family:'Newsreader',serif;font-style:italic;font-size:26px;text-align:center" id="doneTitle">Todo listo.</div>
     <p style="font-size:13px;color:var(--fg3);text-align:center;line-height:1.6" id="doneSub"></p>
-    <!-- FIX v2.1: estado del bridge en tiempo real -->
-    <div id="bridgeStatus" class="check-row" style="width:100%;justify-content:center;">
-      <div class="check-icon spin" id="bridgeIcon">⟳</div>
-      <div><div class="check-name">Bridge ia.rest</div><div class="check-detail" id="bridgeDetail">Conectando...</div></div>
+    <div class="alert-info" style="width:100%">
+      <strong style="color:#8ab0d8">Siguiente paso —</strong> entra en el panel como propietario y configura qué comandas van a cada impresora:<br>
+      <strong style="color:#8ab0d8;font-family:'JetBrains Mono',monospace;font-size:11px">Owner → Flujos de trabajo</strong>
     </div>
     <button class="btn" id="btnOpen">Abrir panel ia.rest →</button>
   </div>
 
 </div>
 <script>
-const S = { step:0, token:'', restaurantName:'', printers:[], secciones:[] }
-const $  = id => document.getElementById(id)
-const gc = () => fetch('/api/config').then(r=>r.json()).catch(()=>({}))
+const S = { step:0, token:'', restaurantName:'', printers:[] }
+const $ = id => document.getElementById(id)
 
 function setStep(n) {
-  for (let i=0;i<=5;i++) {
+  for (let i=0;i<=4;i++) {
     const el=$(`s${i}`); if(el) el.classList.toggle('hidden', i!==n)
     const d=$(`d${i}`); if(d){d.classList.remove('active','done'); if(i<n)d.classList.add('done'); if(i===n)d.classList.add('active')}
   }
@@ -187,18 +177,12 @@ async function runPreflight() {
   const res  = await fetch('/api/preflight')
   const data = await res.json()
   const list = $('preflightList')
-
   let allOk = true
-  let prevToken = null
   list.innerHTML = ''
-
   for (const c of data.checks) {
     const isWarn = c.isWarning
-    const cls    = c.ok ? (isWarn ? 'warn' : 'ok') : 'fail'
+    const cls = c.ok ? (isWarn ? 'warn' : 'ok') : 'fail'
     if (!c.ok && !isWarn) allOk = false
-    // FIX v2.1: extraer prevToken del check de instalación previa
-    if (c.id === 'previous' && c.prevToken) prevToken = c.prevToken
-
     const row = document.createElement('div')
     row.className = `check-row ${cls}`
     row.innerHTML = `
@@ -210,36 +194,26 @@ async function runPreflight() {
       </div>`
     list.appendChild(row)
   }
-
   if (!allOk) {
     const btn = document.createElement('button')
-    btn.className = 'btn-ghost'
-    btn.textContent = 'Reintentar comprobaciones'
+    btn.className = 'btn-ghost'; btn.textContent = 'Reintentar comprobaciones'
     btn.onclick = () => { list.innerHTML=''; runPreflight() }
-    list.after(btn)
-    return
+    list.after(btn); return
   }
-
   $('tokenSection').classList.remove('hidden')
   $('tokenSection').style.display = 'flex'
-
-  // FIX v2.1: auto-rellenar token si hay instalación previa
-  if (prevToken) {
-    $('tokenInput').value = prevToken
-  }
 }
 
-document.addEventListener('DOMContentLoaded', () => { runPreflight() })
+document.addEventListener('DOMContentLoaded', () => runPreflight())
 
-// Verificar token
 $('btnVerify').addEventListener('click', async () => {
   const token = $('tokenInput').value.trim()
   if (!token) { showErr('tokenErr', 'Introduce tu referencia de acceso.'); return }
   hideEl('tokenErr')
   $('btnVerify').disabled = true; $('btnVerify').textContent = 'Verificando...'
   try {
-    const r  = await fetch('/api/verify-token', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token}) })
-    const d  = await r.json()
+    const r = await fetch('/api/verify-token', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token}) })
+    const d = await r.json()
     if (d.ok) { S.token=token; S.restaurantName=d.data?.nombre||'Mi restaurante'; setStep(1); startScan() }
     else { showErr('tokenErr', d.error || 'Referencia no válida.') }
   } catch(e) { showErr('tokenErr', 'Error de conexión: ' + e.message) }
@@ -249,14 +223,11 @@ $('tokenInput').addEventListener('keydown', e => { if(e.key==='Enter') $('btnVer
 
 // ── PASO 1: Scan ──────────────────────────────────────────────
 let foundPrinters = []
-
 function startScan() {
   foundPrinters = []
   $('printerList').innerHTML = ''; $('printerList').classList.add('hidden')
-  $('scanActions').classList.add('hidden')
-  $('manualForm').classList.add('hidden')
+  $('scanActions').classList.add('hidden'); $('manualForm').classList.add('hidden')
   $('btnUsePrinters').classList.add('hidden')
-
   const es = new EventSource('/api/scan')
   es.onmessage = e => {
     const d = JSON.parse(e.data)
@@ -282,7 +253,7 @@ function startScan() {
             ? `<span style="color:var(--amb);font-size:10px">⚠ IP puede cambiar</span>`
             : `<span style="color:var(--gr);font-size:10px">✓ IP estable</span>`
           const vendor = p.vendor ? `· ${p.vendor}` : ''
-          const mac    = p.mac    ? `MAC: ${p.mac}` : 'MAC: desconocida'
+          const mac = p.mac ? `MAC: ${p.mac}` : 'MAC: desconocida'
           card.innerHTML=`
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9442B" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             <div>
@@ -299,82 +270,43 @@ function startScan() {
   es.onerror = () => { es.close(); $('scanLbl').textContent='Error durante el escaneo.'; $('scanActions').classList.remove('hidden') }
 }
 
-$('btnUsePrinters').addEventListener('click', async () => {
-  S.printers = foundPrinters.map((p,i) => ({...p, nombre:`Impresora ${i+1}`, seccion_id:''}))
-  await loadSecciones()
+$('btnUsePrinters').addEventListener('click', () => {
+  S.printers = foundPrinters.map((p,i) => ({...p, nombre:`Impresora ${i+1}`}))
   buildConfigStep(); setStep(2)
 })
 $('btnManual').addEventListener('click', () => $('manualForm').classList.remove('hidden'))
-$('btnAddManual').addEventListener('click', async () => {
+$('btnAddManual').addEventListener('click', () => {
   const ip=$('manualIP').value.trim(); const port=parseInt($('manualPort').value)||9100
   if (!ip) return
-  S.printers=[{ip, port, nombre:'Impresora 1', seccion_id:'', mac:null, stability:guessStability(ip), vendor:null}]
-  await loadSecciones()
+  S.printers=[{ip, port, nombre:'Impresora 1', mac:null, stability:guessStability(ip), vendor:null}]
   buildConfigStep(); setStep(2)
 })
 function guessStability(ip) {
   const l=parseInt(ip.split('.')[3]); return (l<=20||l===100||l===200||l===254)?'static':'dynamic'
 }
 
-// ── Cargar secciones reales del restaurante ───────────────────
-S.secciones = []
-async function loadSecciones() {
-  if (!S.token) return
-  try {
-    const r = await fetch(`https://www.iarest.es/api/bridge/secciones?token=${S.token}`)
-    const d = await r.json()
-    if (d.ok && d.secciones?.length) S.secciones = d.secciones
-  } catch {}
-}
-
-// ── PASO 2: Configurar ────────────────────────────────────────
+// ── PASO 2: Solo nombre + aviso IP ───────────────────────────
 function buildConfigStep() {
   const c = $('configList'); c.innerHTML=''
   const w = $('ipWarnings'); w.innerHTML=''
   S.printers.forEach((p,i) => {
     const div=document.createElement('div')
     div.style.cssText='background:var(--bg);border:1px solid var(--rule);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;'
-
-    // Select de secciones si hay, input de texto si no
-    const seccionField = S.secciones.length > 0
-      ? `<div class="field" style="flex:1">
-          <label>Sección de cocina</label>
-          <select id="ps${i}">
-            <option value="">— Todas las secciones —</option>
-            ${S.secciones.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')}
-          </select>
-        </div>`
-      : `<div class="field" style="flex:1"><label>Sección</label><input type="text" id="ps${i}" value="${p.seccion_id}" placeholder="Ej: calientes"/></div>`
-
     div.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fg3)">${p.ip}:${p.port}${p.vendor?' · '+p.vendor:''}</span>
         ${p.mac?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--fg3)">${p.mac}</span>`:''}
       </div>
-      <div style="display:flex;gap:10px;">
-        <div class="field" style="flex:1"><label>Nombre</label><input type="text" id="pn${i}" value="${p.nombre}" placeholder="Ej: Cocina caliente"/></div>
-        ${seccionField}
-      </div>
-      <div style="border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:10px;font-weight:700;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase;font-family:'JetBrains Mono',monospace">Esta regla se aplica a</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_comanda_${i}" checked style="accent-color:var(--verm)"> Comandas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_cuenta_${i}" checked style="accent-color:var(--verm)"> Cuentas / tickets</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_marchar_${i}" style="accent-color:var(--verm)"> Pases (marchar)</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_factura_${i}" style="accent-color:var(--verm)"> Facturas</label>
-        </div>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--fg3)">
-          <input type="checkbox" id="pf_${i}" style="accent-color:var(--verm)">
-          <span>Regla <strong style="color:var(--fg2)">fallback</strong> — se usa solo si ninguna otra regla coincide</span>
-        </label>
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="pn${i}" value="${p.nombre}" placeholder="Ej: Cocina, Barra, Sala..."/>
       </div>`
     c.appendChild(div)
     if (p.stability==='dynamic') {
       const warn=document.createElement('div'); warn.className='ip-warn'
       warn.innerHTML=`<strong>⚠ ${p.ip} — IP puede cambiar</strong><br>
-        Si el router se reinicia, esta impresora puede obtener otra IP.<br>
-        <strong>Solución:</strong> asigna IP fija por MAC en tu router (<a href="http://192.168.1.1" target="_blank" style="color:var(--amb)">192.168.1.1</a>).
-        MAC: <strong>${p.mac||'desconocida'}</strong>`
+        Si el router se reinicia, esta impresora puede obtener otra IP y los tickets dejarán de llegar.<br>
+        <strong>Solución:</strong> en tu router (<a href="http://192.168.1.1" target="_blank" style="color:var(--amb)">192.168.1.1</a>) fija la MAC <strong>${p.mac||'de esta impresora'}</strong> a la IP <strong>${p.ip}</strong>.`
       w.appendChild(warn)
     } else {
       const ok=document.createElement('div'); ok.className='ip-ok'
@@ -385,24 +317,16 @@ function buildConfigStep() {
 }
 
 $('btnTest').addEventListener('click', () => {
-  S.printers.forEach((p,i) => {
-    p.nombre = $(`pn${i}`).value.trim() || `Impresora ${i+1}`
-    p.seccion_id = $(`ps${i}`)?.value?.trim() || ''
-    const tipos = []
-    if ($(`pt_comanda_${i}`)?.checked) tipos.push('comanda')
-    if ($(`pt_cuenta_${i}`)?.checked)  tipos.push('cuenta')
-    if ($(`pt_marchar_${i}`)?.checked) tipos.push('marchar')
-    if ($(`pt_factura_${i}`)?.checked) tipos.push('factura')
-    p.tipos_ticket = tipos.length > 0 ? tipos : ['comanda','cuenta']
-    p.es_fallback  = $(`pf_${i}`)?.checked ?? false
-  })
+  S.printers.forEach((p,i) => { p.nombre=$(`pn${i}`).value.trim()||`Impresora ${i+1}` })
   setStep(3); runTests()
 })
 
 // ── PASO 3: Test ──────────────────────────────────────────────
 async function runTests() {
   const list=$('testList'); list.innerHTML=''
-  $('confirmPrint').classList.add('hidden'); hideEl('testErr')
+  $('confirmPrint').classList.add('hidden')
+  $('autostartSection').classList.add('hidden')
+  hideEl('testErr')
   const p = S.printers[0]; if (!p) return
 
   addTestRow('internet','Conexión a ia.rest')
@@ -410,7 +334,7 @@ async function runTests() {
   try {
     const r=await fetch('https://www.iarest.es/api/estado'); if(!r.ok&&r.status!==401) throw new Error(`HTTP ${r.status}`)
     setRow('internet','ok','ia.rest accesible ✓')
-  } catch(e) { setRow('internet','fail',e.message); showTestErr(`Sin conexión con ia.rest.`); return }
+  } catch(e) { setRow('internet','fail',e.message); showTestErr('Sin conexión con ia.rest.'); return }
 
   addTestRow('tcp',`Puerto TCP ${p.port} en ${p.ip}`)
   setRow('tcp','active',`Conectando ${p.ip}:${p.port}...`)
@@ -419,7 +343,7 @@ async function runTests() {
     const d=await r.json()
     if(d.step==='tcp'&&!d.ok) throw new Error(d.error)
     setRow('tcp','ok',`${p.ip}:${p.port} responde ✓`)
-  } catch(e) { setRow('tcp','fail',e.message); showTestErr(`No se puede conectar a la impresora.`); return }
+  } catch(e) { setRow('tcp','fail',e.message); showTestErr('No se puede conectar a la impresora.'); return }
 
   addTestRow('print','Envío de ticket de prueba')
   setRow('print','active','Enviando ticket ESC/POS...')
@@ -428,7 +352,7 @@ async function runTests() {
     const d=await r.json()
     if(!d.ok) throw new Error(d.error)
     if(d.mac) { S.printers[0].mac=d.mac; S.printers[0].stability=d.stability; S.printers[0].vendor=d.vendor }
-    setRow('print','ok','Ticket enviado a la impresora ✓')
+    setRow('print','ok','Ticket enviado ✓')
   } catch(e) { setRow('print','fail',e.message); showTestErr(`El ticket no se pudo enviar: ${e.message}`); return }
 
   addTestRow('confirm','Confirmación: ¿ha salido el ticket?')
@@ -438,32 +362,12 @@ async function runTests() {
   $('btnYes').onclick = async () => {
     $('confirmPrint').classList.add('hidden')
     setRow('confirm','ok','Ticket recibido — ciclo completo ✓')
-    // Registrar impresora en ia.rest
-    const regRes = await fetch('/api/register-printers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:S.token,printers:S.printers})})
-    const regData = await regRes.json()
-    // Crear/actualizar regla de envío por cada impresora registrada
-    for (let i = 0; i < S.printers.length; i++) {
-      const p = S.printers[i]
-      const impresoraId = regData.results?.[i]?.id || null
-      if (!impresoraId) continue
-      const seccionIds = p.seccion_id ? [p.seccion_id] : []
-      await fetch('https://www.iarest.es/api/bridge/setup-regla', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          token: S.token,
-          impresora_id: impresoraId,
-          seccion_ids: seccionIds,
-          tipos_ticket: p.tipos_ticket || ['comanda','cuenta'],
-          es_fallback: p.es_fallback || false,
-        })
-      }).catch(()=>{})
-    }
-    setStep(4)
+    await fetch('/api/register-printers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:S.token,printers:S.printers})})
+    $('autostartSection').classList.remove('hidden')
   }
   $('btnNo').onclick = () => {
     $('confirmPrint').classList.add('hidden'); setRow('confirm','fail','Ticket no recibido')
-    showTestErr(`El ticket no llegó a la impresora.\n\nPosibles causas:\n• La impresora no tiene papel\n• Está apagada o en modo reposo\n• Ágora u otro programa ocupa el puerto 9100\n• El cable ethernet está suelto`)
+    showTestErr(`El ticket no llegó.\n\nPosibles causas:\n• Sin papel\n• Apagada o en reposo\n• Ágora ocupa el puerto 9100\n• Cable ethernet suelto`)
     const retry=document.createElement('button'); retry.className='btn'; retry.textContent='Repetir prueba'
     retry.onclick=()=>{ hideEl('testErr'); list.innerHTML=''; runTests() }
     $('testErr').after(retry)
@@ -485,79 +389,32 @@ function showTestErr(msg) {
   const el=$('testErr'); el.className='alert-err'; el.style.whiteSpace='pre-line'; el.textContent=msg; el.classList.remove('hidden')
 }
 
-// ── PASO 4: Autostart ─────────────────────────────────────────
-// FIX v2.1: texto del botón actualizado, lanza bridge inmediatamente
+// ── Autostart ─────────────────────────────────────────────────
 $('btnInstall').addEventListener('click', async () => {
   $('svcRow').className='check-row active'
-  $('svcIcon').textContent='●'; $('svcDetail').textContent='Instalando y arrancando bridge...'
+  $('svcIcon').textContent='●'; $('svcDetail').textContent='Instalando...'
   $('btnInstall').disabled=true
   try {
     const r=await fetch('/api/install-autostart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:S.token})})
     const d=await r.json()
-    if(d.ok) {
-      $('svcRow').className='check-row ok'; $('svcIcon').textContent='✓'
-      $('svcDetail').textContent='Bridge activo · arranca con Windows ✓'
-      setTimeout(()=>showDone(true), 800)
-    } else throw new Error(d.error)
+    if(d.ok) { $('svcRow').className='check-row ok'; $('svcIcon').textContent='✓'; $('svcDetail').textContent='Bridge arrancará con Windows ✓'; setTimeout(()=>showDone(true),800) }
+    else throw new Error(d.error)
   } catch(e) {
     $('svcRow').className='check-row fail'; $('svcIcon').textContent='✗'
     $('svcDetail').textContent='Error: '+e.message; $('btnInstall').disabled=false
   }
 })
-
-// FIX v2.1: "Saltar" ahora lanza el bridge igualmente (sin autostart)
 $('btnSkip').addEventListener('click', () => showDone(false))
 
-// ── PASO 5: Listo ─────────────────────────────────────────────
-// FIX v2.1: muestra estado del bridge en tiempo real
+// ── Paso 4: Listo ─────────────────────────────────────────────
 function showDone(withAutostart) {
   const n=S.printers.length
   $('doneTitle').textContent=`${S.restaurantName} está listo.`
-  if (withAutostart) {
-    $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · El bridge arrancará automáticamente al encender el PC`
-  } else {
-    $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · Instala el inicio automático para que el bridge arranque solo`
-  }
-  setStep(5)
-  if (withAutostart) pollBridgeStatus()
+  $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · Bridge ${withAutostart?'con inicio automático':'instalado'}`
+  setStep(4)
 }
-
-// Verifica que el bridge ya está haciendo ping a ia.rest
-async function pollBridgeStatus() {
-  const maxRetries = 20  // 20 × 3s = 60s máximo
-  let retries = 0
-  const check = async () => {
-    try {
-      const r = await fetch('https://www.iarest.es/api/bridge/verify', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ token: S.token, checkPing: true })
-      })
-      const d = await r.json()
-      if (d.connected) {
-        $('bridgeStatus').className = 'check-row ok'
-        $('bridgeIcon').textContent = '✓'
-        $('bridgeIcon').classList.remove('spin')
-        $('bridgeDetail').textContent = 'Conectado · recibiendo comandas ✓'
-        return
-      }
-    } catch {}
-    retries++
-    if (retries < maxRetries) {
-      setTimeout(check, 3000)
-    } else {
-      $('bridgeStatus').className = 'check-row warn'
-      $('bridgeIcon').textContent = '!'
-      $('bridgeIcon').classList.remove('spin')
-      $('bridgeDetail').textContent = 'Tardando más de lo esperado — revisa el panel'
-    }
-  }
-  setTimeout(check, 3000)
-}
-
 $('btnOpen').addEventListener('click', () => window.open('https://www.iarest.es/owner','_blank'))
 
-// ── Utils ─────────────────────────────────────────────────────
 function showErr(id, msg) { const e=$(id); e.textContent=msg; e.classList.remove('hidden') }
 function hideEl(id) { $(id).classList.add('hidden') }
 </script>
