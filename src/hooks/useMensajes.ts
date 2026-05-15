@@ -92,7 +92,7 @@ export function useMensajes(
 
   const enviar = useCallback(async (
     texto: string,
-    opts: { rol_destino?: string; mesa_ref?: string; tipo?: string } = {}
+    opts: { rol_destino?: string; destinatario_id?: string; mesa_ref?: string; tipo?: string } = {}
   ) => {
     const ses = sesRef.current || localStorage.getItem('ia_rest_session') || ''
     await fetch('/api/mensajes', {

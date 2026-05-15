@@ -109,19 +109,40 @@ const MCOL: Record<string,string> = {
 }
 
 /* ─── CHAT TAB — componente propio para cumplir Rules of Hooks ── */
-function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChatTexto, chatDestino, setChatDestino, chatEndRef, enviarMensaje }: {
+interface CompañeroActivo { id: string; nombre: string; rol: string }
+type DestinoChat = 'todos' | 'cocina' | 'jefe_sala' | string  // string = camarero_id individual
+
+function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChatTexto, chatDestino, setChatDestino, chatEndRef, enviarMensaje, mesaFijada, restauranteId }: {
   session: { id: string; nombre: string; rol: string }
-  mensajes: { id: string; camarero_id: string|null; rol_origen: string; nombre_origen: string; rol_destino: string; mesa_ref: string|null; leido_por: string[]; texto: string; tipo?: string; created_at: string }[]
+  mensajes: { id: string; camarero_id: string|null; rol_origen: string; nombre_origen: string; rol_destino: string; destinatario_id?: string|null; mesa_ref: string|null; leido_por: string[]; texto: string; tipo?: string; created_at: string }[]
   marcarMensajeLeido: (id: string) => void
   chatTexto: string
   setChatTexto: (v: string) => void
-  chatDestino: 'todos'|'cocina'|'camarero'|'jefe_sala'
-  setChatDestino: (v: 'todos'|'cocina'|'camarero'|'jefe_sala') => void
+  chatDestino: DestinoChat
+  setChatDestino: (v: DestinoChat) => void
   chatEndRef: React.RefObject<HTMLDivElement | null>
-  enviarMensaje: (texto: string, opts?: { rol_destino?: string; tipo?: string }) => Promise<void>
+  enviarMensaje: (texto: string, opts?: { rol_destino?: string; destinatario_id?: string; mesa_ref?: string; tipo?: string }) => Promise<void>
+  mesaFijada: string | null
+  restauranteId: string
 }) {
   const rolLabel = (r: string) => ({ camarero: 'Sala', cocina: 'Cocina', jefe_sala: 'Jefe', running: 'Running', super_admin: 'Admin' }[r] ?? r)
   const rolColor = (r: string) => ({ camarero: C.teal, cocina: C.verm, jefe_sala: C.amb, running: C.gr }[r] ?? C.ink3)
+
+  // — Compañeros activos —
+  const [compañeros, setCompañeros] = useState<CompañeroActivo[]>([])
+  useEffect(() => {
+    if (!restauranteId) return
+    const ses = localStorage.getItem('ia_rest_session') ?? ''
+    const cargar = async () => {
+      const r = await fetch('/api/mensajes/activos', { headers: { 'x-ia-session': ses } })
+      if (!r.ok) return
+      const d = await r.json()
+      setCompañeros((d.activos ?? []).filter((c: CompañeroActivo) => c.id !== session.id))
+    }
+    cargar()
+    const t = setInterval(cargar, 30_000)
+    return () => clearInterval(t)
+  }, [restauranteId, session.id])
 
   // — Audio recording state —
   const [grabando, setGrabando]           = useState(false)
@@ -131,6 +152,28 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
   const grabTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [grabSecs, setGrabSecs]           = useState(0)
 
+  // — Pitido notificación (mejora 4) —
+  const prevMsgCount = useRef(mensajes.length)
+  useEffect(() => {
+    if (mensajes.length > prevMsgCount.current) {
+      const ultimo = mensajes[mensajes.length - 1]
+      // Solo pitar si el mensaje no es mío
+      if (ultimo && ultimo.camarero_id !== session.id) {
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.frequency.value = 880
+          gain.gain.setValueAtTime(0.15, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+          osc.start(); osc.stop(ctx.currentTime + 0.08)
+        } catch { /* silencioso si no hay AudioContext */ }
+      }
+    }
+    prevMsgCount.current = mensajes.length
+  }, [mensajes.length, session.id])
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     mensajes
@@ -139,11 +182,23 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mensajes.length])
 
+  // Construye opts para enviar según destino seleccionado
+  const buildEnviarOpts = (tipo?: string) => {
+    const esIndividual = chatDestino !== 'todos' && chatDestino !== 'cocina' && chatDestino !== 'jefe_sala'
+    const comp = esIndividual ? compañeros.find(c => c.id === chatDestino) : null
+    return {
+      rol_destino:     esIndividual ? (comp?.rol ?? 'camarero') : chatDestino,
+      destinatario_id: esIndividual ? chatDestino : undefined,
+      mesa_ref:        mesaFijada ?? undefined,
+      ...(tipo ? { tipo } : {}),
+    }
+  }
+
   const handleEnviar = async () => {
     const t = chatTexto.trim()
     if (!t) return
     setChatTexto('')
-    await enviarMensaje(t, { rol_destino: chatDestino })
+    await enviarMensaje(t, buildEnviarOpts())
   }
 
   const iniciarGrabacion = async () => {
@@ -157,7 +212,7 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
       const rec = new MediaRecorder(stream, { mimeType })
       chunksRef.current = []
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      rec.start(200) // chunks cada 200ms
+      rec.start(200)
       mediaRecRef.current = rec
       setGrabando(true)
       setGrabSecs(0)
@@ -179,7 +234,7 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
       rec.stream.getTracks().forEach(t => t.stop())
     })
     const blob = new Blob(chunksRef.current, { type: rec.mimeType })
-    if (blob.size < 1000) return // grabación muy corta, descartar
+    if (blob.size < 1000) return
     await subirAudio(blob, rec.mimeType)
   }
 
@@ -198,29 +253,94 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
       })
       if (!res.ok) { alert('Error al subir audio'); return }
       const { url } = await res.json()
-      await enviarMensaje(url, { rol_destino: chatDestino, tipo: 'audio' })
+      await enviarMensaje(url, buildEnviarOpts('audio'))
     } finally {
       setSubiendoAudio(false)
     }
   }
 
+  // Label para el destino seleccionado actualmente
+  const destinoLabel = () => {
+    if (chatDestino === 'todos') return 'Todos'
+    if (chatDestino === 'cocina') return 'Cocina'
+    if (chatDestino === 'jefe_sala') return 'Jefe sala'
+    return compañeros.find(c => c.id === chatDestino)?.nombre ?? '...'
+  }
+  const esIndividual = chatDestino !== 'todos' && chatDestino !== 'cocina' && chatDestino !== 'jefe_sala'
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header destino */}
-      <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.rule}`, background: C.bg1, display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-        <span style={{ fontFamily: SN, fontSize: 11, color: C.ink3, letterSpacing: '.08em' }}>PARA:</span>
-        {(['todos','cocina','jefe_sala'] as const).map(d => (
-          <button key={d} onClick={() => setChatDestino(d)} style={{
-            padding: '4px 10px', borderRadius: 20, border: `1px solid ${chatDestino===d ? rolColor(d==='todos'?'jefe_sala':d) : C.rule}`,
-            background: chatDestino===d ? rolColor(d==='todos'?'jefe_sala':d) : 'transparent',
-            color: chatDestino===d ? '#fff' : C.ink3, fontFamily: SN, fontSize: 12, cursor: 'pointer',
-          }}>
-            {d==='todos' ? 'Todos' : d==='cocina' ? 'Cocina' : 'Jefe sala'}
-          </button>
-        ))}
+
+      {/* ── Selector de destinatario ── */}
+      <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.rule}`, background: C.bg1, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', paddingBottom: 2 }}>
+          <span style={{ fontFamily: SN, fontSize: 11, color: C.ink3, letterSpacing: '.08em', flexShrink: 0 }}>PARA:</span>
+
+          {/* Roles fijos */}
+          {(['todos','cocina','jefe_sala'] as const).map(d => (
+            <button key={d} onClick={() => setChatDestino(d)} style={{
+              padding: '4px 10px', borderRadius: 20, flexShrink: 0,
+              border: `1px solid ${chatDestino===d ? rolColor(d==='todos'?'jefe_sala':d) : C.rule}`,
+              background: chatDestino===d ? rolColor(d==='todos'?'jefe_sala':d) : 'transparent',
+              color: chatDestino===d ? '#fff' : C.ink3, fontFamily: SN, fontSize: 12, cursor: 'pointer',
+            }}>
+              {d==='todos' ? 'Todos' : d==='cocina' ? 'Cocina' : 'Jefe sala'}
+            </button>
+          ))}
+
+          {/* Separador visual si hay compañeros */}
+          {compañeros.length > 0 && (
+            <span style={{ width: 1, height: 16, background: C.rule, flexShrink: 0, margin: '0 2px' }} />
+          )}
+
+          {/* Compañeros activos */}
+          {compañeros.map(c => {
+            const sel = chatDestino === c.id
+            const color = rolColor(c.rol)
+            return (
+              <button key={c.id} onClick={() => setChatDestino(c.id)} style={{
+                padding: '4px 10px', borderRadius: 20, flexShrink: 0,
+                border: `1px solid ${sel ? color : C.rule}`,
+                background: sel ? color : 'transparent',
+                color: sel ? '#fff' : C.ink3,
+                fontFamily: SN, fontSize: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                {/* Dot verde = activo */}
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: sel ? '#fff' : '#4CAF50', flexShrink: 0 }} />
+                {c.nombre.split(' ')[0]}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Indicador de mensaje privado */}
+        {esIndividual && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.amb} strokeWidth={2.5}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span style={{ fontFamily: SN, fontSize: 11, color: C.amb }}>
+              Mensaje privado para {destinoLabel()} — solo lo verá él/ella
+            </span>
+          </div>
+        )}
+
+        {/* Indicador de mesa fijada */}
+        {mesaFijada && (
+          <div style={{ marginTop: esIndividual ? 2 : 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth={2}>
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span style={{ fontFamily: SN, fontSize: 11, color: C.ink3 }}>
+              Se adjuntará referencia de mesa {mesaFijada}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Mensajes */}
+      {/* ── Mensajes ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {mensajes.length === 0 && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -229,45 +349,44 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
           </div>
         )}
         {mensajes.map(m => {
-          const esMio    = m.camarero_id === session.id
-          const esAudio  = m.tipo === 'audio'
+          const esMio   = m.camarero_id === session.id
+          const esAudio = m.tipo === 'audio'
+          const esPriv  = !!m.destinatario_id
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: esMio ? 'flex-end' : 'flex-start' }}>
               {!esMio && (
                 <span style={{ fontFamily: SN, fontSize: 10, color: rolColor(m.rol_origen), marginBottom: 2, paddingLeft: 4 }}>
                   {m.nombre_origen} · {rolLabel(m.rol_origen)}
                   {m.mesa_ref && <span style={{ color: C.ink3 }}> · {m.mesa_ref}</span>}
+                  {esPriv && <span style={{ color: C.amb }}> · privado</span>}
                 </span>
               )}
               <div style={{
                 maxWidth: '80%', padding: esAudio ? '6px 10px' : '8px 12px',
                 borderRadius: esMio ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                 background: esMio ? C.verm : C.bg1,
-                border: esMio ? 'none' : `1px solid ${C.rule}`,
+                border: esMio ? (esPriv ? `1px solid ${C.amb}` : 'none') : `1px solid ${esPriv ? C.amb+'66' : C.rule}`,
                 color: esMio ? '#fff' : C.ink,
                 fontFamily: SN, fontSize: 14, lineHeight: 1.4,
               }}>
                 {esAudio ? (
-                  <audio
-                    src={m.texto}
-                    controls
-                    preload="metadata"
-                    style={{
-                      height: 32,
-                      minWidth: 180,
-                      maxWidth: '100%',
-                      filter: esMio
-                        ? 'invert(1) brightness(2) sepia(0.3)'
-                        : 'invert(0)',
-                    }}
-                  />
-                ) : (
-                  m.texto
-                )}
+                  <audio src={m.texto} controls preload="metadata" style={{
+                    height: 32, minWidth: 180, maxWidth: '100%',
+                    filter: esMio ? 'invert(1) brightness(2) sepia(0.3)' : 'invert(0)',
+                  }} />
+                ) : m.texto}
               </div>
               <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4, marginTop: 2, paddingRight: esMio ? 4 : 0, paddingLeft: esMio ? 0 : 4 }}>
                 {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                {esMio && m.rol_destino !== 'todos' && <span style={{ color: C.ink4 }}> · para {rolLabel(m.rol_destino)}</span>}
+                {esMio && m.rol_destino !== 'todos' && !m.destinatario_id && (
+                  <span style={{ color: C.ink4 }}> · para {rolLabel(m.rol_destino)}</span>
+                )}
+                {esMio && m.destinatario_id && (
+                  <span style={{ color: C.amb }}>
+                    {' · para '}
+                    {compañeros.find(c => c.id === m.destinatario_id)?.nombre ?? 'privado'}
+                  </span>
+                )}
                 {esMio && (
                   <span style={{ marginLeft: 4, color: (m.leido_por ?? []).filter(id => id !== session.id).length > 0 ? '#4FC3F7' : C.ink4 }}>
                     {(m.leido_por ?? []).filter(id => id !== session.id).length > 0 ? '✓✓' : '✓'}
@@ -280,10 +399,10 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
         <div ref={chatEndRef} />
       </div>
 
-      {/* Plantillas rápidas — solo si no está grabando */}
+      {/* ── Plantillas rápidas — ocultas si graba ── */}
       {!grabando && (
         <div style={{ padding: '6px 12px', borderTop: `1px solid ${C.rule}`, background: C.bg, display: 'flex', gap: 6, overflowX: 'auto', flexShrink: 0 }}>
-          {['La mesa tiene prisa', '86 un producto', 'Alérgeno detectado tarde', '¿Cuánto falta?'].map(t => (
+          {['La mesa tiene prisa', '86 un producto', 'Alérgeno detectado', '¿Cuánto falta?'].map(t => (
             <button key={t} onClick={() => setChatTexto(t)} style={{
               whiteSpace: 'nowrap', padding: '4px 10px', borderRadius: 20,
               border: `1px solid ${C.rule}`, background: C.bg1,
@@ -293,68 +412,51 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
         </div>
       )}
 
-      {/* Indicador de grabación */}
+      {/* ── Indicador grabación ── */}
       {grabando && (
-        <div style={{
-          padding: '8px 16px', borderTop: `1px solid ${C.rule}`, background: C.bg,
-          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-        }}>
-          {/* Dot pulsante */}
-          <div style={{
-            width: 10, height: 10, borderRadius: '50%', background: C.verm, flexShrink: 0,
-            animation: 'pulse-rec 1s ease-in-out infinite',
-          }} />
+        <div style={{ padding: '8px 16px', borderTop: `1px solid ${C.rule}`, background: C.bg, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.verm, flexShrink: 0, animation: 'pulse-rec 1s ease-in-out infinite' }} />
           <span style={{ fontFamily: SM, fontSize: 13, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>
             {String(Math.floor(grabSecs / 60)).padStart(2, '0')}:{String(grabSecs % 60).padStart(2, '0')}
           </span>
-          <span style={{ fontFamily: SN, fontSize: 12, color: C.ink3 }}>grabando…</span>
+          <span style={{ fontFamily: SN, fontSize: 12, color: C.ink3 }}>
+            grabando para {destinoLabel()}…
+          </span>
         </div>
       )}
 
-      {/* Estilos animación */}
       <style>{`
-        @keyframes pulse-rec {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.7); }
-        }
+        @keyframes pulse-rec { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
       `}</style>
 
-      {/* Input */}
+      {/* ── Input ── */}
       <div style={{ padding: '10px 12px', borderTop: `1px solid ${C.rule}`, background: C.bg1, display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-        {/* Textarea — oculto si está grabando */}
         {!grabando && (
           <textarea
             value={chatTexto}
             onChange={e => setChatTexto(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviar() } }}
-            placeholder="Escribe un mensaje…"
+            placeholder={`Mensaje a ${destinoLabel().toLowerCase()}…`}
             rows={1}
             style={{
               flex: 1, padding: '8px 12px', borderRadius: 20,
-              border: `1px solid ${C.rule}`, background: C.bg,
+              border: `1px solid ${esIndividual ? C.amb+'66' : C.rule}`, background: C.bg,
               fontFamily: SN, fontSize: 14, color: C.ink, resize: 'none',
-              outline: 'none', lineHeight: 1.4,
+              outline: 'none', lineHeight: 1.4, transition: 'border-color .2s',
             }}
           />
         )}
-
-        {/* Botón enviar texto — solo si hay texto y no está grabando */}
         {!grabando && chatTexto.trim() && (
-          <button
-            onClick={handleEnviar}
-            style={{
-              width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0,
-              background: C.verm, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
+          <button onClick={handleEnviar} style={{
+            width: 40, height: 40, borderRadius: '50%', border: 'none', flexShrink: 0,
+            background: C.verm, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}>
-              <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
           </button>
         )}
-
-        {/* Botón micrófono — inicia / para grabación */}
         <button
           onClick={grabando ? pararGrabacion : iniciarGrabacion}
           disabled={subiendoAudio}
@@ -370,19 +472,16 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
           } as React.CSSProperties}
         >
           {subiendoAudio ? (
-            /* Spinner mientras sube */
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.ink3} strokeWidth={2}
               style={{ animation: 'spin 1s linear infinite' }}>
               <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
-              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
             </svg>
           ) : grabando ? (
-            /* Icono stop (cuadrado) mientras graba */
             <svg width={16} height={16} viewBox="0 0 24 24" fill="#fff">
-              <rect x="4" y="4" width="16" height="16" rx="2" />
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
             </svg>
           ) : (
-            /* Icono micrófono */
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.ink2} strokeWidth={2}>
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -394,6 +493,8 @@ function EdgeChatTab({ session, mensajes, marcarMensajeLeido, chatTexto, setChat
       </div>
     </div>
   )
+}
+
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -491,13 +592,14 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const handleMensajeNuevo = useCallback((m: import('@/hooks/useMensajes').Mensaje) => {
     if (ttsOff) return
     const quien = m.nombre_origen ?? m.rol_origen
-    speak(`Mensaje de ${quien}: ${m.texto}`)
+    const texto = m.tipo === 'audio' ? `Audio de ${quien}` : `Mensaje de ${quien}: ${m.texto}`
+    speak(texto)
   }, [ttsOff])
 
   const { mensajes, noLeidos, enviar: enviarMensaje, marcarLeido: marcarMensajeLeido } =
     useMensajes(session.restaurante_id, session.id, session.rol, turnoId, handleMensajeNuevo)
   const [chatTexto, setChatTexto]          = useState('')
-  const [chatDestino, setChatDestino]      = useState<'todos'|'cocina'|'camarero'|'jefe_sala'>('todos')
+  const [chatDestino, setChatDestino]      = useState<DestinoChat>('todos')
   const chatEndRef                         = useRef<HTMLDivElement>(null)
   const prev86 = useRef(0)
 
@@ -1822,6 +1924,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           setChatDestino={setChatDestino}
           chatEndRef={chatEndRef}
           enviarMensaje={enviarMensaje}
+          mesaFijada={mesaFijada}
+          restauranteId={session.restaurante_id}
         />
       )}
 

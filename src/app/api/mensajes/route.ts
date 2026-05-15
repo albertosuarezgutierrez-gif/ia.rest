@@ -9,14 +9,21 @@ export const dynamic = 'force-dynamic'
 
 // GET — obtiene mensajes del turno activo (últimos 50)
 export async function GET(req: NextRequest) {
+  const session = getSession(req)
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
   const turnoId = req.nextUrl.searchParams.get('turno_id')
+  const uid = session.id
 
   let q = supabase
     .from('mensajes_turno')
     .select('id,camarero_id,rol_origen,nombre_origen,rol_destino,destinatario_id,tipo,texto,mesa_ref,leido_por,created_at')
     .eq('restaurante_id', rid)
+    // Mensajes privados (destinatario_id != null): solo el emisor y el destinatario los ven
+    // Mensajes de grupo (destinatario_id = null): todos los ven
+    .or(`destinatario_id.is.null,destinatario_id.eq.${uid},camarero_id.eq.${uid}`)
     .order('created_at', { ascending: false })
     .limit(50)
 
