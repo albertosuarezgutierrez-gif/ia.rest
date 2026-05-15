@@ -424,7 +424,8 @@ export default function DiagnosticoTab({ restauranteId }: Props) {
               </div>
             )}
           </div>
-        )})
+          )
+        })}
       </Section>
 
       {/* ── Sección: Últimas comandas ── */}
