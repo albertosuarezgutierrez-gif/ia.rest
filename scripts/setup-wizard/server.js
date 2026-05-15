@@ -377,7 +377,7 @@ function startWizard() {
             const req2 = https.request(opts, res2 => { let b=''; res2.on('data',c=>b+=c); res2.on('end',()=>resolve({ status:res2.statusCode, body:JSON.parse(b||'{}') })) })
             req2.on('error',reject); req2.write(data); req2.end()
           })
-          results.push({ ip: printer.ip, ok: r.status < 400, status: r.status })
+          results.push({ ip: printer.ip, ok: r.status < 400, status: r.status, id: r.body?.id || null })
         } catch(e) { results.push({ ip: printer.ip, ok:false, error: e.message }) }
       }
       saveConfig({ printers })

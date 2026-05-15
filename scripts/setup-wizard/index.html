@@ -354,6 +354,19 @@ function buildConfigStep() {
       <div style="display:flex;gap:10px;">
         <div class="field" style="flex:1"><label>Nombre</label><input type="text" id="pn${i}" value="${p.nombre}" placeholder="Ej: Cocina caliente"/></div>
         ${seccionField}
+      </div>
+      <div style="border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:10px;font-weight:700;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase;font-family:'JetBrains Mono',monospace">Esta regla se aplica a</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_comanda_${i}" checked style="accent-color:var(--verm)"> Comandas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_cuenta_${i}" checked style="accent-color:var(--verm)"> Cuentas / tickets</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_marchar_${i}" style="accent-color:var(--verm)"> Pases (marchar)</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--fg2)"><input type="checkbox" id="pt_factura_${i}" style="accent-color:var(--verm)"> Facturas</label>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--fg3)">
+          <input type="checkbox" id="pf_${i}" style="accent-color:var(--verm)">
+          <span>Regla <strong style="color:var(--fg2)">fallback</strong> — se usa solo si ninguna otra regla coincide</span>
+        </label>
       </div>`
     c.appendChild(div)
     if (p.stability==='dynamic') {
@@ -372,7 +385,17 @@ function buildConfigStep() {
 }
 
 $('btnTest').addEventListener('click', () => {
-  S.printers.forEach((p,i) => { p.nombre=$(`pn${i}`).value.trim()||`Impresora ${i+1}`; p.seccion_id=$(`ps${i}`).value.trim() })
+  S.printers.forEach((p,i) => {
+    p.nombre = $(`pn${i}`).value.trim() || `Impresora ${i+1}`
+    p.seccion_id = $(`ps${i}`)?.value?.trim() || ''
+    const tipos = []
+    if ($(`pt_comanda_${i}`)?.checked) tipos.push('comanda')
+    if ($(`pt_cuenta_${i}`)?.checked)  tipos.push('cuenta')
+    if ($(`pt_marchar_${i}`)?.checked) tipos.push('marchar')
+    if ($(`pt_factura_${i}`)?.checked) tipos.push('factura')
+    p.tipos_ticket = tipos.length > 0 ? tipos : ['comanda','cuenta']
+    p.es_fallback  = $(`pf_${i}`)?.checked ?? false
+  })
   setStep(3); runTests()
 })
 
@@ -415,7 +438,27 @@ async function runTests() {
   $('btnYes').onclick = async () => {
     $('confirmPrint').classList.add('hidden')
     setRow('confirm','ok','Ticket recibido — ciclo completo ✓')
-    await fetch('/api/register-printers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:S.token,printers:S.printers})})
+    // Registrar impresora en ia.rest
+    const regRes = await fetch('/api/register-printers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:S.token,printers:S.printers})})
+    const regData = await regRes.json()
+    // Crear/actualizar regla de envío por cada impresora registrada
+    for (let i = 0; i < S.printers.length; i++) {
+      const p = S.printers[i]
+      const impresoraId = regData.results?.[i]?.id || null
+      if (!impresoraId) continue
+      const seccionIds = p.seccion_id ? [p.seccion_id] : []
+      await fetch('https://www.iarest.es/api/bridge/setup-regla', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          token: S.token,
+          impresora_id: impresoraId,
+          seccion_ids: seccionIds,
+          tipos_ticket: p.tipos_ticket || ['comanda','cuenta'],
+          es_fallback: p.es_fallback || false,
+        })
+      }).catch(()=>{})
+    }
     setStep(4)
   }
   $('btnNo').onclick = () => {
