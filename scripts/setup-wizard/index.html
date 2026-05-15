@@ -338,13 +338,6 @@ async function runTests() {
   hideEl('testErr')
   const p = S.printers[0]; if (!p) return
 
-  addTestRow('internet','Conexión a ia.rest')
-  setRow('internet','active','Verificando...')
-  try {
-    const r=await fetch('https://www.iarest.es/api/estado'); if(!r.ok&&r.status!==401) throw new Error(`HTTP ${r.status}`)
-    setRow('internet','ok','ia.rest accesible ✓')
-  } catch(e) { setRow('internet','fail',e.message); showTestErr('Sin conexión con ia.rest.'); return }
-
   addTestRow('tcp',`Puerto TCP ${p.port} en ${p.ip}`)
   setRow('tcp','active',`Conectando ${p.ip}:${p.port}...`)
   try {
