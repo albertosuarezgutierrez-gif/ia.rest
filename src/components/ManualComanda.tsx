@@ -30,7 +30,7 @@ const ESTADO_BORDER: Record<string,string> = {
 interface Mesa { id:string; codigo:string; zona:string; estado:string }
 interface Producto { id:string; nombre:string; precio:number|null; categoria:string; activo:boolean; seccion:string; nombre_alternativo:string[] }
 interface Formato { id:string; producto_id:string; nombre:string; precio:number; orden:number }
-interface CartItem { producto_id:string; nombre:string; cantidad:number; precio_unitario:number|null; formato_id?:string; formato_nombre?:string; seccion_id?:string }
+interface CartItem { producto_id:string; nombre:string; cantidad:number; precio_unitario:number|null; formato_id?:string; formato_nombre?:string; seccion_id?:string; notas?:string }
 interface Session { id:string; nombre:string; rol:string; restaurante_id?:string }
 
 export default function ManualComanda({
@@ -60,6 +60,7 @@ export default function ManualComanda({
   const [error, setError] = useState('')
   const [formatoPicker, setFormatoPicker] = useState<Producto|null>(null)
   const [showCart, setShowCart] = useState(false)
+  const [notaIdx, setNotaIdx] = useState<number|null>(null)  // ítem con input de nota abierto
 
   // Scroll-safe: cancela tap si el dedo se movió >6px (es scroll, no tap)
   const ptrStart = useRef<{x:number, y:number} | null>(null)
@@ -126,14 +127,14 @@ export default function ManualComanda({
       const r = await fetch('/api/comanda', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...h() },
-        body: JSON.stringify({ mesa_id: mesaId, items: cart, tipo: 'comanda' }),
+        body: JSON.stringify({ mesa_id: mesaId, items: cart.map(it => ({...it, notas: it.notas?.trim() || undefined})), tipo: 'comanda' }),
       })
       const d = await r.json()
       if (d.ok) {
         // /api/comanda ya crea print_jobs internamente — no llamar /api/marchar aquí
         setSent(true)
         onSent()
-        setTimeout(() => { setSent(false); setCart([]); setMesaId(''); setMesaSel(null); setStep('mesa'); setShowCart(false) }, 2000)
+        setTimeout(() => { setSent(false); setCart([]); setMesaId(''); setMesaSel(null); setStep('mesa'); setShowCart(false); setNotaIdx(null) }, 2000)
       } else { setError(d.error ?? 'Error') }
     } catch { setError('Error de red') }
     finally { setSending(false) }
@@ -426,23 +427,72 @@ export default function ManualComanda({
             <div style={{ flex:1, overflow:'auto', padding:'0 14px' }}>
               {cart.length === 0 ? (
                 <div style={{ padding:'12px 0', fontFamily:SE, fontSize:13, color:L.ink3, fontStyle:'italic' }}>Toca un producto para añadirlo.</div>
-              ) : cart.map((it, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderBottom:`1px solid ${L.rule}` }}>
-                  <button onPointerDown={() => updateQty(i,-1)} style={{ width:26,height:26,borderRadius:999,border:`1px solid ${L.rule}`,background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700,color:L.ink,flexShrink:0 }}>−</button>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:SN, fontSize:13, fontWeight:600, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {it.nombre}
-                      {it.formato_nombre && <span style={{ fontFamily:SM, fontSize:9, color:L.ink3, marginLeft:5 }}>{it.formato_nombre}</span>}
+              ) : cart.map((it, i) => {
+                const open = notaIdx === i
+                const tieneNota = !!it.notas?.trim()
+                return (
+                  <div key={i} style={{ borderBottom:`1px solid ${L.rule}` }}>
+                    {/* Fila principal */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0' }}>
+                      <button onPointerDown={() => updateQty(i,-1)} style={{ width:26,height:26,borderRadius:999,border:`1px solid ${L.rule}`,background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700,color:L.ink,flexShrink:0 }}>−</button>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:SN, fontSize:13, fontWeight:600, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                          {it.nombre}
+                          {it.formato_nombre && <span style={{ fontFamily:SM, fontSize:9, color:L.ink3, marginLeft:5 }}>{it.formato_nombre}</span>}
+                        </div>
+                        {/* Chip nota si tiene y está cerrado */}
+                        {tieneNota && !open && (
+                          <div style={{ display:'inline-flex', alignItems:'center', marginTop:2,
+                            background:'rgba(232,163,59,0.12)', border:`1px solid ${L.amb}`,
+                            borderRadius:20, padding:'1px 8px' }}>
+                            <span style={{ fontFamily:SN, fontSize:10, color:L.amb }}>{it.notas}</span>
+                          </div>
+                        )}
+                        {it.precio_unitario != null && (
+                          <div style={{ fontFamily:SM, fontSize:10, color:L.ink3, marginTop: tieneNota&&!open ? 2 : 0 }}>{it.precio_unitario}€ × {it.cantidad} = {(it.precio_unitario * it.cantidad).toFixed(2)}€</div>
+                        )}
+                      </div>
+                      <span style={{ fontFamily:SM, fontSize:13, fontWeight:700, color:L.ink }}>{it.cantidad}</span>
+                      <button onPointerDown={() => updateQty(i,+1)} style={{ width:26,height:26,borderRadius:999,border:`1px solid ${L.rule}`,background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700,color:L.ink,flexShrink:0 }}>+</button>
+                      {/* Botón lápiz nota */}
+                      <button
+                        onPointerDown={() => { setShowCart(true); setNotaIdx(open ? null : i) }}
+                        style={{ width:26,height:26,borderRadius:999,border:'none',flexShrink:0,cursor:'pointer',
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          background: tieneNota||open ? 'rgba(232,163,59,0.18)' : 'transparent',
+                          boxShadow: tieneNota||open ? `rgba(232,163,59,0.5) 0px 0px 0px 1px` : `rgba(200,184,154,0.5) 0px 0px 0px 1px` }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                          stroke={tieneNota||open ? L.amb : L.ink4} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                        </svg>
+                      </button>
+                      <button onPointerDown={() => removeItem(i)} style={{ width:24,height:24,borderRadius:999,border:'none',background:'none',cursor:'pointer',color:L.red,fontSize:16,lineHeight:1 }}>×</button>
                     </div>
-                    {it.precio_unitario != null && (
-                      <div style={{ fontFamily:SM, fontSize:10, color:L.ink3 }}>{it.precio_unitario}€ × {it.cantidad} = {(it.precio_unitario * it.cantidad).toFixed(2)}€</div>
+                    {/* Panel nota inline */}
+                    {open && (
+                      <div style={{ display:'flex', gap:6, alignItems:'center', paddingBottom:8 }}>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={it.notas ?? ''}
+                          onChange={e => setCart(prev => prev.map((c,j) => j===i ? {...c, notas: e.target.value} : c))}
+                          onKeyDown={e => { if (e.key === 'Enter') setNotaIdx(null) }}
+                          placeholder="en copa · sin sal · bien hecho…"
+                          style={{ flex:1, padding:'6px 10px', background:L.bg2,
+                            border:'none', boxShadow:`rgba(232,163,59,0.45) 0px 0px 0px 1.5px`,
+                            borderRadius:6, fontFamily:SN, fontSize:12, color:L.ink, outline:'none' }}
+                        />
+                        <button onPointerDown={() => setNotaIdx(null)}
+                          style={{ padding:'6px 12px', background: tieneNota ? L.amb : L.bg3,
+                            border:'none', borderRadius:6, color: tieneNota ? '#fff' : L.ink3,
+                            fontFamily:SN, fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                          {tieneNota ? '✓' : '✕'}
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <span style={{ fontFamily:SM, fontSize:13, fontWeight:700, color:L.ink }}>{it.cantidad}</span>
-                  <button onPointerDown={() => updateQty(i,+1)} style={{ width:26,height:26,borderRadius:999,border:`1px solid ${L.rule}`,background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700,color:L.ink,flexShrink:0 }}>+</button>
-                  <button onPointerDown={() => removeItem(i)} style={{ width:24,height:24,borderRadius:999,border:'none',background:'none',cursor:'pointer',color:L.red,fontSize:16,lineHeight:1 }}>×</button>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Footer envío */}
