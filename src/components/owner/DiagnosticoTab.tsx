@@ -52,6 +52,9 @@ interface ImpresoraResumen {
   configurada: boolean
   connection_type: string
   ultimo_ping: string | null
+  ip_address: string | null
+  port: number
+  mac_address: string | null
 }
 
 interface DiagnosticoData {
@@ -240,21 +243,62 @@ export default function DiagnosticoTab({ restauranteId }: Props) {
           const ping = imp.ultimo_ping ? new Date(imp.ultimo_ping).getTime() : null
           const minPing = ping ? Math.floor((Date.now() - ping) / 60000) : null
           const ok = imp.activa && imp.configurada && (imp.connection_type === 'cloudprnt' ? minPing !== null && minPing < 5 : true)
+          const ipLabel = imp.ip_address ? `${imp.ip_address}:${imp.port}` : null
+          const lastOctet = imp.ip_address ? parseInt(imp.ip_address.split('.')[3] ?? '0') : 0
+          const ipDinamica = lastOctet > 20 && lastOctet !== 100 && lastOctet !== 200 && lastOctet !== 254
           return (
-            <Row
-              key={i}
-              label={imp.nombre}
-              valor={ok ? 'Online' : !imp.activa ? 'Desactivada' : !imp.configurada ? 'Sin configurar' : 'Sin actividad reciente'}
-              detalle={
-                imp.connection_type === 'cloudprnt' && minPing !== null
-                  ? `CloudPRNT · último ping ${minPing}m`
-                  : imp.connection_type !== 'cloudprnt'
-                  ? `Bridge local (${imp.connection_type})`
-                  : imp.connection_type
-              }
-              ok={ok}
-              esAdvertencia={!imp.activa || !imp.configurada}
-            />
+            <div key={i}>
+              <Row
+                label={imp.nombre}
+                valor={ok ? 'Online' : !imp.activa ? 'Desactivada' : !imp.configurada ? 'Sin configurar' : 'Sin actividad reciente'}
+                detalle={
+                  imp.connection_type === 'cloudprnt' && minPing !== null
+                    ? `CloudPRNT · último ping ${minPing}m`
+                    : imp.connection_type !== 'cloudprnt'
+                    ? `Bridge local${ipLabel ? ` · ${ipLabel}` : ''}`
+                    : imp.connection_type
+                }
+                ok={ok}
+                esAdvertencia={!imp.activa || !imp.configurada}
+              />
+              {/* MAC + consejo IP fija */}
+              {imp.mac_address && (
+                <div style={{
+                  margin: '4px 0 8px 0',
+                  padding: '8px 12px',
+                  background: ipDinamica ? 'rgba(232,163,59,.08)' : 'rgba(63,125,68,.08)',
+                  border: `1px solid ${ipDinamica ? 'rgba(232,163,59,.25)' : 'rgba(63,125,68,.25)'}`,
+                  borderRadius: 8,
+                  display: 'flex',
+                  flexDirection: 'column' as const,
+                  gap: 3,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 12, color: C.ink2, letterSpacing: '.03em' }}>
+                      MAC: {imp.mac_address}
+                    </span>
+                    {ipLabel && (
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: C.ink4 }}>
+                        · IP: {ipLabel}
+                      </span>
+                    )}
+                  </div>
+                  {ipDinamica ? (
+                    <div style={{ fontSize: 11, color: C.amber, lineHeight: 1.4 }}>
+                      ⚠ IP dinámica — puede cambiar si el router se reinicia.{' '}
+                      <strong style={{ color: C.amber }}>
+                        Entra en tu router ({imp.ip_address?.split('.').slice(0,3).join('.')}.1) → DHCP → Reserva de IP
+                        y fija la MAC anterior a la IP {imp.ip_address}.
+                      </strong>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11, color: C.green }}>
+                      ✓ IP parece estable
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )
         })}
 

@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     // ── 5. Impresoras configuradas ────────────────────────────────
     const { data: impresoras } = await sb()
       .from('impresoras')
-      .select('id, nombre, activa, configurada, ultimo_ping, connection_type')
+      .select('id, nombre, activa, configurada, ultimo_ping, connection_type, ip_address, port, mac_address')
       .eq('restaurante_id', rid)
 
     // ── 6. Resumen del turno activo ───────────────────────────────
@@ -122,6 +122,9 @@ export async function GET(req: NextRequest) {
         configurada: imp.configurada,
         connection_type: imp.connection_type,
         ultimo_ping: imp.ultimo_ping,
+        ip_address: imp.ip_address ?? null,
+        port: imp.port ?? 9100,
+        mac_address: imp.mac_address ?? null,
       })),
     })
   } catch (err: unknown) {
