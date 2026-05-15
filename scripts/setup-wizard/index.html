@@ -506,21 +506,20 @@ $('btnInstall').addEventListener('click', async () => {
 })
 
 // FIX v2.1: "Saltar" ahora lanza el bridge igualmente (sin autostart)
-$('btnSkip').addEventListener('click', async () => {
-  try {
-    await fetch('/api/launch-bridge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:S.token})})
-  } catch {}
-  showDone(false)
-})
+$('btnSkip').addEventListener('click', () => showDone(false))
 
 // ── PASO 5: Listo ─────────────────────────────────────────────
 // FIX v2.1: muestra estado del bridge en tiempo real
 function showDone(withAutostart) {
   const n=S.printers.length
   $('doneTitle').textContent=`${S.restaurantName} está listo.`
-  $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · Bridge ${withAutostart?'con inicio automático':'activo'}`
+  if (withAutostart) {
+    $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · El bridge arrancará automáticamente al encender el PC`
+  } else {
+    $('doneSub').textContent=`${n} impresora${n!==1?'s':''} configurada${n!==1?'s':''} · Instala el inicio automático para que el bridge arranque solo`
+  }
   setStep(5)
-  pollBridgeStatus()
+  if (withAutostart) pollBridgeStatus()
 }
 
 // Verifica que el bridge ya está haciendo ping a ia.rest

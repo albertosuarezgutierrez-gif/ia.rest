@@ -88,7 +88,7 @@ async function runPreflightChecks() {
   const ip = getLocalIP()
   results.push({ id: 'network', label: 'Red local detectada', ok: true, detail: ip, hint: null })
 
-  // FIX v2.1: incluir prevToken para auto-rellenar en el frontend
+  // Instalación previa: informar pero NO devolver token por HTTP (evita flag antivirus)
   const cfg = loadConfig()
   if (cfg.token && cfg.printers?.length > 0) {
     results.push({
@@ -96,7 +96,6 @@ async function runPreflightChecks() {
       ok: true, isWarning: true,
       detail: `${cfg.printers.length} impresora(s) ya configurada(s)`,
       hint: 'Puedes reconfigurar o continuar con la configuración existente.',
-      prevToken: cfg.token,
     })
   }
   return results
@@ -183,30 +182,25 @@ function installAutostart(token) {
     exec(cmd, { timeout: 5000 }, err => {
       if (err) return resolve({ ok: false, error: err.message })
       saveConfig({ token, autostartPath: batPath })
-      exec(`"${batPath}"`, (e) => {
-        if (e) console.warn('[Wizard] Arranque inmediato fallido (arrancará al login):', e.message)
-        else console.log('[Wizard] Bridge lanzado via bat ✓')
-      })
-      resolve({ ok: true })
+      console.log('[Wizard] Autostart registrado. El bridge arrancará al próximo login.')
+      resolve({ ok: true, batPath })
     })
   })
 }
 
-// ── Lanzar bridge directamente (sin autostart) ────────────────
+// ── launchBridgeNow: solo confirma que el bat está listo ────────
+// El arranque real lo hace el usuario desde el botón del wizard
 function launchBridgeNow(token) {
   try {
     const batPath = path.join(CFG_DIR, 'iarest-bridge.bat')
-    if (fs.existsSync(batPath)) {
-      exec(`"${batPath}"`)
-      return { ok: true }
+    if (!fs.existsSync(batPath)) {
+      const exePath = process.execPath
+      const bat = [`@echo off`, `set BRIDGE_TOKEN=${token}`, `set IAREST_API=${API}`, `start /B "" "${exePath}" --bridge`].join('\r\n')
+      try { fs.mkdirSync(CFG_DIR, { recursive: true }) } catch {}
+      fs.writeFileSync(batPath, bat)
+      saveConfig({ token })
     }
-    const exePath = process.execPath
-    const bat = [`@echo off`, `set BRIDGE_TOKEN=${token}`, `set IAREST_API=${API}`, `start /B "" "${exePath}" --bridge`].join('\r\n')
-    try { fs.mkdirSync(CFG_DIR, { recursive: true }) } catch {}
-    fs.writeFileSync(batPath, bat)
-    saveConfig({ token })
-    exec(`"${batPath}"`)
-    return { ok: true }
+    return { ok: true, batPath }
   } catch (e) {
     return { ok: false, error: e.message }
   }
