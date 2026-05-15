@@ -110,6 +110,25 @@ export default function DiagnosticoTab({ restauranteId }: Props) {
   const [cargando, setCargando] = useState(true)
   const [error, setError]     = useState<string | null>(null)
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null)
+  const [activandoBridge, setActivandoBridge] = useState<Record<string, 'idle'|'activando'|'ok'|'nolocal'>>({})
+
+  const activarBridge = useCallback(async (nombre: string) => {
+    setActivandoBridge(prev => ({ ...prev, [nombre]: 'activando' }))
+    try {
+      const res = await fetch('http://localhost:47801/ping', {
+        method: 'POST',
+        signal: AbortSignal.timeout(3000),
+      })
+      if (res.ok) {
+        setActivandoBridge(prev => ({ ...prev, [nombre]: 'ok' }))
+        setTimeout(() => cargar(), 4000)
+      } else {
+        setActivandoBridge(prev => ({ ...prev, [nombre]: 'nolocal' }))
+      }
+    } catch {
+      setActivandoBridge(prev => ({ ...prev, [nombre]: 'nolocal' }))
+    }
+  }, [cargar])
 
   const cargar = useCallback(async () => {
     try {
@@ -313,45 +332,99 @@ export default function DiagnosticoTab({ restauranteId }: Props) {
         })}
 
         {/* Bridge tokens */}
-        {bridge.tokens.map((b, i) => (
-          <Row
-            key={i}
-            label={`Bridge: ${b.nombre}`}
-            valor={
-              b.estado === 'online' ? 'Conectado' :
-              b.estado === 'advertencia' ? `Sin ping desde hace ${b.minutos_desde_ping}m` :
-              b.estado === 'offline' ? `Desconectado (${b.minutos_desde_ping}m sin señal)` :
-              'Sin actividad'
-            }
-            detalle={
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>
-                  {b.estado === 'offline'
-                    ? 'Comprueba que el PC/tablet con el bridge está encendido y conectado a la red'
-                    : b.ultimo_ping
-                    ? `Último contacto ${relativo(b.ultimo_ping)}`
-                    : 'Nunca se ha conectado'}
-                </span>
-                {b.bridge_version && (
-                  <span style={{
-                    fontFamily: SM,
-                    fontSize: 10,
-                    padding: '1px 6px',
-                    borderRadius: 4,
-                    background: b.ok ? C.greenS : C.amberS,
-                    color: b.ok ? C.green : C.amberD,
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    v{b.bridge_version}
+        {bridge.tokens.map((b, i) => {
+          const bEstado = activandoBridge[b.nombre]
+          const mostrarBoton = (b.estado === 'offline' || b.estado === 'sin_actividad') && bEstado !== 'ok'
+          return (
+          <div key={i}>
+            <Row
+              label={`Bridge: ${b.nombre}`}
+              valor={
+                b.estado === 'online' ? 'Conectado' :
+                b.estado === 'advertencia' ? `Sin ping desde hace ${b.minutos_desde_ping}m` :
+                b.estado === 'offline' ? `Desconectado (${b.minutos_desde_ping}m sin señal)` :
+                'Sin actividad'
+              }
+              detalle={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>
+                    {b.estado === 'offline'
+                      ? 'Comprueba que el PC/tablet con el bridge está encendido y conectado a la red'
+                      : b.ultimo_ping
+                      ? `Último contacto ${relativo(b.ultimo_ping)}`
+                      : 'Nunca se ha conectado'}
                   </span>
+                  {b.bridge_version && (
+                    <span style={{
+                      fontFamily: SM,
+                      fontSize: 10,
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: b.ok ? C.greenS : C.amberS,
+                      color: b.ok ? C.green : C.amberD,
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      v{b.bridge_version}
+                    </span>
+                  )}
+                </span>
+              }
+              ok={b.ok}
+              esAdvertencia={b.estado === 'advertencia'}
+            />
+            {/* Botón activar bridge — solo visible desde el PC con el bridge */}
+            {mostrarBoton && (
+              <div style={{ margin: '4px 0 12px 17px' }}>
+                <button
+                  onClick={() => activarBridge(b.nombre)}
+                  disabled={bEstado === 'activando'}
+                  style={{
+                    fontFamily: SN, fontSize: 12, fontWeight: 600,
+                    background: bEstado === 'activando' ? C.paper3 : C.red,
+                    color: bEstado === 'activando' ? C.ink4 : '#fff',
+                    border: 'none', borderRadius: 6,
+                    padding: '7px 16px', cursor: bEstado === 'activando' ? 'default' : 'pointer',
+                    transition: 'background .15s',
+                  }}
+                >
+                  {bEstado === 'activando' ? 'Conectando…' : '⏻ Activar Bridge'}
+                </button>
+                {bEstado === 'nolocal' && (
+                  <div style={{
+                    marginTop: 8,
+                    padding: '10px 14px',
+                    background: C.amberS,
+                    border: `1px solid ${C.amber}`,
+                    borderRadius: 6,
+                    maxWidth: 420,
+                  }}>
+                    <div style={{ fontFamily: SN, fontWeight: 600, fontSize: 12, color: C.amberD, marginBottom: 3 }}>
+                      El bridge no está ejecutándose en este PC
+                    </div>
+                    <div style={{ fontFamily: SN, fontSize: 12, color: C.ink2, lineHeight: 1.5 }}>
+                      Este botón solo funciona desde el PC donde está instalado el bridge.
+                      Si estás en ese PC, ábrelo desde el <strong>Menú Inicio → ia.rest Bridge</strong>,
+                      o reinstálalo desde{' '}
+                      <a href="/descargar" target="_blank" style={{ color: C.red, textDecoration: 'underline' }}>
+                        iarest.es/descargar
+                      </a>.
+                    </div>
+                  </div>
                 )}
-              </span>
-            }
-            ok={b.ok}
-            esAdvertencia={b.estado === 'advertencia'}
-          />
-        ))}
+                {bEstado === 'ok' && (
+                  <div style={{
+                    marginTop: 8, display: 'flex', alignItems: 'center', gap: 6,
+                    fontFamily: SN, fontSize: 12, color: C.green,
+                  }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
+                    Bridge respondiendo — actualizando estado en 4 segundos…
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )})
       </Section>
 
       {/* ── Sección: Últimas comandas ── */}

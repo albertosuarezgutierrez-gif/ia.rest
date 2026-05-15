@@ -291,10 +291,63 @@ async function poll() {
   }
 }
 
+// ── Servidor de gestión local (localhost:47801) ───────────────
+// Permite al panel web activar/reiniciar el bridge desde el mismo PC
+const MGMT_PORT = parseInt(process.env.MGMT_PORT || '47801', 10)
+const ALLOWED_ORIGIN = process.env.MGMT_ORIGIN || 'https://www.iarest.es'
+
+const mgmtServer = http.createServer((req, res) => {
+  const remoteAddr = req.socket.remoteAddress
+  const isLocal = remoteAddr === '127.0.0.1' || remoteAddr === '::1' || remoteAddr === '::ffff:127.0.0.1'
+  if (!isLocal) { res.writeHead(403); res.end('Forbidden'); return }
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json',
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, corsHeaders); res.end(); return
+  }
+
+  const url = req.url?.split('?')[0] || '/'
+
+  if (url === '/status' && req.method === 'GET') {
+    res.writeHead(200, corsHeaders)
+    res.end(JSON.stringify({ ok: true, version: VERSION, uptime: process.uptime(), running }))
+    return
+  }
+
+  if (url === '/ping' && req.method === 'POST') {
+    log('info', 'Activación remota desde el panel web — forzando poll...')
+    poll().catch(() => {})
+    res.writeHead(200, corsHeaders)
+    res.end(JSON.stringify({ ok: true, message: 'Poll forzado' }))
+    return
+  }
+
+  res.writeHead(404, corsHeaders)
+  res.end(JSON.stringify({ error: 'Not found' }))
+})
+
+mgmtServer.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    log('warn', `Puerto de gestión ${MGMT_PORT} ya en uso — otro bridge activo`)
+  } else {
+    log('warn', `Servidor gestión: ${err.message}`)
+  }
+})
+
 // ── Arranque ──────────────────────────────────────────────────
 console.log(`${C.bold}[ia.rest Bridge] v${VERSION} · token: ${TOKEN.slice(0,8)}...${C.reset}`)
 console.log(`${C.gray}API: ${API}${C.reset}`)
 console.log('')
+
+mgmtServer.listen(MGMT_PORT, '127.0.0.1', () => {
+  log('ok', `Servidor de gestión local en puerto ${MGMT_PORT}`)
+})
 
 discover().then(() => {
   log('ok', 'Bridge listo. Esperando jobs...')
