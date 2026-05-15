@@ -175,21 +175,32 @@ function installAutostart(token) {
   return new Promise(resolve => {
     try { fs.mkdirSync(CFG_DIR, { recursive: true }) } catch {}
     const exePath = process.execPath
+    const vbsPath = path.join(CFG_DIR, 'launch-bridge.vbs')
     const batPath = path.join(CFG_DIR, 'iarest-bridge.bat')
-    const bat = [`@echo off`, `set BRIDGE_TOKEN=${token}`, `set IAREST_API=${API}`, `start "" /B /WAIT:no "${exePath}" --bridge`].join('\r\n')
+
+    // VBS launcher: wscript crea procesos independientes del Job Object del wizard
+    // El bridge sobrevive al cerrar el wizard — no queda vinculado al proceso padre
+    const vbs = [
+      `Set oShell = CreateObject("WScript.Shell")`,
+      `oShell.Environment("Process")("BRIDGE_TOKEN") = "${token}"`,
+      `oShell.Environment("Process")("IAREST_API") = "${API}"`,
+      `oShell.Run chr(34) & "${exePath}" & chr(34) & " --bridge", 0, False`,
+    ].join('\r\n')
+    fs.writeFileSync(vbsPath, vbs)
+
+    // Bat de fallback
+    const bat = [`@echo off`, `set BRIDGE_TOKEN=${token}`, `set IAREST_API=${API}`, `start "" /B "${exePath}" --bridge`].join('\r\n')
     fs.writeFileSync(batPath, bat)
-    const cmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "iarest-bridge" /t REG_SZ /d "${batPath}" /f`
+
+    // Autostart apunta al VBS
+    const cmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "iarest-bridge" /t REG_SZ /d "wscript.exe \"\"${vbsPath}\"\""  /f`
     exec(cmd, { timeout: 5000 }, err => {
       if (err) return resolve({ ok: false, error: err.message })
-      saveConfig({ token, autostartPath: batPath })
-      console.log('[Wizard] Autostart registrado. El bridge arrancará al próximo login.')
-      // Añadir excepción en Windows Defender para que no bloquee el bridge al reiniciar
+      saveConfig({ token, autostartPath: vbsPath })
       const exclCmd = `powershell -NoProfile -NonInteractive -Command "Add-MpPreference -ExclusionPath '${CFG_DIR}' -ErrorAction SilentlyContinue"`
-      exec(exclCmd, { timeout: 8000 }, (err) => {
-        if (err) console.warn('[Wizard] No se pudo añadir excepción Defender (no crítico):', err.message)
-        else console.log('[Wizard] Excepción Windows Defender añadida para', CFG_DIR)
-      })
-      resolve({ ok: true, batPath, cfgDir: CFG_DIR })
+      exec(exclCmd, { timeout: 8000 }, () => {})
+      console.log('[Wizard] Autostart registrado via VBS launcher.')
+      resolve({ ok: true, batPath: vbsPath, cfgDir: CFG_DIR })
     })
   })
 }
@@ -198,21 +209,26 @@ function installAutostart(token) {
 // Se llama solo por acción explícita del usuario (no automático al instalar)
 function launchBridgeNow(token) {
   try {
-    const batPath = path.join(CFG_DIR, 'iarest-bridge.bat')
-    // Crear el bat si no existe
-    if (!fs.existsSync(batPath)) {
-      const exePath = process.execPath
-      const bat = [`@echo off`, `set BRIDGE_TOKEN=${token}`, `set IAREST_API=${API}`, `start "" /B /WAIT:no "${exePath}" --bridge`].join('\r\n')
+    const exePath = process.execPath
+    const vbsPath = path.join(CFG_DIR, 'launch-bridge.vbs')
+    // Crear VBS si no existe
+    if (!fs.existsSync(vbsPath)) {
+      const vbs = [
+        `Set oShell = CreateObject("WScript.Shell")`,
+        `oShell.Environment("Process")("BRIDGE_TOKEN") = "${token}"`,
+        `oShell.Environment("Process")("IAREST_API") = "${API}"`,
+        `oShell.Run chr(34) & "${exePath}" & chr(34) & " --bridge", 0, False`,
+      ].join('\r\n')
       try { fs.mkdirSync(CFG_DIR, { recursive: true }) } catch {}
-      fs.writeFileSync(batPath, bat)
+      fs.writeFileSync(vbsPath, vbs)
       saveConfig({ token })
     }
-    // Ejecutar el bat — acción iniciada por el usuario
-    exec(`"${batPath}"`, (err) => {
-      if (err) console.warn('[Bridge] Error al arrancar:', err.message)
-      else console.log('[Bridge] Arrancado via bat ✓')
+    // Lanzar via wscript — proceso verdaderamente independiente
+    exec(`wscript.exe "${vbsPath}"`, (err) => {
+      if (err) console.warn('[Bridge] Error al arrancar via VBS:', err.message)
+      else console.log('[Bridge] Arrancado via VBS ✓')
     })
-    return { ok: true, batPath }
+    return { ok: true, batPath: vbsPath }
   } catch (e) {
     return { ok: false, error: e.message }
   }
