@@ -165,7 +165,15 @@
       <strong style="color:#8ab0d8">Siguiente paso —</strong> entra en el panel como propietario y configura qué comandas van a cada impresora:<br>
       <strong style="color:#8ab0d8;font-family:'JetBrains Mono',monospace;font-size:11px">Owner → Flujos de trabajo</strong>
     </div>
-    <button class="btn" id="btnOpen">Abrir panel ia.rest →</button>
+    <!-- Botón para arrancar el bridge manualmente -->
+    <div id="startBridgeSection" style="width:100%;display:flex;flex-direction:column;gap:10px;">
+      <div class="check-row" id="bridgeLaunchRow">
+        <div class="check-icon" id="bridgeLaunchIcon">●</div>
+        <div><div class="check-name">Bridge de impresoras</div><div class="check-detail" id="bridgeLaunchDetail">Pulsa el botón para arrancarlo ahora mismo</div></div>
+      </div>
+      <button class="btn" id="btnStartBridge" style="background:var(--gr)">▶ Iniciar bridge ahora</button>
+    </div>
+    <button class="btn" id="btnOpen" style="background:var(--bg3);color:var(--fg3)">Abrir panel ia.rest →</button>
   </div>
 
 </div>
@@ -529,6 +537,53 @@ function copyPath() {
   })
 }
 $('btnOpen').addEventListener('click', () => window.open('https://www.iarest.es/owner','_blank'))
+
+$('btnStartBridge').addEventListener('click', async () => {
+  $('btnStartBridge').disabled = true
+  $('btnStartBridge').textContent = 'Arrancando...'
+  $('bridgeLaunchRow').className = 'check-row active'
+  $('bridgeLaunchIcon').textContent = '●'
+  try {
+    const r = await fetch('/api/launch-bridge', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({token: S.token})
+    })
+    const d = await r.json()
+    if (d.ok) {
+      $('bridgeLaunchRow').className = 'check-row active'
+      $('bridgeLaunchDetail').textContent = 'Bridge arrancado — comprobando conexión...'
+      // Esperar y verificar que el bridge hace ping
+      setTimeout(async () => {
+        try {
+          const r2 = await fetch('https://www.iarest.es/api/bridge/verify', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({token: S.token, checkPing: true})
+          })
+          const d2 = await r2.json()
+          if (d2.connected) {
+            $('bridgeLaunchRow').className = 'check-row ok'
+            $('bridgeLaunchIcon').textContent = '✓'
+            $('bridgeLaunchDetail').textContent = 'Bridge conectado y recibiendo comandas ✓'
+            $('btnOpen').style.background = 'var(--verm)'
+            $('btnOpen').style.color = 'var(--fg)'
+            $('btnStartBridge').style.display = 'none'
+          } else {
+            $('bridgeLaunchDetail').textContent = 'Tardando más de lo esperado — comprueba el Diagnóstico en el panel'
+          }
+        } catch {}
+      }, 6000)
+    } else {
+      throw new Error(d.error || 'No se pudo arrancar')
+    }
+  } catch(e) {
+    $('bridgeLaunchRow').className = 'check-row fail'
+    $('bridgeLaunchIcon').textContent = '✗'
+    $('bridgeLaunchDetail').textContent = 'Error: ' + e.message + ' — ejecuta iarest-bridge.bat manualmente'
+    $('btnStartBridge').disabled = false
+    $('btnStartBridge').textContent = 'Reintentar'
+  }
+})
 
 function showErr(id, msg) { const e=$(id); e.textContent=msg; e.classList.remove('hidden') }
 function hideEl(id) { $(id).classList.add('hidden') }

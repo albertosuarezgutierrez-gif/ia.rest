@@ -194,11 +194,12 @@ function installAutostart(token) {
   })
 }
 
-// ── launchBridgeNow: solo confirma que el bat está listo ────────
-// El arranque real lo hace el usuario desde el botón del wizard
+// ── launchBridgeNow: arranca el bridge cuando el usuario pulsa el botón ──
+// Se llama solo por acción explícita del usuario (no automático al instalar)
 function launchBridgeNow(token) {
   try {
     const batPath = path.join(CFG_DIR, 'iarest-bridge.bat')
+    // Crear el bat si no existe
     if (!fs.existsSync(batPath)) {
       const exePath = process.execPath
       const bat = [`@echo off`, `set BRIDGE_TOKEN=${token}`, `set IAREST_API=${API}`, `start /B "" "${exePath}" --bridge`].join('\r\n')
@@ -206,6 +207,11 @@ function launchBridgeNow(token) {
       fs.writeFileSync(batPath, bat)
       saveConfig({ token })
     }
+    // Ejecutar el bat — acción iniciada por el usuario
+    exec(`"${batPath}"`, (err) => {
+      if (err) console.warn('[Bridge] Error al arrancar:', err.message)
+      else console.log('[Bridge] Arrancado via bat ✓')
+    })
     return { ok: true, batPath }
   } catch (e) {
     return { ok: false, error: e.message }
