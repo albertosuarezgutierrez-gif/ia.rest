@@ -1018,7 +1018,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     const abortCtrl = new AbortController()
     abortFetchRef.current = abortCtrl
     try {
-      const r = await fetch('/api/transcribe', {method:'POST', body:fd, signal:abortCtrl.signal})
+      const r = await fetch('/api/transcribe', {method:'POST', body:fd, signal:abortCtrl.signal, headers:{'x-ia-session':localStorage.getItem('ia_rest_session')??''}})
       const d = await r.json()
       if (d.ok) {
         setTranscript(d.texto); setBrain(d.brain); brainRef.current = d.brain; setLatencia(d.latencia_ms)
@@ -2387,6 +2387,7 @@ function VoiceProfileSection({ session }: { session: { id: string; restaurante_i
   const resetPerfil = async () => {
     await fetch(`/api/voice-profile/reset?camarero_id=${session.id}`, {
       method: 'DELETE',
+      headers: { 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' },
     })
     setEstado('sin_calibrar')
     setFrases(0)
