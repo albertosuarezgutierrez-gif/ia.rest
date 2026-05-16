@@ -117,7 +117,7 @@ async function buildZonasContext(restaurante_id?: string): Promise<string> {
 }
 
 // ── FIX: prefijos corregidos para coincidir con la BD real ──────────────────
-// T = salón           (mesas T01-T12)
+// T = salón           (mesas T1-T12)
 // P = terraza         (mesas P01-P04)
 // B = barra           (mesas B01-B03)
 // ────────────────────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ NOTAS DE COMANDA (nota_general e item notas):
 - "nota [sección: barra/cocina/fríos/postres/sala] ..." → notas de todos los items que van a esa sección
 - Si la referencia no coincide con ningún producto ni sección → nota_general por defecto
 - Ejemplos:
-  - "dos cañas y patatas bravas a la T01, nota patatas sin salsa" → items[patatas].notas="sin salsa", nota_general:null
+  - "dos cañas y patatas bravas a la T1, nota patatas sin salsa" → items[patatas].notas="sin salsa", nota_general:null
   - "mesa cuatro dos cañas un entrecot, nota todo sin sal" → nota_general="sin sal"
   - "tres cañas a la barra, nota barra en copa" → items[cañas].notas="en copa"
   - "dos vinos y croquetas mesa tres, nota cliente celíaca al gluten" → nota_general="cliente celíaca al gluten"

@@ -19,7 +19,7 @@ FRASES QUE DEBES ENTENDER (ejemplos):
 - "sale todo S4" → S4
 - "listo mesa doce" → S12
 - "sale la ocho" → S8
-- "barra dos lista" → B02
+- "barra dos lista" → B2
 - "pasa terraza cinco" → P05
 - "listo todo la quince" → T15
 - "sale mesa siete" → S7

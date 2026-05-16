@@ -211,11 +211,36 @@ function PttButton({
 }
 
 function KDSInner() {
-  const { session, checking } = useAuth(['jefe_sala', 'cocina', 'super_admin'])
   const searchParams = useSearchParams()
+  const paramToken   = searchParams.get('token')
   const paramSeccion = searchParams.get('seccion')
 
-  const seccionFiltro = paramSeccion ?? session?.seccion_id ?? null
+  const { session: _pinSession, checking: _pinChecking } = useAuth(paramToken ? [] as never[] : ['jefe_sala', 'cocina', 'super_admin'])
+
+  // Si hay ?token= en URL, sobreescribir la sesión con la del token (pantalla permanente sin login)
+  const [tokenSession, setTokenSession] = useState<import('@/hooks/useAuth').Session | null>(null)
+  const [tokenReady, setTokenReady]     = useState(false)
+
+  useEffect(() => {
+    if (!paramToken) { setTokenReady(true); return }
+    fetch(`/api/kds/validate-token?token=${paramToken}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.session) {
+          localStorage.setItem('ia_rest_session', JSON.stringify(d.session))
+          setTokenSession(d.session)
+        } else {
+          window.location.href = '/login'
+        }
+      })
+      .catch(() => { window.location.href = '/login' })
+      .finally(() => setTokenReady(true))
+  }, [paramToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const effectiveSession  = paramToken ? tokenSession  : _pinSession
+  const effectiveChecking = paramToken ? !tokenReady   : _pinChecking
+
+  const seccionFiltro = paramSeccion ?? effectiveSession?.seccion_id ?? null
 
   const [comandas, setComandasState] = useState<Comanda[]>([])
   const [secciones, setSecciones] = useState<Seccion[]>([])
@@ -233,7 +258,7 @@ function KDSInner() {
   const [runningPorZona, setRunningPorZona] = useState<Record<string, string>>({})
 
   const fetchRunnings = useCallback(async () => {
-    if (!session) return
+    if (!effectiveSession) return
     try {
       const res = await fetch('/api/owner/running-zonas', {
         headers: { 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' },
@@ -255,17 +280,17 @@ function KDSInner() {
       }
       setRunningPorZona(map)
     } catch { /* silencioso */ }
-  }, [session])
+  }, [effectiveSession])
 
   const fetchSecciones = useCallback(async () => {
-    if (!session) return
+    if (!effectiveSession) return
     const { data } = await supabase
       .from('secciones_cocina')
       .select('id,nombre,color_kds')
-      .eq('restaurante_id', session.restaurante_id)
+      .eq('restaurante_id', effectiveSession.restaurante_id)
       .order('orden', { ascending: true })
     if (data) setSecciones(data)
-  }, [session])
+  }, [effectiveSession])
 
   const beep = useCallback(() => {
     try {
@@ -284,11 +309,11 @@ function KDSInner() {
   }, [])
 
   const fetchData = useCallback(async () => {
-    if (!session) return
+    if (!effectiveSession) return
     const { data } = await supabase
       .from('comandas')
       .select('*,mesa:mesas(codigo,nombre),camarero:camareros(nombre),items:comanda_items(*)')
-      .eq('restaurante_id', session.restaurante_id)
+      .eq('restaurante_id', effectiveSession.restaurante_id)
       .in('tipo', ['comanda', 'marchar'])
       .in('estado', ['nueva', 'en_cocina'])
       .order('created_at', { ascending: true })
@@ -300,30 +325,30 @@ function KDSInner() {
       prevCountRef.current = newCount
       setComandasState(data as unknown as Comanda[])
     }
-  }, [session, sonidoOn, beep])
+  }, [effectiveSession, sonidoOn, beep])
 
   useEffect(() => {
-    if (!session) return
+    if (!effectiveSession) return
     fetchSecciones()
     fetchData()
     fetchRunnings()
     // Refrescar runnings cada 30s (pueden cambiar de zonas)
     const r = setInterval(fetchRunnings, 30000)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ch = (supabase.channel(`kds-${session.restaurante_id}`) as any)
+    const ch = (supabase.channel(`kds-${effectiveSession.restaurante_id}`) as any)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comanda_items' }, fetchData)
       .subscribe()
     const t = setInterval(() => { fetchData(); setTime(new Date()) }, 5000)
     const c = setInterval(() => setTime(new Date()), 1000)
     return () => { supabase.removeChannel(ch); clearInterval(t); clearInterval(c); clearInterval(r) }
-  }, [session, fetchData, fetchSecciones, fetchRunnings])
+  }, [effectiveSession, fetchData, fetchSecciones, fetchRunnings])
 
   const toggle = async (itemId: string, estado: string) => {
     await supabase.from('comanda_items')
       .update({ estado: estado === 'listo' ? 'pendiente' : 'listo' })
       .eq('id', itemId)
-      .eq('restaurante_id', session!.restaurante_id)
+      .eq('restaurante_id', effectiveSession!.restaurante_id)
     fetchData()
   }
 
@@ -381,7 +406,7 @@ function KDSInner() {
 
   const seccionActiva = secciones.find(s => s.id === seccionFiltro)
   const colorSeccion = seccionActiva?.color_kds ?? K.gr
-  const esAdmin = session?.rol === 'jefe_sala' || session?.rol === 'super_admin'
+  const esAdmin = effectiveSession?.rol === 'jefe_sala' || effectiveSession?.rol === 'super_admin'
 
   const handleMensajeNuevoKds = useCallback((m: import('@/hooks/useMensajes').Mensaje) => {
     setBannerMensaje({ texto: m.texto, origen: m.nombre_origen ?? m.rol_origen })
@@ -389,9 +414,9 @@ function KDSInner() {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { mensajes, noLeidos, enviar: enviarMensaje, marcarLeido: marcarMensajeLeido } =
-    useMensajes(session?.restaurante_id ?? '', session?.id ?? '', session?.rol ?? 'cocina', undefined, handleMensajeNuevoKds)
+    useMensajes(effectiveSession?.restaurante_id ?? '', effectiveSession?.id ?? '', effectiveSession?.rol ?? 'cocina', undefined, handleMensajeNuevoKds)
 
-  if (checking || !session) return <div style={{ minHeight: '100dvh', background: K.bg }} />
+  if (effectiveChecking || !effectiveSession) return <div style={{ minHeight: '100dvh', background: K.bg }} />
 
   return (
     <>
@@ -459,10 +484,10 @@ function KDSInner() {
             ))}
           </div>
           <span style={{ fontFamily:SM, fontSize:16, fontWeight:700, color:K.fg }}>{time.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>
-          <SugerenciaButton session={session} tema="dark" variant="inline" />
+          <SugerenciaButton session={effectiveSession} tema="dark" variant="inline" />
           {/* Botón chat con badge */}
           <button
-            onClick={() => { setChatAbierto(v => !v); if (!chatAbierto) mensajes.filter(m => !m.leido_por?.includes(session.id)).forEach(m => marcarMensajeLeido(m.id)) }}
+            onClick={() => { setChatAbierto(v => !v); if (!chatAbierto) mensajes.filter(m => !m.leido_por?.includes(effectiveSession!.id)).forEach(m => marcarMensajeLeido(m.id)) }}
             title="Mensajes"
             style={{ position:'relative', cursor:'pointer', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', background: chatAbierto ? K.red : 'transparent', border:`1px solid ${chatAbierto ? K.red : K.rule}`, borderRadius:6, color: chatAbierto ? '#fff' : K.fg3, flexShrink:0 }}
           >
@@ -817,7 +842,7 @@ function KDSInner() {
 
       <PttButton
         seccionId={seccionFiltro}
-        session={session}
+        session={effectiveSession}
         onConfirmed={handleVozConfirmada}
       />
 
@@ -886,7 +911,7 @@ function KDSInner() {
               </div>
             )}
             {mensajes.map(m => {
-              const esMio = m.camarero_id === session.id
+              const esMio = m.camarero_id === effectiveSession?.id
               const rolColor = ({ camarero: K.tl, cocina: K.red, jefe_sala: K.amb, running: K.gr } as Record<string,string>)[m.rol_origen] ?? K.fg3
               const rolLabel = ({ camarero: 'Sala', cocina: 'Cocina', jefe_sala: 'Jefe', running: 'Running' } as Record<string,string>)[m.rol_origen] ?? m.rol_origen
               return (
