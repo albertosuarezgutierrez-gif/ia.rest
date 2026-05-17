@@ -1,74 +1,56 @@
 'use client'
 
 // ia.rest · src/components/SystemHealth.tsx
-// Panel de salud del sistema para /super — monitorización de errores en tiempo real
+// Panel de monitorización — usa tabla incidencias_sistema
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-const createClientComponentClient = () => createClient(
+const sb = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// ── Paleta (igual que super/page.tsx) ────────────────────────────────────────
 const C = {
   bg: '#F6F1E7', bg2: '#EFE7D6', bg3: '#E5DAC2', ink: '#1A1714',
   ink2: '#3A332C', ink3: '#6B5F52', ink4: '#9A8D7C',
-  rule: '#D8CDB6', ruleS: '#B8A98B',
-  red: '#D9442B', redD: '#A8311E', redS: '#F4D8CF',
+  rule: '#D8CDB6',
+  red: '#D9442B', redS: '#F4D8CF',
   green: '#3F7D44', greenS: '#D4E4D2',
   amber: '#E8A33B', amberS: '#FAF0DC',
-  dark: '#14110E',
 }
 const SE = "'Newsreader',Georgia,serif"
 const SN = "'Inter Tight',system-ui,sans-serif"
 const SM = "'JetBrains Mono',ui-monospace,monospace"
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-type Nivel = 'info' | 'warning' | 'critical'
-type Categoria =
-  | 'ear' | 'brain' | 'courier' | 'vox' | 'auth'
-  | 'stripe' | 'verifactu' | 'push' | 'edge' | 'db' | 'system'
+type Nivel = 'info' | 'aviso' | 'critico' | 'resuelto' | 'todos'
 
-interface ResumenRow {
-  nivel: Nivel
-  categoria: Categoria
-  total: number
-  pendientes: number
-  resueltos: number
-  ultimo_error: string
-  ultima_hora: number
-}
-
-interface ErrorRow {
-  id: string
-  nivel: Nivel
-  categoria: Categoria
-  mensaje: string
-  funcion_origen: string | null
-  restaurante_id: string | null
-  contexto: Record<string, unknown> | null
-  resuelto: boolean
-  resuelto_at: string | null
-  resuelto_por: string | null
-  notas_resolucion: string | null
-  created_at: string
+interface Incidencia {
+  id: string; tipo: string; modulo: string; nivel: string
+  mensaje: string; detalle: Record<string, unknown> | null
+  restaurante_id: string | null; resuelta: boolean
+  auto_resuelta: boolean; resuelta_at: string | null
+  resuelta_por: string | null; created_at: string
   restaurantes?: { nombre: string } | null
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const NIVEL_CONFIG: Record<Nivel, { label: string; color: string; bg: string; dot: string }> = {
-  critical: { label: 'CRÍTICO', color: C.red,   bg: C.redS,   dot: C.red   },
-  warning:  { label: 'AVISO',   color: C.amber, bg: C.amberS, dot: C.amber },
-  info:     { label: 'INFO',    color: C.ink3,  bg: C.bg2,    dot: C.ink4  },
+interface ResumenModulo {
+  modulo: string; nivel: string; pendientes: number
+  auto_resueltas: number; total: number; ultima_incidencia: string
 }
 
-const CAT_LABEL: Record<Categoria, string> = {
-  ear: 'EAR / Voz', brain: 'BRAIN / IA', courier: 'COURIER / Rutas',
-  vox: 'VOX / TTS', auth: 'Auth', stripe: 'Stripe',
-  verifactu: 'VeriFactu', push: 'Push', edge: 'Edge Fn',
-  db: 'Base de datos', system: 'Sistema',
+const NIVEL_CFG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
+  critico:  { label: 'CRÍTICO', color: C.red,   bg: C.redS,   dot: C.red   },
+  aviso:    { label: 'AVISO',   color: C.amber, bg: C.amberS, dot: C.amber },
+  info:     { label: 'INFO',    color: C.ink3,  bg: C.bg2,    dot: C.ink4  },
+  resuelto: { label: 'OK',      color: C.green, bg: C.greenS, dot: C.green },
+}
+
+const MODULO_LABEL: Record<string, string> = {
+  comanda: '🍽️ Comanda', cobro: '💳 Cobro', bridge: '🖨️ Bridge',
+  qr: '📱 QR', ear: '🎙️ Voz', stripe: '💰 Stripe',
+  verifactu: '📄 VeriFactu', sesion: '🔐 Sesión',
+  sistema: '⚙️ Sistema', cron: '⏱️ Cron',
 }
 
 function relativo(iso: string): string {
@@ -80,300 +62,268 @@ function relativo(iso: string): string {
   return `${Math.floor(h / 24)}d`
 }
 
-// ── Componente ────────────────────────────────────────────────────────────────
-interface Props {
-  session: { restaurante_id?: string } | null
-}
+interface Props { session: { restaurante_id?: string } | null }
 
 export default function SystemHealth({ session }: Props) {
-  const supabase = createClientComponentClient()
-  const [resumen, setResumen]       = useState<ResumenRow[]>([])
-  const [errores, setErrores]       = useState<ErrorRow[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [filtroNivel, setFiltroNivel] = useState<Nivel | 'todos'>('todos')
+  const supabase = sb()
+  const [incidencias, setIncidencias] = useState<Incidencia[]>([])
+  const [resumen, setResumen]         = useState<ResumenModulo[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [filtroNivel, setFiltroNivel] = useState<Nivel>('todos')
   const [soloPendientes, setSoloPendientes] = useState(true)
-  const [expandido, setExpandido]   = useState<string | null>(null)
-  const [notas, setNotas]           = useState('')
+  const [expandido, setExpandido]     = useState<string | null>(null)
   const [resolviendo, setResolviendo] = useState<string | null>(null)
+  const [stats, setStats]             = useState({ total: 0, criticos: 0, auto: 0, pendientes: 0 })
 
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const { data: res } = await supabase
-        .from('v_system_errors_resumen')
-        .select('*')
+      const { data: res } = await supabase.from('v_incidencias_resumen').select('*')
       setResumen(res ?? [])
 
+      const { data: all } = await supabase
+        .from('incidencias_sistema')
+        .select('nivel, resuelta, auto_resuelta')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+
+      if (all) setStats({
+        total: all.length,
+        criticos: all.filter(r => r.nivel === 'critico').length,
+        auto: all.filter(r => r.auto_resuelta).length,
+        pendientes: all.filter(r => !r.resuelta).length,
+      })
+
       let q = supabase
-        .from('system_errors')
+        .from('incidencias_sistema')
         .select('*, restaurantes(nombre)')
         .order('created_at', { ascending: false })
-        .limit(150)
+        .limit(100)
 
-      if (soloPendientes) q = q.eq('resuelto', false)
+      if (soloPendientes) q = q.eq('resuelta', false)
       if (filtroNivel !== 'todos') q = q.eq('nivel', filtroNivel)
 
-      const { data: errs } = await q
-      setErrores((errs as ErrorRow[]) ?? [])
+      const { data: rows } = await q
+      setIncidencias((rows as Incidencia[]) ?? [])
     } finally {
       setLoading(false)
     }
-  }, [supabase, filtroNivel, soloPendientes])
+  }, [filtroNivel, soloPendientes])
 
   useEffect(() => { cargar() }, [cargar])
 
-  // Real-time: nuevos errores → append directo
   useEffect(() => {
     const ch = supabase
-      .channel('system_errors_rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_errors' }, (p) => {
-        const e = p.new as ErrorRow
-        setErrores(prev => [e, ...prev])
-        if (e.nivel === 'critical') {
+      .channel('incidencias_rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incidencias_sistema' }, (p) => {
+        const inc = p.new as Incidencia
+        setIncidencias(prev => [inc, ...prev])
+        setStats(prev => ({
+          ...prev, total: prev.total + 1,
+          criticos: inc.nivel === 'critico' ? prev.criticos + 1 : prev.criticos,
+          pendientes: prev.pendientes + 1,
+        }))
+        if (inc.nivel === 'critico') {
           document.title = '🔴 Error crítico — ia.rest'
-          setTimeout(() => { document.title = 'ia.rest' }, 6000)
+          setTimeout(() => { document.title = 'ia.rest' }, 8000)
         }
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [supabase])
+  }, [])
 
   async function resolver(id: string) {
     setResolviendo(id)
-    await supabase.rpc('resolver_error', {
-      p_error_id: id,
-      p_notas: notas || null,
-      p_resuelto_por: 'alberto',
-    })
+    await supabase.from('incidencias_sistema')
+      .update({ resuelta: true, resuelta_at: new Date().toISOString(), resuelta_por: 'alberto' })
+      .eq('id', id)
     setResolviendo(null)
     setExpandido(null)
-    setNotas('')
     cargar()
   }
 
-  // KPIs
-  const critPend  = resumen.filter(r => r.nivel === 'critical').reduce((a, r) => a + Number(r.pendientes), 0)
-  const warnPend  = resumen.filter(r => r.nivel === 'warning').reduce((a, r) => a + Number(r.pendientes), 0)
-  const infoPend  = resumen.filter(r => r.nivel === 'info').reduce((a, r) => a + Number(r.pendientes), 0)
-  const hora      = resumen.reduce((a, r) => a + Number(r.ultima_hora), 0)
+  const filtros: { id: Nivel; label: string }[] = [
+    { id: 'todos', label: 'Todos' },
+    { id: 'critico', label: '🔴 Crítico' },
+    { id: 'aviso', label: '🟡 Aviso' },
+    { id: 'info', label: '🔵 Info' },
+  ]
 
   return (
-    <div>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={{ fontFamily: SE, fontSize: 22, fontStyle: 'italic', color: C.ink }}>
-            Salud del sistema
-          </div>
-          <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, marginTop: 2 }}>
-            últimas 24h · tiempo real
-          </div>
+          <h2 style={{ fontFamily: SE, fontSize: 22, color: C.ink, margin: 0 }}>Sistema</h2>
+          <p style={{ fontFamily: SN, fontSize: 13, color: C.ink4, margin: '4px 0 0' }}>
+            Monitorización en tiempo real · Telegram activo · cron cada 5 min
+          </p>
         </div>
-        <button
-          onClick={cargar}
-          style={{
-            fontFamily: SN, fontSize: 12, color: C.ink3,
-            background: C.bg2, border: `1px solid ${C.rule}`,
-            borderRadius: 6, padding: '6px 14px', cursor: 'pointer',
-          }}
-        >
-          ↺ Actualizar
-        </button>
+        <button onClick={cargar} style={{
+          fontFamily: SN, fontSize: 12, padding: '7px 14px',
+          background: C.bg2, border: `1px solid ${C.rule}`,
+          borderRadius: 6, cursor: 'pointer', color: C.ink3,
+        }}>↻ Actualizar</button>
       </div>
 
-      {/* ── KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
+      {/* Stats 24h */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
         {[
-          { label: 'Críticos',       value: critPend,  color: critPend > 0  ? C.red   : C.ink4 },
-          { label: 'Avisos',         value: warnPend,  color: warnPend > 0  ? C.amber : C.ink4 },
-          { label: 'Info pend.',     value: infoPend,  color: infoPend > 0  ? C.ink2  : C.ink4 },
-          { label: 'Última hora',    value: hora,      color: hora > 0      ? C.ink2  : C.ink4 },
-        ].map(k => (
-          <div key={k.label} style={{ background: C.bg2, borderRadius: 8, padding: '16px 20px', border: `1px solid ${C.rule}` }}>
-            <div style={{ fontFamily: SM, fontSize: 9, color: C.ink4, letterSpacing: '.1em', marginBottom: 6 }}>
-              {k.label.toUpperCase()}
-            </div>
-            <div style={{ fontFamily: SE, fontSize: 36, fontStyle: 'italic', color: k.color, lineHeight: 1 }}>
-              {k.value}
-            </div>
+          { label: 'Total 24h',      value: stats.total,     color: C.ink3  },
+          { label: 'Críticos',       value: stats.criticos,  color: C.red   },
+          { label: 'Auto-resueltos', value: stats.auto,      color: C.green },
+          { label: 'Pendientes',     value: stats.pendientes, color: stats.pendientes > 0 ? C.amber : C.green },
+        ].map(s => (
+          <div key={s.label} style={{
+            background: C.bg2, border: `1px solid ${C.rule}`,
+            borderRadius: 10, padding: '14px 16px', textAlign: 'center',
+          }}>
+            <div style={{ fontFamily: SM, fontSize: 26, fontWeight: 700, color: s.color }}>{s.value}</div>
+            <div style={{ fontFamily: SN, fontSize: 11, color: C.ink4, marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* ── Resumen por categoría ── */}
+      {/* Resumen por módulo */}
       {resumen.length > 0 && (
-        <div style={{ background: C.bg2, borderRadius: 8, border: `1px solid ${C.rule}`, marginBottom: 24, overflow: 'hidden' }}>
-          <div style={{ fontFamily: SM, fontSize: 9, color: C.ink4, letterSpacing: '.1em', padding: '10px 16px', borderBottom: `1px solid ${C.rule}` }}>
-            POR CATEGORÍA (24H)
+        <div>
+          <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, letterSpacing: '.1em', marginBottom: 10 }}>
+            POR MÓDULO (24H)
           </div>
-          {resumen.map((r, i) => {
-            const cfg = NIVEL_CONFIG[r.nivel]
-            return (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 16px',
-                borderBottom: i < resumen.length - 1 ? `1px solid ${C.rule}` : undefined,
-              }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-                <span style={{ fontFamily: SM, fontSize: 10, color: cfg.color, width: 60, flexShrink: 0 }}>
-                  {cfg.label}
-                </span>
-                <span style={{ fontFamily: SN, fontSize: 13, color: C.ink2, flex: 1 }}>
-                  {CAT_LABEL[r.categoria]}
-                </span>
-                <span style={{ fontFamily: SM, fontSize: 11, color: C.ink3 }}>
-                  {r.pendientes} pend. / {r.total} total
-                </span>
-                <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>
-                  {relativo(r.ultimo_error)}
-                </span>
-              </div>
-            )
-          })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {resumen.map(r => {
+              const cfg = NIVEL_CFG[r.nivel] ?? NIVEL_CFG.aviso
+              return (
+                <div key={`${r.modulo}-${r.nivel}`} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: C.bg2, border: `1px solid ${C.rule}`,
+                  borderRadius: 8, padding: '10px 14px',
+                }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                  <span style={{ fontFamily: SN, fontSize: 13, color: C.ink2, flex: 1 }}>
+                    {MODULO_LABEL[r.modulo] ?? r.modulo}
+                  </span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: cfg.color }}>{r.pendientes} pend.</span>
+                  <span style={{ fontFamily: SM, fontSize: 11, color: C.green }}>{r.auto_resueltas} auto</span>
+                  <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>{relativo(r.ultima_incidencia)}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
-      {/* ── Filtros ── */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        {(['todos', 'critical', 'warning', 'info'] as const).map(n => (
-          <button key={n} onClick={() => setFiltroNivel(n)} style={{
-            fontFamily: SN, fontSize: 11, cursor: 'pointer',
-            padding: '5px 12px', borderRadius: 20,
-            background: filtroNivel === n ? C.red : C.bg2,
-            color:      filtroNivel === n ? '#fff' : C.ink3,
-            border:     `1px solid ${filtroNivel === n ? C.red : C.rule}`,
-            transition: 'all .15s',
-          }}>
-            {n === 'todos' ? 'Todos' : NIVEL_CONFIG[n].label}
-          </button>
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {filtros.map(f => (
+          <button key={f.id} onClick={() => setFiltroNivel(f.id)} style={{
+            fontFamily: SN, fontSize: 12, padding: '5px 12px',
+            background: filtroNivel === f.id ? C.ink : C.bg2,
+            color: filtroNivel === f.id ? '#fff' : C.ink3,
+            border: `1px solid ${filtroNivel === f.id ? C.ink : C.rule}`,
+            borderRadius: 20, cursor: 'pointer',
+          }}>{f.label}</button>
         ))}
-        <button onClick={() => setSoloPendientes(p => !p)} style={{
-          marginLeft: 'auto', fontFamily: SN, fontSize: 11, cursor: 'pointer',
-          padding: '5px 12px', borderRadius: 20,
-          background: soloPendientes ? C.bg3 : C.bg2,
-          color: C.ink3, border: `1px solid ${C.rule}`,
-        }}>
-          {soloPendientes ? '● Solo pendientes' : '○ Todos'}
-        </button>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginLeft: 8 }}>
+          <input type="checkbox" checked={soloPendientes} onChange={e => setSoloPendientes(e.target.checked)} />
+          <span style={{ fontFamily: SN, fontSize: 12, color: C.ink3 }}>Solo pendientes</span>
+        </label>
       </div>
 
-      {/* ── Listado ── */}
+      {/* Lista */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: SM, fontSize: 12, color: C.ink4 }}>
-          cargando…
-        </div>
-      ) : errores.length === 0 ? (
+        <div style={{ fontFamily: SN, fontSize: 13, color: C.ink4, textAlign: 'center', padding: 32 }}>Cargando…</div>
+      ) : incidencias.length === 0 ? (
         <div style={{
-          background: C.greenS, border: `1px solid ${C.green}`, borderRadius: 8,
-          padding: '32px', textAlign: 'center',
+          background: C.greenS, border: `1px solid ${C.green}`,
+          borderRadius: 10, padding: '20px 24px', textAlign: 'center',
         }}>
-          <div style={{ fontFamily: SE, fontSize: 22, fontStyle: 'italic', color: C.green }}>
-            ✓ Todo limpio
+          <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
+          <div style={{ fontFamily: SN, fontSize: 14, color: C.green, fontWeight: 600 }}>
+            Sin incidencias{soloPendientes ? ' pendientes' : ''}
           </div>
-          <div style={{ fontFamily: SN, fontSize: 13, color: C.ink3, marginTop: 4 }}>
-            Sin errores pendientes en las últimas 24h
+          <div style={{ fontFamily: SN, fontSize: 12, color: C.ink3, marginTop: 4 }}>
+            Cron activo cada 5 minutos
           </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {errores.map(err => {
-            const cfg  = NIVEL_CONFIG[err.nivel]
-            const open = expandido === err.id
-            const borderColor = err.resuelto ? C.rule
-              : err.nivel === 'critical' ? C.red
-              : err.nivel === 'warning'  ? C.amber
-              : C.rule
-
+          {incidencias.map(inc => {
+            const cfg = NIVEL_CFG[inc.nivel] ?? NIVEL_CFG.aviso
+            const open = expandido === inc.id
             return (
-              <div key={err.id} style={{
-                border: `1px solid ${borderColor}`,
-                borderRadius: 8,
-                background: err.resuelto ? C.bg : cfg.bg,
-                opacity: err.resuelto ? 0.5 : 1,
-                transition: 'opacity .2s',
+              <div key={inc.id} style={{
+                border: `1px solid ${inc.resuelta ? C.rule : cfg.dot}`,
+                borderRadius: 8, background: inc.resuelta ? C.bg : cfg.bg,
+                opacity: inc.resuelta ? 0.6 : 1,
               }}>
-                {/* Fila principal */}
-                <button
-                  onClick={() => { setExpandido(open ? null : err.id); setNotas('') }}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
-                    padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
+                <button onClick={() => setExpandido(open ? null : inc.id)} style={{
+                  width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
+                  padding: '12px 16px', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, marginTop: 5, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
                       <span style={{ fontFamily: SM, fontSize: 10, color: cfg.color }}>{cfg.label}</span>
-                      <span style={{ fontFamily: SM, fontSize: 10, color: C.ink3 }}>{CAT_LABEL[err.categoria]}</span>
-                      {err.funcion_origen && (
-                        <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>· {err.funcion_origen}</span>
+                      <span style={{ fontFamily: SM, fontSize: 10, color: C.ink3 }}>{MODULO_LABEL[inc.modulo] ?? inc.modulo}</span>
+                      {inc.restaurantes?.nombre && (
+                        <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>· {inc.restaurantes.nombre}</span>
                       )}
-                      {err.restaurantes?.nombre && (
-                        <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>· {err.restaurantes.nombre}</span>
+                      {inc.auto_resuelta && (
+                        <span style={{ fontFamily: SM, fontSize: 10, color: C.green }}>· ⚡auto</span>
                       )}
                     </div>
                     <div style={{ fontFamily: SN, fontSize: 13, color: C.ink2, wordBreak: 'break-word' }}>
-                      {err.mensaje}
+                      {inc.mensaje}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>{relativo(err.created_at)}</div>
-                    {err.resuelto && (
-                      <div style={{ fontFamily: SM, fontSize: 10, color: C.green, marginTop: 2 }}>resuelto</div>
-                    )}
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>{relativo(inc.created_at)}</div>
+                    {inc.resuelta && <div style={{ fontFamily: SM, fontSize: 10, color: C.green, marginTop: 2 }}>✓</div>}
                   </div>
                 </button>
 
-                {/* Detalle expandido */}
                 {open && (
                   <div style={{ borderTop: `1px solid ${C.rule}`, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {err.contexto && (
-                      <div>
-                        <div style={{ fontFamily: SM, fontSize: 9, color: C.ink4, letterSpacing: '.1em', marginBottom: 6 }}>CONTEXTO</div>
-                        <pre style={{
-                          fontFamily: SM, fontSize: 11, color: C.ink2,
-                          background: C.bg3, borderRadius: 6, padding: 12,
-                          overflowX: 'auto', whiteSpace: 'pre-wrap', margin: 0,
-                        }}>
-                          {JSON.stringify(err.contexto, null, 2)}
-                        </pre>
-                      </div>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>ID: {inc.id.substring(0, 8)}</span>
+                      <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>tipo: {inc.tipo}</span>
+                      <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>
+                        {new Date(inc.created_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}
+                      </span>
+                    </div>
+
+                    {inc.detalle && Object.keys(inc.detalle).length > 0 && (
+                      <pre style={{
+                        fontFamily: SM, fontSize: 11, color: C.ink2,
+                        background: C.bg3, borderRadius: 6, padding: 12,
+                        overflowX: 'auto', whiteSpace: 'pre-wrap', margin: 0,
+                      }}>
+                        {JSON.stringify(inc.detalle, null, 2)}
+                      </pre>
                     )}
 
-                    {err.resuelto && err.notas_resolucion && (
+                    {inc.resuelta ? (
                       <div style={{ background: C.greenS, border: `1px solid ${C.green}`, borderRadius: 6, padding: '8px 12px' }}>
                         <span style={{ fontFamily: SM, fontSize: 11, color: C.green }}>
-                          Resuelto por {err.resuelto_por}: {err.notas_resolucion}
+                          {inc.auto_resuelta ? '⚡ Auto-resuelto' : `✓ Resuelto por ${inc.resuelta_por ?? 'alberto'}`}
+                          {inc.resuelta_at ? ` · ${relativo(inc.resuelta_at)}` : ''}
                         </span>
                       </div>
-                    )}
-
-                    {!err.resuelto && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <textarea
-                          placeholder="Notas de resolución (opcional)…"
-                          value={notas}
-                          onChange={e => setNotas(e.target.value)}
-                          rows={2}
-                          style={{
-                            fontFamily: SN, fontSize: 12, color: C.ink, padding: '8px 12px',
-                            background: C.bg, border: `1px solid ${C.rule}`, borderRadius: 6,
-                            resize: 'none', outline: 'none', width: '100%', boxSizing: 'border-box',
-                          }}
-                        />
-                        <button
-                          onClick={() => resolver(err.id)}
-                          disabled={resolviendo === err.id}
-                          style={{
-                            alignSelf: 'flex-start', fontFamily: SN, fontSize: 12, cursor: 'pointer',
-                            padding: '7px 16px', borderRadius: 6,
-                            background: resolviendo === err.id ? C.ink4 : C.green,
-                            color: '#fff', border: 'none',
-                          }}
-                        >
-                          {resolviendo === err.id ? 'Marcando…' : '✓ Marcar como resuelto'}
-                        </button>
-                      </div>
+                    ) : (
+                      <button
+                        onClick={() => resolver(inc.id)}
+                        disabled={resolviendo === inc.id}
+                        style={{
+                          alignSelf: 'flex-start', fontFamily: SN, fontSize: 12,
+                          padding: '7px 16px', borderRadius: 6,
+                          background: resolviendo === inc.id ? C.ink4 : C.green,
+                          color: '#fff', border: 'none',
+                          cursor: resolviendo === inc.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {resolviendo === inc.id ? 'Marcando…' : '✓ Marcar como resuelto'}
+                      </button>
                     )}
                   </div>
                 )}
