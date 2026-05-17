@@ -171,16 +171,36 @@ async function scanNetwork(onProgress) {
 
 // ── Autostart Windows + arranque INMEDIATO ─────────────────────
 // Usa exec(bat) — evita spawn detached que activa falsos positivos en antivirus
+function downloadBridgeJs(dest) {
+  return new Promise((resolve, reject) => {
+    const url = `${API}/bridge-local.js`
+    const file = fs.createWriteStream(dest)
+    https.get(url, res => {
+      if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode}`)); return }
+      res.pipe(file)
+      file.on('finish', () => { file.close(); resolve() })
+    }).on('error', reject)
+  })
+}
+
 function installAutostart(token) {
-  return new Promise(resolve => {
+  return new Promise(async resolve => {
     try { fs.mkdirSync(CFG_DIR, { recursive: true }) } catch {}
     const exePath = process.execPath
     const vbsPath = path.join(CFG_DIR, 'launch-bridge.vbs')
     const batPath = path.join(CFG_DIR, 'iarest-bridge.bat')
+    const bridgeJs = path.join(CFG_DIR, 'bridge-local.js')
+
+    // Descargar bridge-local.js a la carpeta excluida de AV
+    try {
+      await downloadBridgeJs(bridgeJs)
+      console.log('[Wizard] bridge-local.js descargado en', bridgeJs)
+    } catch (e) {
+      console.warn('[Wizard] No se pudo descargar bridge-local.js:', e.message)
+    }
 
     // VBS watchdog: usa node + bridge-local.js (en carpeta excluida de AV)
     // node.exe es proceso de confianza — no levanta falsos positivos en Avast/Defender
-    const bridgeJs = path.join(CFG_DIR, 'bridge-local.js')
     const vbs = [
       `Set oShell = CreateObject("WScript.Shell")`,
       `oShell.Environment("Process")("BRIDGE_TOKEN") = "${token}"`,
@@ -219,13 +239,21 @@ function installAutostart(token) {
 
 // ── launchBridgeNow: arranca el bridge cuando el usuario pulsa el botón ──
 // Se llama solo por acción explícita del usuario (no automático al instalar)
-function launchBridgeNow(token) {
+async function launchBridgeNow(token) {
   try {
     const exePath = process.execPath
     const vbsPath = path.join(CFG_DIR, 'launch-bridge.vbs')
-    // Crear VBS si no existe
+    const bridgeJs = path.join(CFG_DIR, 'bridge-local.js')
+
+    // Descargar bridge-local.js si no existe
+    if (!fs.existsSync(bridgeJs)) {
+      try { await downloadBridgeJs(bridgeJs) } catch (e) {
+        console.warn('[Bridge] No se pudo descargar bridge-local.js:', e.message)
+      }
+    }
+
+    // Crear VBS watchdog si no existe
     if (!fs.existsSync(vbsPath)) {
-      const bridgeJs = path.join(CFG_DIR, 'bridge-local.js')
       const vbs = [
         `Set oShell = CreateObject("WScript.Shell")`,
         `oShell.Environment("Process")("BRIDGE_TOKEN") = "${token}"`,
