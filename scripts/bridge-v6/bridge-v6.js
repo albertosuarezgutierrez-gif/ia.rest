@@ -202,7 +202,7 @@ async function printJob(job, TOKEN) {
 
 // ── Ping ──────────────────────────────────────────────────────
 async function ping(TOKEN) {
-  try { await fetchJSON(`${API}/api/print?token=${TOKEN}&v=${VERSION}`) }
+  try { await fetchJSON(`${API}/api/bridge/info?token=${TOKEN}&v=${VERSION}`) }
   catch {}
 }
 
@@ -306,6 +306,8 @@ function wsConnect(TOKEN, restauranteId) {
   // Poll backup cada 60s
   setInterval(async () => {
     try {
+      // Actualizar version en BD
+      await fetchJSON(`${API}/api/bridge/info?token=${TOKEN}&v=${VERSION}`)
       const r = await fetchJSON(`${API}/api/print?token=${TOKEN}&v=${VERSION}`)
       if (r.body?.jobs?.length) {
         for (const job of r.body.jobs) await printJob(job, TOKEN)
