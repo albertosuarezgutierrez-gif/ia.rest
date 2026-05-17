@@ -83,7 +83,7 @@ export default function BienvenidaPage() {
           codigo_acceso: d.codigo_acceso,
           pin_owner:     null, // El PIN está en sesión, no lo re-exponemos por seguridad
           bridge_token:  bt?.token ?? null,
-          email:         session.email ?? null,
+          email:         null, // El email se envía por webhook, no está en sesión local
         })
       } catch {
         setDatos(null)
@@ -119,13 +119,11 @@ export default function BienvenidaPage() {
           <p style={{ fontSize: 14, color: C.fg3, margin: 0 }}>
             Trial de 14 días activo · Sin cargos hasta el día 14
           </p>
-          {datos?.email && (
-            <div style={{ marginTop: 10, background: C.greenS, border: `1px solid rgba(63,125,68,.3)`, borderRadius: 8, padding: '8px 14px', display: 'inline-block' }}>
+          <div style={{ marginTop: 10, background: C.greenS, border: `1px solid rgba(63,125,68,.3)`, borderRadius: 8, padding: '8px 14px', display: 'inline-block' }}>
               <p style={{ fontFamily: SN, fontSize: 12, color: C.green, margin: 0 }}>
-                ✉ Hemos enviado estos datos a <strong>{datos.email}</strong>
+                ✉ Datos de acceso enviados por email al registrarte
               </p>
             </div>
-          )}
         </div>
 
         {/* Datos críticos */}
