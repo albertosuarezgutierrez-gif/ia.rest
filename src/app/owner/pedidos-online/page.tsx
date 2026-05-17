@@ -3,276 +3,212 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
-// ─── Tipos ───────────────────────────────────────────────────────────────────
+const C = {
+  bg:'#F6F1E7', bg1:'#FBF8F1', bg2:'#EFE7D6', bg3:'#E5DAC2',
+  ink:'#1A1714', ink2:'#3A332C', ink3:'#6B5F52', ink4:'#9A8D7C',
+  rule:'#D8CDB6',
+  verm:'#D9442B', vermS:'#F4D8CF',
+  amb:'#E8A33B', ambS:'#F7E3B6',
+  gr:'#3F7D44', grS:'#D4E4D2',
+  bl:'#2563EB', blS:'#DBEAFE',
+}
+const SN = "'Inter Tight',system-ui,sans-serif"
+const SE = "'Newsreader',Georgia,serif"
+const SM = "'JetBrains Mono',ui-monospace,monospace"
+
 interface PedidoOnline {
-  id: string
-  numero: number
-  tipo: string
-  canal: string
-  estado: string
-  cliente_nombre: string
-  cliente_telefono: string
-  cliente_direccion?: string
-  items: Array<{ nombre: string; cantidad: number; precio_unitario: number; notas?: string }>
-  total: number
-  cobro: string
-  tiempo_recogida_min: number
-  created_at: string
+  id:string; numero:number; tipo:string; canal:string; estado:string
+  cliente_nombre:string; cliente_telefono:string; cliente_direccion?:string
+  items:Array<{nombre:string;cantidad:number;precio_unitario:number;notas?:string}>
+  total:number; cobro:string; tiempo_recogida_min:number; created_at:string
+}
+interface Session { id:string; nombre:string; rol:string; restaurante_id:string }
+
+const ESTADO_CFG: Record<string,{label:string;bg:string;fg:string;next:string;nextLabel:string}> = {
+  pendiente:  {label:'Pendiente', bg:C.ambS, fg:C.amb, next:'confirmado', nextLabel:'Confirmar'},
+  confirmado: {label:'Confirmado',bg:C.blS,  fg:C.bl,  next:'en_cocina',  nextLabel:'Enviar a cocina'},
+  en_cocina:  {label:'En cocina', bg:'#EDE9FE',fg:'#7C3AED',next:'listo',nextLabel:'Marcar listo'},
+  listo:      {label:'Listo',     bg:C.grS,  fg:C.gr,  next:'entregado', nextLabel:'Entregado ✓'},
+  entregado:  {label:'Entregado', bg:C.bg2,  fg:C.ink4,next:'',          nextLabel:''},
+  cancelado:  {label:'Cancelado', bg:C.vermS,fg:C.verm,next:'',          nextLabel:''},
 }
 
-interface Session {
-  id: string; nombre: string; rol: string; restaurante_id: string
-}
-
-// ─── Config visual por estado ─────────────────────────────────────────────────
-const ESTADO_CFG: Record<string, { label: string; color: string; next: string; nextLabel: string; icon: string }> = {
-  pendiente:  { label: 'Pendiente',  color: '#E8A33B', next: 'confirmado', nextLabel: 'Confirmar',       icon: '⏳' },
-  confirmado: { label: 'Confirmado', color: '#3B82F6', next: 'en_cocina',  nextLabel: 'Enviar a cocina', icon: '✓'  },
-  en_cocina:  { label: 'En cocina',  color: '#8B5CF6', next: 'listo',      nextLabel: 'Marcar listo',    icon: '👨‍🍳' },
-  listo:      { label: 'Listo',      color: '#3F7D44', next: 'entregado',  nextLabel: 'Entregado ✓',     icon: '✅' },
-  entregado:  { label: 'Entregado',  color: '#9C8E7E', next: '',           nextLabel: '',                icon: '🎉' },
-  cancelado:  { label: 'Cancelado',  color: '#EF4444', next: '',           nextLabel: '',                icon: '✕'  },
-}
-
-const CANAL_ICON: Record<string, string> = {
-  online: '🌐', telefono: '📞', mostrador: '🏪'
-}
-
-const TIPO_LABEL: Record<string, string> = {
-  delivery: '🛵 Delivery', recogida: '🏃 Recogida', telefono: '📞 Teléfono', mostrador: '🏪 Mostrador'
-}
-
-// ─── Componente tarjeta pedido ────────────────────────────────────────────────
-function TarjetaPedido({
-  pedido, session, onActualizar
-}: {
-  pedido: PedidoOnline
-  session: Session
-  onActualizar: (id: string, estado: string) => void
-}) {
-  const [avanzando, setAvanzando] = useState(false)
-  const [cancelando, setCancelando] = useState(false)
+function TarjetaPedido({ pedido, session, onActualizar }:{ pedido:PedidoOnline; session:Session; onActualizar:(id:string,e:string)=>void }) {
+  const [av, setAv] = useState(false)
+  const [ca, setCa] = useState(false)
   const cfg = ESTADO_CFG[pedido.estado] ?? ESTADO_CFG.pendiente
+  const mins = Math.floor((Date.now()-new Date(pedido.created_at).getTime())/60000)
 
-  const ahora = Date.now()
-  const creado = new Date(pedido.created_at).getTime()
-  const minutos = Math.floor((ahora - creado) / 60000)
-
-  const avanzar = async (nuevoEstado: string, setCargando: (v: boolean) => void) => {
-    setCargando(true)
+  const avanzar = async (nuevoEstado:string, setBusy:(v:boolean)=>void) => {
+    setBusy(true)
     const res = await fetch('/api/storefront/estado', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-ia-session': JSON.stringify(session),
-      },
-      body: JSON.stringify({ pedido_id: pedido.id, estado: nuevoEstado }),
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','x-ia-session':JSON.stringify(session)},
+      body:JSON.stringify({pedido_id:pedido.id, estado:nuevoEstado}),
     })
     const d = await res.json()
-    setCargando(false)
+    setBusy(false)
     if (d.ok) onActualizar(pedido.id, nuevoEstado)
   }
 
   return (
-    <div className="bg-[#1E1A16] rounded-2xl border border-[#2A2420] overflow-hidden"
-      style={{ fontFamily: 'Inter Tight, sans-serif' }}>
-      {/* Header de la tarjeta */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-[#2A2420]">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{cfg.icon}</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-[#F6F1E7] text-sm">#{pedido.numero}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.color + '25', color: cfg.color }}>
-                {cfg.label}
-              </span>
-            </div>
-            <p className="text-xs text-[#9C8E7E]">
-              {TIPO_LABEL[pedido.tipo] ?? pedido.tipo}
-              {pedido.canal !== 'online' && ` · ${CANAL_ICON[pedido.canal]} ${pedido.canal}`}
-            </p>
-          </div>
+    <div style={{ background:C.bg1, border:`1px solid ${C.rule}`, borderRadius:10, overflow:'hidden', fontFamily:SN }}>
+      {/* Header tarjeta */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:`1px solid ${C.rule}` }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontFamily:SM, fontSize:12, fontWeight:700, color:C.ink }}>#{pedido.numero}</span>
+          <span style={{ fontFamily:SN, fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:99, background:cfg.bg, color:cfg.fg }}>{cfg.label}</span>
+          <span style={{ fontFamily:SN, fontSize:11, color:C.ink4 }}>
+            {pedido.canal==='telefono'?'📞':pedido.canal==='mostrador'?'🏪':'🌐'}
+            {' '}{pedido.tipo==='delivery'?'Delivery':'Recogida'}
+          </span>
         </div>
-        <div className="text-right">
-          <p className="font-bold text-[#D9442B]">{pedido.total.toFixed(2)} €</p>
-          <p className="text-xs text-[#9C8E7E]">{minutos}' · {pedido.cobro === 'online' ? '💳 Pagado' : pedido.cobro}</p>
+        <div style={{ textAlign:'right' }}>
+          <div style={{ fontFamily:SM, fontSize:13, fontWeight:700, color:C.verm }}>{Number(pedido.total).toFixed(2)} €</div>
+          <div style={{ fontFamily:SN, fontSize:11, color:C.ink4 }}>{mins}' · {pedido.cobro==='online'?'Pagado':pedido.cobro==='contraentrega'?'Al entregar':pedido.cobro}</div>
         </div>
       </div>
 
-      {/* Datos cliente */}
-      <div className="px-4 py-2.5 border-b border-[#2A2420]">
-        <p className="font-semibold text-[#F6F1E7] text-sm">{pedido.cliente_nombre}</p>
-        {pedido.cliente_telefono && <p className="text-xs text-[#9C8E7E]">{pedido.cliente_telefono}</p>}
-        {pedido.cliente_direccion && (
-          <p className="text-xs text-[#D8CDB6] mt-0.5">📍 {pedido.cliente_direccion}</p>
-        )}
-        {pedido.tiempo_recogida_min > 0 && (
-          <p className="text-xs text-[#E8A33B] mt-0.5">⏱ {pedido.tiempo_recogida_min} min estimados</p>
-        )}
+      {/* Cliente */}
+      <div style={{ padding:'8px 14px', borderBottom:`1px solid ${C.rule}` }}>
+        <div style={{ fontFamily:SN, fontSize:13, fontWeight:600, color:C.ink }}>{pedido.cliente_nombre}</div>
+        {pedido.cliente_telefono && <div style={{ fontFamily:SM, fontSize:11, color:C.ink3, marginTop:1 }}>{pedido.cliente_telefono}</div>}
+        {pedido.cliente_direccion && <div style={{ fontFamily:SN, fontSize:11, color:C.ink2, marginTop:2 }}>📍 {pedido.cliente_direccion}</div>}
+        {pedido.tiempo_recogida_min>0 && <div style={{ fontFamily:SN, fontSize:11, color:C.amb, marginTop:2 }}>⏱ {pedido.tiempo_recogida_min} min</div>}
       </div>
 
       {/* Items */}
-      <div className="px-4 py-2.5 space-y-1 border-b border-[#2A2420]">
-        {pedido.items.map((item, i) => (
-          <div key={i} className="flex justify-between text-xs">
-            <span className="text-[#D8CDB6]">{item.cantidad}× {item.nombre}
-              {item.notas && <span className="text-[#9C8E7E]"> — {item.notas}</span>}
-            </span>
-            <span className="text-[#9C8E7E]">{(item.precio_unitario * item.cantidad).toFixed(2)} €</span>
+      <div style={{ padding:'8px 14px', borderBottom:`1px solid ${C.rule}` }}>
+        {pedido.items.map((item,i) => (
+          <div key={i} style={{ display:'flex', justifyContent:'space-between', fontFamily:SN, fontSize:12, color:C.ink2, marginBottom:i<pedido.items.length-1?4:0 }}>
+            <span><span style={{ color:C.ink4, marginRight:4 }}>{item.cantidad}×</span>{item.nombre}{item.notas?<span style={{ color:C.ink4 }}> — {item.notas}</span>:null}</span>
+            <span style={{ fontFamily:SM, color:C.ink3 }}>{(item.precio_unitario*item.cantidad).toFixed(2)} €</span>
           </div>
         ))}
       </div>
 
       {/* Acciones */}
-      <div className="px-4 py-3 flex gap-2">
+      <div style={{ padding:'10px 14px', display:'flex', gap:8 }}>
         {cfg.next && (
-          <button
-            onClick={() => avanzar(cfg.next, setAvanzando)}
-            disabled={avanzando}
-            className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm transition-all active:scale-[0.97]"
-            style={{ background: avanzando ? '#4A3F35' : '#D9442B' }}>
-            {avanzando ? '…' : cfg.nextLabel}
+          <button onPointerDown={() => avanzar(cfg.next,setAv)} disabled={av}
+            style={{ flex:1, padding:'10px 0', borderRadius:8, border:'none', background:av?C.bg3:C.verm, color:av?C.ink4:C.bg, fontFamily:SN, fontSize:13, fontWeight:700, cursor:av?'default':'pointer' }}>
+            {av?'…':cfg.nextLabel}
           </button>
         )}
-        {!['entregado', 'cancelado'].includes(pedido.estado) && (
-          <button
-            onClick={() => avanzar('cancelado', setCancelando)}
-            disabled={cancelando}
-            className="px-3 py-2.5 rounded-xl text-xs font-semibold border border-[#3A3028] text-[#9C8E7E] hover:text-[#EF4444] hover:border-[#EF4444] transition-colors">
-            {cancelando ? '…' : 'Cancelar'}
+        {!['entregado','cancelado'].includes(pedido.estado) && (
+          <button onPointerDown={() => avanzar('cancelado',setCa)} disabled={ca}
+            style={{ padding:'10px 14px', borderRadius:8, border:`1px solid ${C.rule}`, background:'transparent', color:C.ink3, fontFamily:SN, fontSize:12, cursor:'pointer' }}>
+            {ca?'…':'Cancelar'}
           </button>
         )}
-        {pedido.estado === 'entregado' && (
-          <p className="flex-1 text-center text-xs text-[#3F7D44] font-semibold py-2.5">✓ Completado</p>
+        {pedido.estado==='entregado' && (
+          <div style={{ flex:1, textAlign:'center', fontFamily:SN, fontSize:12, color:C.gr, padding:'10px 0', fontWeight:600 }}>✓ Completado</div>
         )}
       </div>
     </div>
   )
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
 export default function PedidosOnlinePage() {
-  const [session, setSession] = useState<Session | null>(null)
+  const [session, setSession] = useState<Session|null>(null)
   const [pedidos, setPedidos] = useState<PedidoOnline[]>([])
-  const [cargando, setCargando] = useState(true)
-  const [filtro, setFiltro] = useState<'todos' | 'delivery' | 'recogida' | 'telefono' | 'mostrador'>('todos')
+  const [cargando, setLoad]   = useState(true)
+  const [filtro, setFiltro]   = useState<string>('todos')
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ia_session')
-      if (raw) setSession(JSON.parse(raw))
-    } catch { /* nada */ }
+    try { const r = localStorage.getItem('ia_session'); if(r) setSession(JSON.parse(r)) } catch{}
   }, [])
 
-  const cargarPedidos = useCallback(async () => {
+  const cargar = useCallback(async () => {
     if (!session) return
-    const res = await fetch('/api/storefront/estado?activos=1', {
-      headers: { 'x-ia-session': JSON.stringify(session) }
-    })
+    const res = await fetch('/api/storefront/estado?activos=1', { headers:{'x-ia-session':JSON.stringify(session)} })
     const d = await res.json()
-    setPedidos(d.pedidos ?? [])
-    setCargando(false)
+    setPedidos(d.pedidos??[]); setLoad(false)
   }, [session])
 
-  useEffect(() => {
-    if (session) cargarPedidos()
-  }, [session, cargarPedidos])
+  useEffect(() => { if(session) cargar() }, [session, cargar])
 
-  // Realtime — escuchar cambios en pedidos_online
   useEffect(() => {
     if (!session) return
-    const ch = supabase.channel('pedidos-online-panel')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'pedidos_online',
-        filter: `restaurante_id=eq.${session.restaurante_id}`,
-      }, () => { cargarPedidos() })
+    const ch = supabase.channel('pedidos-online-owner')
+      .on('postgres_changes', { event:'*', schema:'public', table:'pedidos_online', filter:`restaurante_id=eq.${session.restaurante_id}` },
+        () => cargar())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [session, cargarPedidos])
+  }, [session, cargar])
 
-  const onActualizar = (id: string, nuevoEstado: string) => {
-    setPedidos(prev => {
-      if (['entregado', 'cancelado'].includes(nuevoEstado)) {
-        return prev.filter(p => p.id !== id)
-      }
-      return prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p)
-    })
+  const onActualizar = (id:string, estado:string) => {
+    setPedidos(prev => ['entregado','cancelado'].includes(estado)
+      ? prev.filter(p => p.id!==id)
+      : prev.map(p => p.id===id ? {...p, estado} : p)
+    )
   }
 
   if (!session) return (
-    <div className="min-h-screen bg-[#14110E] flex items-center justify-center">
-      <p className="text-[#9C8E7E]" style={{ fontFamily: 'Inter Tight, sans-serif' }}>Inicia sesión primero</p>
+    <div style={{ minHeight:'100dvh', background:C.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <p style={{ fontFamily:SN, fontSize:13, color:C.ink3 }}>Inicia sesión primero</p>
     </div>
   )
 
-  const pedidosFiltrados = filtro === 'todos' ? pedidos
-    : pedidos.filter(p => p.tipo === filtro || p.canal === filtro)
-
+  const filtrados = filtro==='todos' ? pedidos : pedidos.filter(p => p.tipo===filtro||p.canal===filtro)
   const counts = {
-    total: pedidos.length,
-    delivery: pedidos.filter(p => p.tipo === 'delivery').length,
-    recogida: pedidos.filter(p => p.tipo === 'recogida' || p.canal === 'mostrador').length,
-    telefono: pedidos.filter(p => p.canal === 'telefono').length,
+    total:pedidos.length,
+    delivery:pedidos.filter(p=>p.tipo==='delivery').length,
+    recogida:pedidos.filter(p=>p.tipo==='recogida'||p.canal==='mostrador').length,
+    telefono:pedidos.filter(p=>p.canal==='telefono').length,
   }
 
   return (
-    <div className="min-h-screen bg-[#14110E]" style={{ fontFamily: 'Inter Tight, sans-serif' }}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#14110E] border-b border-[#2A2420] px-4 py-3">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="font-bold text-[#F6F1E7] text-lg" style={{ fontFamily: 'Newsreader, serif' }}>
-              Pedidos online
-            </h1>
-            <p className="text-xs text-[#9C8E7E]">
-              {counts.total === 0 ? 'Sin pedidos activos' : `${counts.total} activo${counts.total > 1 ? 's' : ''}`}
-            </p>
-          </div>
-          <button onClick={cargarPedidos} className="text-[#9C8E7E] text-sm border border-[#2A2420] px-3 py-1.5 rounded-xl">
-            ↻ Actualizar
-          </button>
-        </div>
+    <div style={{ minHeight:'100dvh', background:C.bg, fontFamily:SN }}>
+      <style>{`* { -webkit-tap-highlight-color:transparent; } button,a { touch-action:manipulation; } ::-webkit-scrollbar{display:none}`}</style>
 
-        {/* Filtros */}
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
-          {([
-            { key: 'todos', label: `Todos (${counts.total})` },
-            { key: 'delivery', label: `🛵 Delivery (${counts.delivery})` },
-            { key: 'recogida', label: `🏪 Recogida (${counts.recogida})` },
-            { key: 'telefono', label: `📞 Teléfono (${counts.telefono})` },
-          ] as const).map(f => (
-            <button key={f.key} onClick={() => setFiltro(f.key)}
-              className="whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
-              style={{
-                background: filtro === f.key ? '#D9442B' : '#1E1A16',
-                color: filtro === f.key ? 'white' : '#9C8E7E',
-                borderColor: filtro === f.key ? '#D9442B' : '#2A2420',
-              }}>
-              {f.label}
+      {/* Header */}
+      <div style={{ position:'sticky', top:0, zIndex:10, background:C.bg1, borderBottom:`1px solid ${C.rule}`, boxShadow:'0 1px 0 rgba(26,23,20,.06)' }}>
+        <div style={{ padding:'12px 16px 0' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+            <div>
+              <div style={{ fontFamily:SE, fontSize:18, color:C.ink }}>Pedidos online</div>
+              <div style={{ fontFamily:SN, fontSize:12, color:C.ink4, marginTop:1 }}>
+                {counts.total===0?'Sin pedidos activos':`${counts.total} activo${counts.total>1?'s':''}`}
+              </div>
+            </div>
+            <button onPointerDown={cargar}
+              style={{ border:`1px solid ${C.rule}`, background:'none', borderRadius:6, padding:'6px 12px', fontFamily:SN, fontSize:12, color:C.ink3, cursor:'pointer' }}>
+              ↻
             </button>
-          ))}
+          </div>
+          <div style={{ display:'flex', gap:0, overflowX:'auto', marginBottom:-1 }}>
+            {[
+              {key:'todos', label:`Todos (${counts.total})`},
+              {key:'delivery', label:`Delivery (${counts.delivery})`},
+              {key:'recogida', label:`Recogida (${counts.recogida})`},
+              {key:'telefono', label:`Teléfono (${counts.telefono})`},
+            ].map(f => (
+              <button key={f.key} onPointerDown={() => setFiltro(f.key)}
+                style={{ padding:'8px 12px', border:'none', background:'none', fontFamily:SN, fontSize:12, fontWeight:filtro===f.key?700:500, color:filtro===f.key?C.ink:C.ink3, borderBottom:filtro===f.key?`2px solid ${C.verm}`:'2px solid transparent', cursor:'pointer', whiteSpace:'nowrap', marginBottom:-1, transition:'all .12s' }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Contenido */}
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-10">
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'16px 16px 32px', display:'flex', flexDirection:'column', gap:10 }}>
         {cargando ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-[3px] border-[#D9442B] border-t-transparent animate-spin" />
+          <div style={{ display:'flex', justifyContent:'center', padding:'40px 0' }}>
+            <div style={{ width:28, height:28, border:`3px solid ${C.verm}`, borderTopColor:'transparent', borderRadius:'50%', animation:'spin .8s linear infinite' }} />
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
-        ) : pedidosFiltrados.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="text-[#9C8E7E] font-medium">Sin pedidos activos</p>
-            <p className="text-xs text-[#4A3F35] mt-1">Los pedidos nuevos aparecen aquí automáticamente</p>
+        ) : filtrados.length===0 ? (
+          <div style={{ textAlign:'center', padding:'48px 0' }}>
+            <div style={{ fontSize:36, marginBottom:12 }}>📭</div>
+            <div style={{ fontFamily:SE, fontSize:16, color:C.ink2, marginBottom:4 }}>Sin pedidos activos</div>
+            <div style={{ fontFamily:SN, fontSize:12, color:C.ink4 }}>Los nuevos pedidos aparecen aquí al momento</div>
           </div>
-        ) : (
-          pedidosFiltrados.map(p => (
-            <TarjetaPedido key={p.id} pedido={p} session={session} onActualizar={onActualizar} />
-          ))
-        )}
+        ) : filtrados.map(p => (
+          <TarjetaPedido key={p.id} pedido={p} session={session} onActualizar={onActualizar} />
+        ))}
       </div>
     </div>
   )
