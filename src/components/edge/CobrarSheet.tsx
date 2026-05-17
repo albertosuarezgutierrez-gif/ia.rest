@@ -504,18 +504,23 @@ export default function CobrarSheet({ comandaId, mesaLabel, total, session, onCe
                 </div>
               </div>
 
-              <button onClick={() => cobrar()}
+              {/* FIX-01: disabled durante loading para evitar doble factura */}
+              <button
+                onClick={() => cobrar()}
+                disabled={loading}
                 style={{
                   width:'100%',height:54,borderRadius:12,border:'none',
-                  background:C.verm,
+                  background: loading ? C.rule : C.verm,
                   fontFamily:SN,fontSize:15,fontWeight:700,color:'#fff',
-                  cursor:'pointer',
+                  cursor: loading ? 'default' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
                   display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+                  transition:'background .15s,opacity .15s',
                 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
                 </svg>
-                Confirmar cobro · {totalConPropina.toFixed(2).replace('.',',')} €
+                {loading ? 'Procesando…' : `Confirmar cobro · ${totalConPropina.toFixed(2).replace('.',',')} €`}
               </button>
             </div>
           )}

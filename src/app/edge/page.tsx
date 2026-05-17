@@ -1705,8 +1705,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                   </div>
                 )}
                 <div style={{display:'flex',borderTop:`1px solid ${C.rule}`}}>
-                  <button onClick={reset} style={{flex:1,padding:12,background:'none',border:'none',borderRight:`1px solid ${C.rule}`,color:C.ink3,fontFamily:SN,fontSize:12,fontWeight:600,cursor:'pointer'}}>✗ Cancelar</button>
-                  <button onClick={()=>{; setScreenSafe('sent')
+                  {/* FIX-04: onPointerDown evita doble-disparo en móvil (no hay delay de click sintético) */}
+                  <button onPointerDown={reset} style={{flex:1,padding:12,background:'none',border:'none',borderRight:`1px solid ${C.rule}`,color:C.ink3,fontFamily:SN,fontSize:12,fontWeight:600,cursor:'pointer'}}>✗ Cancelar</button>
+                  <button onPointerDown={()=>{ setScreenSafe('sent')
                     addMsg('brain',`✓ Enviado · ${brain.mesa}`,'ok')
                     setPushMsg(`🍳 Cocina recibió · ${brain.mesa}`); setShowPush(true); setTimeout(()=>setShowPush(false),4000)
                   }} style={{flex:2,padding:12,background:C.verm,border:'none',color:'#fff',fontFamily:SN,fontSize:13,fontWeight:700,cursor:'pointer'}}>
@@ -1737,7 +1738,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           {screen==='confirm' && (
             <div style={{padding:'4px 14px 6px',display:'flex',gap:6,flexShrink:0,overflowX:'auto',scrollbarWidth:'none' as const,background:C.bg1,borderTop:`1px solid ${C.rule}`}}>
               {['✓ Sí','✗ No','Repite'].map(r=>(
-                <button key={r} onClick={r==='✓ Sí'?()=>{;setScreenSafe('sent');addMsg('brain',`✓ Enviado · ${brain?.mesa}`,'ok')}:r==='✗ No'?reset:()=>{reset();setScreenSafe('idle')}}
+                // FIX-04: onPointerDown evita doble-disparo en móvil
+                <button key={r} onPointerDown={r==='✓ Sí'?()=>{setScreenSafe('sent');addMsg('brain',`✓ Enviado · ${brain?.mesa}`,'ok')}:r==='✗ No'?reset:()=>{reset();setScreenSafe('idle')}}
                   style={{flexShrink:0,padding:'6px 12px',borderRadius:20,border:`1px solid ${C.rule}`,background:C.bg2,fontSize:12,fontWeight:600,color:r==='✓ Sí'?C.gr:r==='✗ No'?C.verm:C.ink3,cursor:'pointer',fontFamily:SN}}>
                   {r}
                 </button>
@@ -1871,7 +1873,6 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                     onTouchStart={e=>{mesaTouchRef.current={startY:e.touches[0].clientY,moved:false}}}
                     onTouchMove={e=>{if(Math.abs(e.touches[0].clientY-mesaTouchRef.current.startY)>8)mesaTouchRef.current.moved=true}}
                     onTouchEnd={e=>{if(!mesaTouchRef.current.moved){e.preventDefault();setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}}}
-                    onClick={()=>setMesaDetalle({id:c.mesa_id,codigo:mesa,capacidad:(c.mesa as {capacidad?:number})?.capacidad})}
                     style={{background:C.bg1,border:`1px solid ${col}44`,borderLeft:`3px solid ${col}`,borderRadius:10,overflow:'hidden',cursor:'pointer',boxShadow:'0 1px 4px rgba(26,23,20,.06)'}}>
                     {/* Cabecera comanda */}
                     <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px 7px',borderBottom:`1px solid ${C.rule}`}}>
