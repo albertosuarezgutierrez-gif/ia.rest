@@ -83,7 +83,7 @@ echo.
 REM ── Descargar bridge ─────────────────────────────────────
 echo  PASO 3 - Descargando bridge...
 set BRIDGE_FILE=%INSTALL_DIR%\bridge-local.js
-powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/albertosuarezgutierrez-gif/ia.rest/main/scripts/bridge-local.js' -OutFile '%BRIDGE_FILE%'" >nul 2>&1
+powershell -Command "Invoke-WebRequest -Uri 'https://www.iarest.es/bridge-local.js' -OutFile '%BRIDGE_FILE%'" >nul 2>&1
 if %errorlevel% neq 0 (
     echo  ERROR: No se pudo descargar el bridge.
     echo  Comprueba la conexion a internet.
@@ -106,35 +106,65 @@ if exist "%WIZARD_FILE%" (
     pause
 )
 
-REM ── Crear acceso directo en escritorio ───────────────────
-set SHORTCUT=%USERPROFILE%\Desktop\ia.rest Bridge.lnk
+REM ── Crear script arrancar.bat con bucle de reinicio ─────
 set SCRIPT_FILE=%INSTALL_DIR%\arrancar.bat
 
-echo @echo off > "%SCRIPT_FILE%"
-echo title ia.rest Bridge >> "%SCRIPT_FILE%"
-echo set IAREST_API=%IAREST_API% >> "%SCRIPT_FILE%"
-echo set BRIDGE_TOKEN=%BRIDGE_TOKEN% >> "%SCRIPT_FILE%"
-echo node "%BRIDGE_FILE%" >> "%SCRIPT_FILE%"
+echo @echo off                                           > "%SCRIPT_FILE%"
+echo chcp 65001 ^>nul                                   >> "%SCRIPT_FILE%"
+echo title ia.rest Bridge                               >> "%SCRIPT_FILE%"
+echo set IAREST_API=%IAREST_API%                        >> "%SCRIPT_FILE%"
+echo set BRIDGE_TOKEN=%BRIDGE_TOKEN%                    >> "%SCRIPT_FILE%"
+echo :loop                                              >> "%SCRIPT_FILE%"
+echo node "%BRIDGE_FILE%"                               >> "%SCRIPT_FILE%"
+echo echo [ia.rest] Bridge detenido. Reiniciando en 5s. >> "%SCRIPT_FILE%"
+echo timeout /t 5 /nobreak ^>nul                        >> "%SCRIPT_FILE%"
+echo goto loop                                          >> "%SCRIPT_FILE%"
 
-powershell -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT%'); $s.TargetPath = '%SCRIPT_FILE%'; $s.IconLocation = 'shell32.dll,13'; $s.Description = 'ia.rest Bridge de impresoras'; $s.Save()" >nul 2>&1
-echo  Acceso directo creado en el Escritorio
+echo  Script de arranque creado.
 echo.
 
-REM ── Abrir navegador ─────────────────────────────────────
+REM ── Registrar tarea programada de Windows ────────────────
+echo  PASO 5 - Registrando inicio automatico...
+echo  (Arrancara solo cada vez que enciendas el PC)
+echo.
+
+schtasks /delete /tn "iarest-bridge" /f >nul 2>&1
+schtasks /create /tn "iarest-bridge" /tr "cmd /c start \"ia.rest Bridge\" /min \"%SCRIPT_FILE%\"" /sc ONLOGON /ru "%USERNAME%" /rl HIGHEST /f >nul 2>&1
+
+if %errorlevel% equ 0 (
+    echo  Inicio automatico activado - arrancara solo al encender el PC
+) else (
+    echo  [!] No se pudo registrar la tarea. Ejecuta este bat como Administrador.
+    echo      O usa el acceso directo del escritorio para arrancar manualmente.
+)
+echo.
+
+REM ── Crear acceso directo en escritorio ───────────────────
+set SHORTCUT=%USERPROFILE%\Desktop\ia.rest Bridge.lnk
+powershell -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT%'); $s.TargetPath = '%SCRIPT_FILE%'; $s.IconLocation = 'shell32.dll,13'; $s.Description = 'ia.rest Bridge de impresoras'; $s.Save()" >nul 2>&1
+echo  Acceso directo creado en el Escritorio.
+echo.
+
+REM ── Abrir navegador ──────────────────────────────────────
 start https://www.iarest.es/owner
 echo  Panel abierto en el navegador.
 echo.
 
-REM ── Arrancar bridge ──────────────────────────────────────
+REM ── Arrancar bridge ahora ────────────────────────────────
 echo  ============================================
-echo  Bridge listo. Arrancando...
-echo  Deja esta ventana abierta mientras uses ia.rest.
-echo  Para parar: cierra esta ventana o pulsa Ctrl+C
+echo  Listo. Arrancando bridge...
+echo.
+echo  Ya esta configurado para arrancar solo al
+echo  encender el PC. Puedes minimizar esta ventana.
+echo  Para parar: cierra esta ventana o Ctrl+C
 echo  ============================================
 echo.
 
 set IAREST_API=%IAREST_API%
 set BRIDGE_TOKEN=%BRIDGE_TOKEN%
-node "%BRIDGE_FILE%"
 
-pause
+:loop
+node "%BRIDGE_FILE%"
+echo  [ia.rest] Bridge detenido. Reiniciando en 5s...
+timeout /t 5 /nobreak >nul
+goto loop
