@@ -115,6 +115,19 @@ function detectarMesa(tNorm: string, cache: MenuCache): string | null {
   const m3 = tNorm.match(/\b(\d{1,2})\s*$/)
   if (m3) { const n = parseInt(m3[1]); if (n >= 1 && n <= 99) return `T${String(n).padStart(2, '0')}` }
 
+  // 5. Código directo tipo "B1", "T3", "S06" al inicio o en cualquier posición
+  // Cubre "B1 la cuenta", "T3 marchar", etc. — el camarero dice el código completo
+  const codigoRe = /(?:^|\s)([a-zA-Z])0*(\d{1,2})(?:\s|$)/
+  const m4 = tNorm.match(codigoRe)
+  if (m4) {
+    const prefijo = m4[1].toUpperCase()
+    const num = parseInt(m4[2])
+    const prefijosValidos = cache.zonas.map((z: { prefijo?: string }) => z.prefijo?.toUpperCase()).filter(Boolean)
+    if (prefijosValidos.includes(prefijo) && num >= 1 && num <= 99) {
+      return `${prefijo}${num}`  // sin padding: B1, T3, S6 (sin ceros)
+    }
+  }
+
   return null
 }
 

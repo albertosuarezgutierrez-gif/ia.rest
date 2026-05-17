@@ -1140,6 +1140,20 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         }
         // ─────────────────────────────────────────────────────────────────
 
+        // ── Intent: CUENTA por voz ────────────────────────────────────────
+        // El servidor ya actualizó la mesa a estado 'cuenta' y creó el print job.
+        // El frontend solo confirma visualmente; NO auto-enviar como comanda vacía.
+        if (d.brain?.tipo === 'cuenta' && d.comanda_id) {
+          const mesaCuenta = d.brain.mesa || '?'
+          addMsg('brain', `🧾 Cuenta solicitada · ${mesaCuenta}`, 'ok')
+          if (!ttsOff) speak(`Cuenta solicitada, mesa ${mesaCuenta}`)
+          if (navigator.vibrate) navigator.vibrate([30, 50, 30])
+          setScreenSafe('sent')
+          processingRef.current = false
+          return
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         setPendingItems([])
         const msgTxt = `${d.brain?.mesa||'?'}: ${bItems.map((it: BrainResult['items'][0])=>`${it.cantidad}× ${it.nombre}`).join(', ')}`
         addMsg('brain', msgTxt + (d.alertas_86?.length?` · ⚠ 86`:'') + (d.alertas_alergenos?.length?` · ⚠ alérgeno`:''), (d.alertas_86?.length||d.alertas_alergenos?.length)?'aviso':'ok')
@@ -1727,8 +1741,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                   {/* FIX-04: onPointerDown evita doble-disparo en móvil (no hay delay de click sintético) */}
                   <button onPointerDown={reset} style={{flex:1,padding:12,background:'none',border:'none',borderRight:`1px solid ${C.rule}`,color:C.ink3,fontFamily:SN,fontSize:12,fontWeight:600,cursor:'pointer'}}>✗ Cancelar</button>
                   <button onPointerDown={()=>{ setScreenSafe('sent')
-                    addMsg('brain',`✓ Enviado · ${brain.mesa}`,'ok')
-                    setPushMsg(`🍳 Cocina recibió · ${brain.mesa}`); setShowPush(true); setTimeout(()=>setShowPush(false),4000)
+                    addMsg('brain',`✓ Enviado · ${brain?.mesa ?? '?'}`,'ok')
+                    setPushMsg(`🍳 Cocina recibió · ${brain?.mesa ?? '?'}`); setShowPush(true); setTimeout(()=>setShowPush(false),4000)
                   }} style={{flex:2,padding:12,background:C.verm,border:'none',color:'#fff',fontFamily:SN,fontSize:13,fontWeight:700,cursor:'pointer'}}>
                     ✓ Confirmar
                   </button>
@@ -1758,7 +1772,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
             <div style={{padding:'4px 14px 6px',display:'flex',gap:6,flexShrink:0,overflowX:'auto',scrollbarWidth:'none' as const,background:C.bg1,borderTop:`1px solid ${C.rule}`}}>
               {['✓ Sí','✗ No','Repite'].map(r=>(
                 // FIX-04: onPointerDown evita doble-disparo en móvil
-                <button key={r} onPointerDown={r==='✓ Sí'?()=>{setScreenSafe('sent');addMsg('brain',`✓ Enviado · ${brain?.mesa}`,'ok')}:r==='✗ No'?reset:()=>{reset();setScreenSafe('idle')}}
+                <button key={r} onPointerDown={r==='✓ Sí'?()=>{setScreenSafe('sent');addMsg('brain',`✓ Enviado · ${brain?.mesa ?? '?'}`,'ok')}:r==='✗ No'?reset:()=>{reset();setScreenSafe('idle')}}
                   style={{flexShrink:0,padding:'6px 12px',borderRadius:20,border:`1px solid ${C.rule}`,background:C.bg2,fontSize:12,fontWeight:600,color:r==='✓ Sí'?C.gr:r==='✗ No'?C.verm:C.ink3,cursor:'pointer',fontFamily:SN}}>
                   {r}
                 </button>
