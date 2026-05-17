@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react'
 const SN = "'Inter Tight',system-ui,sans-serif"
 const SM = "'JetBrains Mono',ui-monospace,monospace"
 const SE = "'Newsreader',Georgia,serif"
-const C  = { bg:'#14110E', card:'#221E1A', rule:'#2E2923', ink:'#F6F1E7', ink3:'#D8CDB6', ink4:'#8C7B6B', verm:'#D9442B', gr:'#3F7D44', amb:'#E8A33B' }
+// Tema claro (crema) — igual que la pantalla de camarero y KDS donde se usa este componente
+const C  = { bg:'#F6F1E7', card:'#FBF8F1', rule:'#D8CDB6', ink:'#1A1714', ink3:'#6B5F52', ink4:'#9A8D7C', verm:'#D9442B', gr:'#3F7D44', amb:'#E8A33B' }
 
 interface Props {
   session: { id: string; restaurante_id: string; nombre: string; rol: string }
@@ -82,7 +83,7 @@ export default function FicharSalidaBtn({ session, onSalida }: Props) {
       {/* Info turno activo */}
       <div style={{ background: `${C.gr}15`, border: `1px solid ${C.gr}33`, borderRadius: 10, padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontFamily: SM, fontSize: 10, color: C.gr, letterSpacing: '.1em', textTransform: 'uppercase' }}>Turno activo</div>
+          <div style={{ fontFamily: SM, fontSize: 10, color: C.gr, letterSpacing: '.1em', textTransform: 'uppercase' }}>Fichaje activo</div>
           <div style={{ fontFamily: SM, fontSize: 14, color: C.ink, marginTop: 2 }}>
             {duracion} · desde las {new Date(turno.entrada_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
           </div>
@@ -147,7 +148,7 @@ function FicharEntradaTardia({ session, onFichado }: {
         {loading ? 'Fichando...' : 'Fichar entrada'}
       </button>
       <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, textAlign: 'center', marginTop: 6 }}>
-        No tienes turno activo registrado
+        Sin fichaje registrado hoy
       </div>
     </div>
   )

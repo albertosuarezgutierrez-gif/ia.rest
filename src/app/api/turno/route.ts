@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     .eq('restaurante_id', rid)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ turno: null })
   return NextResponse.json({ turno: data })

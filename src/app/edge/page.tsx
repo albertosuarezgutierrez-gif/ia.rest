@@ -539,6 +539,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [mesasPaxMap, setMesasPaxMap] = useState<Record<string, number>>({})
   // Datos para el plano visual
   const [mesasPlano, setMesasPlano] = useState<MesaPlano[]>([])
+  const mesasPlanoRef = useRef<MesaPlano[]>([])   // espejo síncrono — evita recrear stopRecording en cada realtime update
   const [zonasPlano, setZonasPlano] = useState<ZonaInfo[]>([])
   // Guarda resultado de BRAIN mientras esperamos comensales por voz
   const [pendingVozComanda, setPendingVozComanda] = useState<{
@@ -681,14 +682,18 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       fetch('/api/owner/mesas', { headers: { 'x-ia-session': ses } }).then(r => r.json()),
       fetch('/api/owner/zonas', { headers: { 'x-ia-session': ses } }).then(r => r.json()),
     ]).then(([dm, dz]) => {
-      if (dm.mesas) setMesasPlano(dm.mesas.map((m: {
-        id:string;codigo:string;capacidad:number;zona:string;
-        pos_x:number|null;pos_y:number|null;forma:string|null;estado:string;
-      }) => ({
-        ...m,
-        estado: (m.estado ?? 'libre') as MesaPlano['estado'],
-        es_mia: false,
-      })))
+      if (dm.mesas) {
+        const mapped = dm.mesas.map((m: {
+          id:string;codigo:string;capacidad:number;zona:string;
+          pos_x:number|null;pos_y:number|null;forma:string|null;estado:string;
+        }) => ({
+          ...m,
+          estado: (m.estado ?? 'libre') as MesaPlano['estado'],
+          es_mia: false,
+        }))
+        setMesasPlano(mapped)
+        mesasPlanoRef.current = mapped
+      }
       if (Array.isArray(dz)) setZonasPlano(dz.map((z: {id:string;tipo:string;nombre:string}) => ({
         id: z.id, tipo: z.tipo, nombre: z.nombre,
       })))
@@ -728,32 +733,36 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   // Sincronizar estados de mesas con comandas activas en tiempo real
   useEffect(() => {
     if (!mesasPlano.length) return
-    setMesasPlano(prev => prev.map(m => {
-      const comanda = mesasOcupadas[m.id]
-      if (!comanda) {
-        if (m.estado === 'reservada') return m  // preservar candado + hora reserva
-        return {
-          ...m, estado: 'libre' as const,
-          num_comensales: null, es_mia: false,
-          minutos_abierta: null, servicio_pendiente: false,
-          nombre_cuenta: null, reserva_hora: null,
+    setMesasPlano(prev => {
+      const next = prev.map(m => {
+        const comanda = mesasOcupadas[m.id]
+        if (!comanda) {
+          if (m.estado === 'reservada') return m  // preservar candado + hora reserva
+          return {
+            ...m, estado: 'libre' as const,
+            num_comensales: null, es_mia: false,
+            minutos_abierta: null, servicio_pendiente: false,
+            nombre_cuenta: null, reserva_hora: null,
+          }
         }
-      }
-      const min = Math.floor((Date.now() - new Date(comanda.created_at).getTime()) / 60000)
-      const estado: MesaPlano['estado'] = comanda.tipo === 'cuenta' || comanda.estado === 'cuenta_pedida' ? 'cuenta'
-        : comanda.estado === 'en_cocina' ? 'en_cocina'
-        : min > 60 ? 'urgente' : 'activa'
-      return {
-        ...m,
-        estado,
-        num_comensales: comanda.num_comensales ?? null,
-        es_mia: comanda.camarero_id === session.id,
-        minutos_abierta: min,
-        servicio_pendiente: servicioPendiente.has(m.id),
-        nombre_cuenta: (comanda as {nombre_cuenta?: string | null}).nombre_cuenta ?? null,
-        reserva_hora: null,
-      }
-    }))
+        const min = Math.floor((Date.now() - new Date(comanda.created_at).getTime()) / 60000)
+        const estado: MesaPlano['estado'] = comanda.tipo === 'cuenta' || comanda.estado === 'cuenta_pedida' ? 'cuenta'
+          : comanda.estado === 'en_cocina' ? 'en_cocina'
+          : min > 60 ? 'urgente' : 'activa'
+        return {
+          ...m,
+          estado,
+          num_comensales: comanda.num_comensales ?? null,
+          es_mia: comanda.camarero_id === session.id,
+          minutos_abierta: min,
+          servicio_pendiente: servicioPendiente.has(m.id),
+          nombre_cuenta: (comanda as {nombre_cuenta?: string | null}).nombre_cuenta ?? null,
+          reserva_hora: null,
+        }
+      })
+      mesasPlanoRef.current = next  // mantener ref síncrona
+      return next
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comandas, session.id, servicioPendiente])
 
@@ -1181,7 +1190,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       const brainSnap = brainRef.current
       if (brainSnap && brainSnap.items?.length > 0 && brainSnap.mesa) {
         const sesHeader = localStorage.getItem('ia_rest_session') ?? ''
-        const mesaObj = mesasPlano.find(m => m.codigo === brainSnap.mesa)
+        const mesaObj = mesasPlanoRef.current.find(m => m.codigo === brainSnap.mesa)
         if (mesaObj) encolar({
           mesa_codigo: brainSnap.mesa,
           mesa_id: mesaObj.id,
@@ -1197,7 +1206,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       if (watchdogRef.current) { clearTimeout(watchdogRef.current); watchdogRef.current = null }
     }
   // brain eliminado de deps → stopRecording NO se recrea en cada comanda → handlers de auricular estables
-  }, [session.id, turnoId, pendingItems, voiceConfirm, startRecording, addMsg, ttsOff, autoConfirm, autoThreshold, servicioConfig, mesasPlano, encolar, setScreenSafe])
+  // mesasPlano eliminado de deps → usa mesasPlanoRef.current → no se recrea en cada realtime update
+  }, [session.id, turnoId, pendingItems, voiceConfirm, startRecording, addMsg, ttsOff, autoConfirm, autoThreshold, servicioConfig, encolar, setScreenSafe])
 
   useEffect(() => {
     // Bug-fix: usar screenRef.current (síncrono) en lugar de screen (closure stale)
@@ -1234,7 +1244,8 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         navigator.mediaSession.setActionHandler('stop',  null)
       } catch { /* ignore */ }
     }
-  }, [screen, startRecording, stopRecording, activateMediaSession])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startRecording, stopRecording, activateMediaSession])
 
   // ── Activar MediaSession en el primer toque de pantalla ─────────
   // Necesario para "robar" la sesión a Spotify/YouTube en cuanto
@@ -1381,7 +1392,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   }
   const seleccionarChip = useCallback(async (chip: {nombre:string;precio?:number|null;cantidad:number}) => {
     // Buscar mesa_id a partir del codigo guardado
-    const mesa = mesasPlano.find(m => m.codigo === mesaClarificacion)
+    const mesa = mesasPlanoRef.current.find(m => m.codigo === mesaClarificacion)
     if (!mesa) {
       addMsg('sistema', `Mesa ${mesaClarificacion} no encontrada`, 'error')
       return
@@ -1411,7 +1422,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     } catch {
       addMsg('sistema', 'Sin conexión', 'error')
     }
-  }, [mesasPlano, mesaClarificacion, addMsg])
+  }, [mesaClarificacion, addMsg])
 
   const reset = () => {
     // Bug-fix: si el camarero cancela en la pantalla confirm, la comanda ya existe en BD.
