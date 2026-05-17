@@ -346,6 +346,7 @@ export async function POST(req: NextRequest) {
             restaurante_id: rid,
             zona_tipo:   (mesa as Record<string, unknown>).zona as string ?? null,
             zona_nombre: ((mesa as Record<string, unknown>).zonas as { nombre?: string } | null)?.nombre ?? null,
+            nota_general: brainResult.nota_general ?? null,
           },
           brainResult.items.map(item => ({ nombre: item.nombre, cantidad: item.cantidad,
             notas: item.notas ?? null, seccion_id: (item as Record<string, unknown>).seccion_id as string ?? null }))
@@ -454,6 +455,7 @@ export async function POST(req: NextRequest) {
             numero_ticket: comanda.numero_ticket ?? undefined,
             restaurante_id: rid,
             zona_tipo: null,
+            nota_general: brainResult.nota_general ?? null,
           },
           brainResult.items.map(item => ({ nombre: item.nombre, cantidad: item.cantidad, notas: item.notas ?? null, seccion_id: null }))
         ).catch(err => console.error('[COURIER nominal]', err))

@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         const itemsPrint = items.map((i: { nombre: string; cantidad: number; notas?: string; seccion_id?: string }) => ({
           nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, seccion_id: i.seccion_id,
         }))
-        await crearPrintJobs({ id: comanda.id, tipo, mesa_codigo: nombre_cuenta.trim(), camarero_nombre: 'Sala', restaurante_id: rid }, itemsPrint)
+        await crearPrintJobs({ id: comanda.id, tipo, mesa_codigo: nombre_cuenta.trim(), camarero_nombre: 'Sala', restaurante_id: rid, nota_general: nota_general ?? null }, itemsPrint)
       } catch (e) { console.error('[COMANDA] Print error:', e) }
       return NextResponse.json({ ok: true, comanda_id: comanda.id, numero_ticket: comanda.numero_ticket, nombre_cuenta: nombre_cuenta.trim() })
     }
@@ -203,6 +203,7 @@ export async function POST(req: NextRequest) {
         id: comanda.id, tipo, mesa_codigo: mesaData?.codigo ?? 'Mesa',
         camarero_nombre: 'Sala', restaurante_id: rid,
         zona_tipo: ((mesaData?.zonas as unknown) as { tipo?: string } | null)?.tipo ?? null,
+        nota_general: nota_general ?? null,
       }, itemsPrint)
     } catch (e) { console.error('[COMANDA] Print error:', e) }
     return NextResponse.json({
