@@ -1460,7 +1460,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const isProcessing = screen==='processing'
 
   return (
-    <div style={{height:'100dvh',background:C.bg,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:SN,position:'relative',fontSize:fontBig?'1.1rem':'1rem',color:C.ink}}>
+    <div style={{height:'100dvh',background:C.bg,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:SN,position:'relative',color:C.ink,zoom:fontBig?'110%':'100%'}}>
       <style>{`
         @keyframes ldot{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes hout{0%{transform:scale(1);opacity:.4}100%{transform:scale(2);opacity:0}}
