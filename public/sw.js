@@ -1,7 +1,7 @@
-// ia.rest · Service Worker v6
+// ia.rest · Service Worker v7
 // Estrategia: HTML siempre network, _next/static cache-first (immutable), push
 
-const STATIC_CACHE = 'iarest-static-v6'
+const STATIC_CACHE = 'iarest-static-v7'
 const OFFLINE_URL = '/offline.html'
 
 // Solo pre-cachear assets estáticos que no cambian entre deploys
@@ -17,8 +17,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(STATIC_CACHE)
       .then(c => c.addAll(PRECACHE_STATIC))
-    // NO llamamos skipWaiting() aquí — el SW nuevo espera en 'waiting'
-    // hasta que el usuario pulse "Actualizar ahora" en el banner
+      .then(() => self.skipWaiting())  // activar inmediatamente sin esperar cierre de tabs
   )
 })
 
