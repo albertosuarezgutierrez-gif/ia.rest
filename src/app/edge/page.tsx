@@ -1875,7 +1875,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           .filter(c => c.camarero_id === session.id && ['nueva','en_cocina','lista','cuenta_pedida'].includes(c.estado))
           .sort((a,b) => {
             const ord = {lista:0, en_cocina:1, nueva:2}
-            return (ord[a.estado as keyof typeof ord]??9) - (ord[b.estado as keyof typeof ord]??9)
+            const diff = (ord[a.estado as keyof typeof ord]??9) - (ord[b.estado as keyof typeof ord]??9)
+            if (diff !== 0) return diff
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime() // más antigua primero dentro del mismo estado
           })
         const nCocina   = misCmds.filter(c=>c.estado==='en_cocina').length
         const nLista    = misCmds.filter(c=>c.estado==='lista').length
