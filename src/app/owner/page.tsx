@@ -5226,20 +5226,123 @@ function ModificacionesTab({ restauranteId }: { restauranteId: string }) {
 }
 
 /* ─── Tab: Control de Caja ─── */
+
+// Denominaciones euro en orden descendente
+const DENOM_BILLETES = [500, 200, 100, 50, 20, 10, 5] as const
+const DENOM_MONEDAS  = [200, 100, 50, 20, 10, 5, 2, 1] as const // en céntimos × 100 (2€=200, 1€=100…)
+
+type DesgloseKey = string // ej: "500", "200", "100", "50", "20", "10", "5", "2eur", "1eur", "050", "020", "010", "005", "002", "001"
+type Desglose    = Record<DesgloseKey, number>
+
+function desgloseVacio(): Desglose {
+  return {
+    '500':0,'200':0,'100':0,'50':0,'20':0,'10':0,'5':0,
+    '2eur':0,'1eur':0,'050':0,'020':0,'010':0,'005':0,'002':0,'001':0,
+  }
+}
+
+function calcTotalDesglose(d: Desglose): number {
+  return (
+    d['500']*500 + d['200']*200 + d['100']*100 + d['50']*50 + d['20']*20 + d['10']*10 + d['5']*5 +
+    d['2eur']*2 + d['1eur']*1 +
+    d['050']*0.5 + d['020']*0.2 + d['010']*0.1 + d['005']*0.05 + d['002']*0.02 + d['001']*0.01
+  )
+}
+
+function ArqueoDesglose({ value, onChange }: { value: Desglose; onChange: (d: Desglose) => void }) {
+  const fmtVal = (n: number) => n === 0 ? '' : String(n)
+  const set = (k: DesgloseKey, v: string) => onChange({ ...value, [k]: Math.max(0, parseInt(v)||0) })
+  const total = calcTotalDesglose(value)
+
+  const rowStyle: React.CSSProperties = {
+    display:'grid', gridTemplateColumns:'1fr 56px 80px',
+    alignItems:'center', gap:8, padding:'5px 0',
+    borderBottom:`1px solid ${C.rule}`,
+  }
+  const inputStyle: React.CSSProperties = {
+    padding:'5px 8px', border:`1px solid ${C.rule}`, borderRadius:6,
+    background:C.paper, fontFamily:SM, fontSize:14, color:C.ink,
+    textAlign:'right' as const, width:'100%',
+  }
+  const labelStyle: React.CSSProperties = { fontSize:13, color:C.ink, fontFamily:SN }
+  const subtotalStyle: React.CSSProperties = { fontSize:12, color:C.ink3, fontFamily:SM, textAlign:'right' as const }
+
+  const Row = ({ k, label, val }: { k: DesgloseKey; label: string; val: number }) => {
+    const sub = (value[k]||0) * val
+    return (
+      <div style={rowStyle}>
+        <span style={labelStyle}>{label}</span>
+        <input type="number" inputMode="numeric" min="0" placeholder="0"
+          value={fmtVal(value[k]||0)}
+          onChange={e => set(k, e.target.value)}
+          style={inputStyle}
+        />
+        <span style={subtotalStyle}>{sub>0 ? `${sub.toFixed(2).replace('.',',')}€` : '—'}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{background:C.paper2, borderRadius:10, padding:'12px 14px', marginBottom:8}}>
+      {/* Cabecera tabla */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 56px 80px',gap:8,marginBottom:6}}>
+        <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:C.ink4}}>Denominación</span>
+        <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:C.ink4,textAlign:'right'}}>Ud.</span>
+        <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:C.ink4,textAlign:'right'}}>Importe</span>
+      </div>
+
+      {/* Billetes */}
+      <div style={{fontSize:10,fontWeight:700,color:C.ink4,letterSpacing:'1px',textTransform:'uppercase',marginBottom:4,marginTop:4}}>💶 Billetes</div>
+      <Row k="500" label="500 €"  val={500} />
+      <Row k="200" label="200 €"  val={200} />
+      <Row k="100" label="100 €"  val={100} />
+      <Row k="50"  label="50 €"   val={50}  />
+      <Row k="20"  label="20 €"   val={20}  />
+      <Row k="10"  label="10 €"   val={10}  />
+      <Row k="5"   label="5 €"    val={5}   />
+
+      {/* Monedas */}
+      <div style={{fontSize:10,fontWeight:700,color:C.ink4,letterSpacing:'1px',textTransform:'uppercase',marginBottom:4,marginTop:10}}>🪙 Monedas</div>
+      <Row k="2eur" label="2 €"    val={2}    />
+      <Row k="1eur" label="1 €"    val={1}    />
+      <Row k="050"  label="0,50 €" val={0.5}  />
+      <Row k="020"  label="0,20 €" val={0.2}  />
+      <Row k="010"  label="0,10 €" val={0.1}  />
+      <Row k="005"  label="0,05 €" val={0.05} />
+      <Row k="002"  label="0,02 €" val={0.02} />
+      <Row k="001"  label="0,01 €" val={0.01} />
+
+      {/* Total contado */}
+      <div style={{marginTop:10,paddingTop:10,borderTop:`2px solid ${C.rule}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{fontSize:13,fontWeight:700,color:C.ink}}>Total contado</span>
+        <span style={{fontFamily:SM,fontSize:20,fontWeight:700,color: total>0?C.green:C.ink3}}>
+          {total.toFixed(2).replace('.',',')} €
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function CajaTab() {
   const sh = () => ({ 'x-ia-session': localStorage.getItem('ia_rest_session') ?? '' })
   const [data, setData] = useState<{
     turno: { id: string; nombre: string; created_at: string } | null
-    movimientos: { id:string; tipo:string; concepto:string; importe:number; saldo_acumulado:number; camarero_nombre:string; mesa_label:string|null; notas:string|null; created_at:string }[]
+    movimientos: { id:string; tipo:string; concepto:string; importe:number; saldo_acumulado:number; camarero_nombre:string; mesa_label:string|null; notas:string|null; desglose_monedas:Desglose|null; created_at:string }[]
     resumen: { saldo_actual:number; cobros_efectivo:number; cambios:number; retiros:number; gastos:number; apertura:number } | null
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({ tipo:'retiro', concepto:'', importe:'', notas:'' })
   const [saving, setSaving] = useState(false)
-  const [cierreOpen, setCierreOpen] = useState(false)
-  const [cierreEfectivo, setCierreEfectivo] = useState('')
-  const [cierreDesvio, setCierreDesvio] = useState<number|null>(null)
+
+  // Estado cierre/arqueo unificado
+  const [arqueoOpen, setArqueoOpen]     = useState(false)
+  const [arqueoModo, setArqueoModo]     = useState<'cierre'|'arqueo'>('cierre')
+  const [desglose, setDesglose]         = useState<Desglose>(desgloseVacio())
+  const [arqueoModoInput, setArqueoModoInput] = useState<'desglose'|'manual'>('desglose')
+  const [manualEfectivo, setManualEfectivo]   = useState('')
+  const [arqueoDesvio, setArqueoDesvio] = useState<number|null>(null)
+  const [arqueoSaving, setArqueoSaving] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -5247,7 +5350,7 @@ function CajaTab() {
     const d = await r.json()
     setData(d)
     setLoading(false)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
 
@@ -5263,24 +5366,61 @@ function CajaTab() {
     setModalOpen(false); setSaving(false); load()
   }
 
-  const calcDesvio = () => {
-    if (!data?.resumen || !cierreEfectivo) return
-    const esperado = data.resumen.saldo_actual
-    const real = parseFloat(cierreEfectivo)
-    setCierreDesvio(Math.round((real - esperado) * 100) / 100)
+  const abrirArqueo = (modo: 'cierre'|'arqueo') => {
+    setArqueoModo(modo)
+    setDesglose(desgloseVacio())
+    setManualEfectivo('')
+    setArqueoDesvio(null)
+    setArqueoModoInput('desglose')
+    setArqueoOpen(true)
+  }
+
+  const totalContado = (): number => {
+    if (arqueoModoInput === 'manual') return parseFloat(manualEfectivo)||0
+    return calcTotalDesglose(desglose)
+  }
+
+  const calcArqueoDesvio = () => {
+    const esperado = data?.resumen?.saldo_actual ?? 0
+    setArqueoDesvio(Math.round((totalContado() - esperado) * 100) / 100)
+  }
+
+  const confirmarArqueo = async () => {
+    const contado   = totalContado()
+    const esperado  = data?.resumen?.saldo_actual ?? 0
+    const desvio    = Math.round((contado - esperado) * 100) / 100
+    const esCierre  = arqueoModo === 'cierre'
+    const fmtE = (n:number) => `${n.toFixed(2).replace('.',',')} €`
+    setArqueoSaving(true)
+    await fetch('/api/caja', {
+      method: 'POST',
+      headers: { ...sh(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo: arqueoModo,
+        concepto: esCierre
+          ? `Cierre de caja · contado ${fmtE(contado)} · desvío ${fmtE(desvio)}`
+          : `Arqueo de control · contado ${fmtE(contado)} · desvío ${fmtE(desvio)}`,
+        importe: 0,
+        notas: `Contado: ${fmtE(contado)} | Esperado: ${fmtE(esperado)} | Desvío: ${fmtE(desvio)}`,
+        desglose_monedas: arqueoModoInput === 'desglose' ? desglose : null,
+      })
+    })
+    setArqueoSaving(false)
+    setArqueoOpen(false)
+    load()
   }
 
   const TIPO_COLOR: Record<string,string> = {
     apertura: C.green, cobro_efectivo: C.green,
     cambio: C.amber, retiro: C.red, gasto: C.red,
-    ingreso_manual: C.green, cierre: C.ink3,
+    ingreso_manual: C.green, cierre: C.ink3, arqueo: C.amber,
   }
   const TIPO_ICONO: Record<string,string> = {
     apertura:'🔓', cobro_efectivo:'💵', cambio:'🔄',
-    retiro:'⬆', gasto:'🛒', ingreso_manual:'⬇', cierre:'🔒',
+    retiro:'⬆', gasto:'🛒', ingreso_manual:'⬇', cierre:'🔒', arqueo:'🔎',
   }
 
-  const fmtEur = (n: number) => `${n >= 0 ? '' : '−'}${Math.abs(n).toFixed(2).replace('.',',')} €`
+  const fmtEur  = (n: number) => `${n >= 0 ? '' : '−'}${Math.abs(n).toFixed(2).replace('.',',')} €`
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'})
 
   if (loading) return <div style={{padding:40,textAlign:'center',color:C.ink4,fontFamily:SM,fontSize:12}}>Cargando caja…</div>
@@ -5294,7 +5434,9 @@ function CajaTab() {
   )
 
   const { resumen, movimientos, turno } = data
-  const saldo = resumen?.saldo_actual ?? 0
+  const saldo    = resumen?.saldo_actual ?? 0
+  const contado  = totalContado()
+  const desvio   = arqueoDesvio
 
   return (
     <div style={{paddingTop:24}}>
@@ -5315,11 +5457,11 @@ function CajaTab() {
         </div>
 
         {[
-          { label:'Apertura', val: resumen?.apertura??0, ico:'🔓', col:C.ink3 },
-          { label:'Cobros efectivo', val: resumen?.cobros_efectivo??0, ico:'💵', col:C.green },
-          { label:'Cambios entregados', val: -(resumen?.cambios??0), ico:'🔄', col:C.amber },
-          { label:'Retiros', val: -(resumen?.retiros??0), ico:'⬆', col:C.red },
-          { label:'Gastos', val: -(resumen?.gastos??0), ico:'🛒', col:C.red },
+          { label:'Apertura',           val: resumen?.apertura??0,           ico:'🔓', col:C.ink3  },
+          { label:'Cobros efectivo',     val: resumen?.cobros_efectivo??0,    ico:'💵', col:C.green },
+          { label:'Cambios entregados',  val: -(resumen?.cambios??0),         ico:'🔄', col:C.amber },
+          { label:'Retiros',             val: -(resumen?.retiros??0),         ico:'⬆', col:C.red   },
+          { label:'Gastos',              val: -(resumen?.gastos??0),          ico:'🛒', col:C.red   },
         ].map(({label,val,ico,col})=>(
           <div key={label} style={{background:C.bone,border:`1px solid ${C.rule}`,borderRadius:10,padding:'12px 14px'}}>
             <div style={{fontSize:11,color:C.ink4,marginBottom:4,display:'flex',gap:6,alignItems:'center'}}>
@@ -5336,7 +5478,11 @@ function CajaTab() {
           style={{padding:'9px 16px',background:C.paper2,border:`1px solid ${C.rule}`,borderRadius:8,fontSize:13,fontWeight:600,color:C.ink,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
           ＋ Movimiento manual
         </button>
-        <button onClick={()=>{ setCierreOpen(true); setCierreEfectivo(''); setCierreDesvio(null) }}
+        <button onClick={()=>abrirArqueo('arqueo')}
+          style={{padding:'9px 16px',background:C.amberS,border:`1px solid ${C.amber}44`,borderRadius:8,fontSize:13,fontWeight:600,color:C.amber,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+          🔎 Arqueo
+        </button>
+        <button onClick={()=>abrirArqueo('cierre')}
           style={{padding:'9px 16px',background:C.redS,border:`1px solid ${C.red}44`,borderRadius:8,fontSize:13,fontWeight:600,color:C.red,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
           🔒 Cierre de caja
         </button>
@@ -5377,49 +5523,96 @@ function CajaTab() {
         </div>
       )}
 
-      {/* MODAL: Cierre de caja */}
-      {cierreOpen && (
-        <div style={{position:'fixed',inset:0,background:'rgba(26,23,20,.5)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:20}}>
-          <div style={{width:'100%',maxWidth:480,background:C.bone,borderRadius:16,padding:24,boxShadow:'0 -4px 32px rgba(26,23,20,.2)'}}>
-            <div style={{fontFamily:SE,fontStyle:'italic',fontSize:18,marginBottom:4}}>Cierre de caja</div>
-            <div style={{fontSize:12,color:C.ink3,marginBottom:16}}>Saldo esperado según sistema: <strong style={{fontFamily:SM,color:C.ink}}>{fmtEur(saldo)}</strong></div>
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              <div>
-                <div style={{fontSize:11,color:C.ink4,marginBottom:6,textTransform:'uppercase',letterSpacing:'1px'}}>Efectivo real contado</div>
-                <input type="number" inputMode="decimal" placeholder="0.00" value={cierreEfectivo}
-                  onChange={e=>{setCierreEfectivo(e.target.value);setCierreDesvio(null)}}
+      {/* MODAL: Arqueo / Cierre con desglose de billetes y monedas */}
+      {arqueoOpen && (
+        <div style={{position:'fixed',inset:0,background:'rgba(26,23,20,.6)',zIndex:200,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'20px 16px',overflowY:'auto'}}>
+          <div style={{width:'100%',maxWidth:500,background:C.bone,borderRadius:16,padding:24,boxShadow:'0 8px 48px rgba(26,23,20,.3)',marginTop:20,marginBottom:20}}>
+
+            {/* Cabecera */}
+            <div style={{marginBottom:4}}>
+              <div style={{fontFamily:SE,fontStyle:'italic',fontSize:20,color:C.ink}}>
+                {arqueoModo==='cierre' ? '🔒 Cierre de caja' : '🔎 Arqueo de control'}
+              </div>
+              <div style={{fontSize:12,color:C.ink3,marginTop:2}}>
+                Saldo esperado según sistema: <strong style={{fontFamily:SM,color:C.ink}}>{fmtEur(saldo)}</strong>
+              </div>
+            </div>
+
+            {/* Selector modo input */}
+            <div style={{display:'flex',gap:6,marginBottom:16,marginTop:14,background:C.paper2,borderRadius:8,padding:4}}>
+              {(['desglose','manual'] as const).map(m => (
+                <button key={m} onClick={()=>{setArqueoModoInput(m);setArqueoDesvio(null)}}
+                  style={{flex:1,padding:'7px 12px',borderRadius:6,border:'none',
+                    background: arqueoModoInput===m ? C.bone : 'transparent',
+                    color: arqueoModoInput===m ? C.ink : C.ink3,
+                    fontWeight: arqueoModoInput===m ? 700 : 500,
+                    fontSize:12,cursor:'pointer',
+                    boxShadow: arqueoModoInput===m ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
+                  }}>
+                  {m==='desglose' ? '🪙 Por billetes y monedas' : '✏️ Total manual'}
+                </button>
+              ))}
+            </div>
+
+            {/* Input desglose */}
+            {arqueoModoInput === 'desglose' && (
+              <ArqueoDesglose value={desglose} onChange={d=>{setDesglose(d);setArqueoDesvio(null)}} />
+            )}
+
+            {/* Input manual */}
+            {arqueoModoInput === 'manual' && (
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:11,color:C.ink4,marginBottom:6,textTransform:'uppercase',letterSpacing:'1px'}}>Efectivo total contado</div>
+                <input type="number" inputMode="decimal" placeholder="0,00" value={manualEfectivo}
+                  onChange={e=>{setManualEfectivo(e.target.value);setArqueoDesvio(null)}}
                   style={{width:'100%',padding:'12px 14px',border:`1px solid ${C.rule}`,borderRadius:8,background:C.paper,fontFamily:SM,fontSize:22,color:C.ink}}/>
               </div>
-              {cierreEfectivo && (
-                <button onClick={calcDesvio}
-                  style={{padding:'10px',border:`1px solid ${C.rule}`,borderRadius:8,background:C.paper2,fontSize:13,fontWeight:600,color:C.ink,cursor:'pointer'}}>
-                  Calcular desvío
-                </button>
-              )}
-              {cierreDesvio !== null && (
-                <div style={{padding:'14px 16px',borderRadius:10,background:Math.abs(cierreDesvio)<1?C.greenS:C.redS,border:`1px solid ${Math.abs(cierreDesvio)<1?C.green:C.red}44`}}>
-                  <div style={{fontSize:12,color:Math.abs(cierreDesvio)<1?C.green:C.red,fontWeight:700,marginBottom:4}}>
-                    {Math.abs(cierreDesvio)<0.01?'✓ Cuadra perfectamente':cierreDesvio>0?'⬆ Sobrante':'⬇ Faltante'}
+            )}
+
+            {/* Botón calcular desvío */}
+            {(arqueoModoInput==='manual' ? !!manualEfectivo : calcTotalDesglose(desglose)>0) && (
+              <button onClick={calcArqueoDesvio}
+                style={{width:'100%',marginBottom:10,padding:'10px',border:`1px solid ${C.rule}`,borderRadius:8,background:C.paper2,fontSize:13,fontWeight:600,color:C.ink,cursor:'pointer'}}>
+                Calcular desvío
+              </button>
+            )}
+
+            {/* Resultado desvío */}
+            {desvio !== null && (() => {
+              const cuadra   = Math.abs(desvio) < 0.01
+              const sobrante = desvio > 0
+              const col      = cuadra ? C.green : (sobrante ? C.amber : C.red)
+              const bg       = cuadra ? C.greenS : (sobrante ? C.amberS : C.redS)
+              return (
+                <div style={{padding:'14px 16px',borderRadius:10,background:bg,border:`1px solid ${col}44`,marginBottom:12}}>
+                  <div style={{fontSize:12,color:col,fontWeight:700,marginBottom:4}}>
+                    {cuadra ? '✓ Cuadra perfectamente' : sobrante ? '⬆ Sobrante en caja' : '⬇ Faltante en caja'}
                   </div>
-                  <div style={{fontFamily:SM,fontSize:24,fontWeight:700,color:Math.abs(cierreDesvio)<1?C.green:C.red}}>
-                    {fmtEur(cierreDesvio)}
+                  <div style={{fontFamily:SM,fontSize:26,fontWeight:700,color:col}}>
+                    {cuadra ? '0,00 €' : fmtEur(desvio)}
                   </div>
-                  {Math.abs(cierreDesvio)>=1 && (
+                  {!cuadra && (
                     <div style={{fontSize:11,color:C.ink3,marginTop:6}}>
-                      Esperado {fmtEur(saldo)} · Contado {fmtEur(parseFloat(cierreEfectivo))}
+                      Esperado {fmtEur(saldo)} · Contado {fmtEur(totalContado())}
                     </div>
                   )}
                 </div>
-              )}
-              <div style={{display:'flex',gap:8,marginTop:4}}>
-                <button onClick={()=>setCierreOpen(false)} style={{flex:1,padding:10,border:`1px solid ${C.rule}`,borderRadius:8,background:'transparent',fontSize:13,fontWeight:600,color:C.ink3,cursor:'pointer'}}>Cancelar</button>
-                <button onClick={async()=>{
-                  await fetch('/api/caja',{method:'POST',headers:{...sh(),'Content-Type':'application/json'},body:JSON.stringify({tipo:'cierre',concepto:`Cierre · real ${fmtEur(parseFloat(cierreEfectivo)||0)} · desvío ${fmtEur(cierreDesvio??0)}`,importe:0,notas:cierreDesvio!==null?`Contado: ${cierreEfectivo}€ | Desvío: ${cierreDesvio}€`:undefined})})
-                  setCierreOpen(false); load()
-                }} style={{flex:2,padding:10,border:'none',borderRadius:8,background:C.red,fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>
-                  Registrar cierre
-                </button>
-              </div>
+              )
+            })()}
+
+            {/* Acciones */}
+            <div style={{display:'flex',gap:8,marginTop:4}}>
+              <button onClick={()=>setArqueoOpen(false)}
+                style={{flex:1,padding:10,border:`1px solid ${C.rule}`,borderRadius:8,background:'transparent',fontSize:13,fontWeight:600,color:C.ink3,cursor:'pointer'}}>
+                Cancelar
+              </button>
+              <button onClick={confirmarArqueo} disabled={arqueoSaving}
+                style={{flex:2,padding:10,border:'none',borderRadius:8,
+                  background: arqueoModo==='cierre' ? C.red : C.amber,
+                  fontSize:13,fontWeight:700,color: arqueoModo==='cierre' ? '#fff' : C.ink,
+                  cursor:'pointer',opacity:arqueoSaving?.6:1}}>
+                {arqueoSaving ? 'Guardando…' : (arqueoModo==='cierre' ? 'Confirmar cierre' : 'Registrar arqueo')}
+              </button>
             </div>
           </div>
         </div>
@@ -5444,22 +5637,23 @@ function CajaTab() {
             background: i===0 ? C.paper2 : 'transparent',
           }}>
             {/* Icono tipo */}
-            <div style={{width:32,height:32,borderRadius:8,background:TIPO_COLOR[m.tipo]+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>
+            <div style={{width:32,height:32,borderRadius:8,background:(TIPO_COLOR[m.tipo]??C.ink4)+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>
               {TIPO_ICONO[m.tipo]??'·'}
             </div>
             {/* Info */}
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:500,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.concepto}</div>
-              <div style={{fontSize:11,color:C.ink4,marginTop:1,display:'flex',gap:8}}>
+              <div style={{fontSize:11,color:C.ink4,marginTop:1,display:'flex',gap:8,flexWrap:'wrap' as const}}>
                 <span>{m.camarero_nombre}</span>
                 {m.mesa_label && <span>· {m.mesa_label}</span>}
                 <span>· {fmtTime(m.created_at)}</span>
+                {m.desglose_monedas && <span style={{color:C.amber}}>· con desglose</span>}
               </div>
             </div>
             {/* Importe */}
             <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontFamily:SM,fontSize:14,fontWeight:700,color:m.importe>=0?C.green:C.red}}>
-                {m.importe>=0?'+':''}{fmtEur(m.importe)}
+              <div style={{fontFamily:SM,fontSize:14,fontWeight:700,color:m.importe>0?C.green:m.importe<0?C.red:C.ink3}}>
+                {m.importe>0?'+':m.importe<0?'':''}{fmtEur(m.importe)}
               </div>
               <div style={{fontFamily:SM,fontSize:10,color:C.ink4,marginTop:1}}>
                 saldo {fmtEur(m.saldo_acumulado)}
