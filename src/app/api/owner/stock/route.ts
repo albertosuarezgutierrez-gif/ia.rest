@@ -43,9 +43,14 @@ export async function POST(req: NextRequest) {
     await supabase.from('stock_articulos').update({
       stock_actual: nuevo_stock,
       ...(coste_unitario ? { coste_unitario } : {}),
-      alerta_activa: false, // entrada limpia la alerta
+      alerta_activa: false,
       updated_at: new Date().toISOString(),
     }).eq('id', articulo_id).eq('restaurante_id', rid)
+
+    // Si viene con nuevo coste → recalcular alertas de margen
+    if (coste_unitario) {
+      await supabase.rpc('recalcular_alertas_margen', { p_articulo_id: articulo_id })
+    }
 
     // Registrar movimiento
     await supabase.from('stock_movimientos').insert({
@@ -157,6 +162,11 @@ export async function PUT(req: NextRequest) {
     ...(activo != null ? { activo }               : {}),
     updated_at: new Date().toISOString(),
   }).eq('id', id).eq('restaurante_id', rid)
+
+  // Si cambió el coste → recalcular alertas de margen en escandallos afectados
+  if (coste_unitario != null) {
+    await supabase.rpc('recalcular_alertas_margen', { p_articulo_id: id })
+  }
 
   // Sincronizar rendimientos si vienen
   if (Array.isArray(rendimientos)) {

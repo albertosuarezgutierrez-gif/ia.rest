@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
 
-  const { nombre, producto_id, rendimiento, notas, ingredientes } = await req.json()
+  const { nombre, producto_id, rendimiento, notas, ingredientes, margen_minimo } = await req.json()
   if (!nombre?.trim()) return NextResponse.json({ error: 'nombre requerido' }, { status: 400 })
 
   const { data: esc, error } = await supabase
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       producto_id: producto_id ?? null,
       rendimiento: rendimiento ?? 1,
       notas: notas ?? null,
+      margen_minimo: margen_minimo ?? null,
     })
     .select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -70,7 +71,7 @@ export async function PUT(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
 
-  const { id, nombre, producto_id, rendimiento, notas, ingredientes } = await req.json()
+  const { id, nombre, producto_id, rendimiento, notas, ingredientes, margen_minimo } = await req.json()
   if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
 
   await supabase.from('escandallos').update({
@@ -78,6 +79,7 @@ export async function PUT(req: NextRequest) {
     ...(producto_id !== undefined ? { producto_id } : {}),
     ...(rendimiento != null ? { rendimiento } : {}),
     ...(notas !== undefined ? { notas } : {}),
+    ...(margen_minimo !== undefined ? { margen_minimo } : {}),
     updated_at: new Date().toISOString(),
   }).eq('id', id).eq('restaurante_id', rid)
 

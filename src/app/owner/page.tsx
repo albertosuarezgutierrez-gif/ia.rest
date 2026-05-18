@@ -8368,6 +8368,7 @@ type Escandallo = {
   id: string; nombre: string; producto_id: string | null; rendimiento: number
   precio_venta: number | null; coste_ingredientes: number; coste_por_racion: number
   margen_eur: number | null; margen_pct: number | null; activo: boolean; notas: string | null
+  margen_minimo: number | null; alerta_margen: boolean; alerta_margen_at: string | null
   ingredientes: {
     id: string; stock_articulo_id: string; articulo_nombre: string; articulo_unidad: string
     cantidad: number; coste_unitario: number | null; coste_linea: number; notas: string | null
@@ -8383,7 +8384,7 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
   const [expanded,    setExpanded]    = useState<string | null>(null)
   const [err,         setErr]         = useState('')
 
-  const emptyForm = { nombre: '', producto_id: '', rendimiento: '1', notas: '' }
+  const emptyForm = { nombre: '', producto_id: '', rendimiento: '1', notas: '', margen_minimo: '' }
   const [form, setForm] = useState(emptyForm)
   const [ingredientes, setIngredientes] = useState<{ stock_articulo_id: string; cantidad: string; notas: string }[]>([])
 
@@ -8405,7 +8406,7 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
     setForm(emptyForm); setIngredientes([]); setErr(''); setModal('crear')
   }
   const openEdit = (e: Escandallo) => {
-    setForm({ nombre: e.nombre, producto_id: e.producto_id ?? '', rendimiento: String(e.rendimiento), notas: e.notas ?? '' })
+    setForm({ nombre: e.nombre, producto_id: e.producto_id ?? '', rendimiento: String(e.rendimiento), notas: e.notas ?? '', margen_minimo: e.margen_minimo != null ? String(e.margen_minimo) : '' })
     setIngredientes(e.ingredientes.map(i => ({ stock_articulo_id: i.stock_articulo_id, cantidad: String(i.cantidad), notas: i.notas ?? '' })))
     setErr(''); setModal({ edit: e })
   }
@@ -8418,6 +8419,7 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
       producto_id: form.producto_id || null,
       rendimiento: parseFloat(form.rendimiento) || 1,
       notas: form.notas.trim() || null,
+      margen_minimo: form.margen_minimo !== '' ? parseFloat(form.margen_minimo) : null,
       ingredientes: ingredientes.filter(i => i.stock_articulo_id && i.cantidad).map(i => ({
         stock_articulo_id: i.stock_articulo_id,
         cantidad: parseFloat(i.cantidad),
@@ -8454,12 +8456,37 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
           <div style={{ fontFamily: SE, fontStyle: 'italic', fontSize: 22, color: C.ink }}>Escandallos</div>
           <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, marginTop: 2 }}>
             Coste real por plato · margen en tiempo real
+            {escandallos.filter(e => e.alerta_margen).length > 0 && (
+              <span style={{ marginLeft: 8, background: C.redS, color: C.red, border: `1px solid ${C.red}44`, borderRadius: 999, padding: '1px 8px', fontWeight: 700 }}>
+                ⚠ {escandallos.filter(e => e.alerta_margen).length} alerta{escandallos.filter(e => e.alerta_margen).length > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
         <button onClick={openCreate} style={{ fontFamily: SN, fontSize: 13, fontWeight: 600, padding: '8px 18px', background: C.red, color: C.paper, border: `1px solid ${C.redD}`, borderRadius: 8, cursor: 'pointer' }}>
           + Escandallo
         </button>
       </div>
+
+      {/* Panel de alertas de margen */}
+      {escandallos.some(e => e.alerta_margen) && (
+        <div style={{ background: C.redS, border: `1px solid ${C.red}44`, borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
+          <div style={{ fontFamily: SM, fontSize: 10, fontWeight: 700, color: C.red, textTransform: 'uppercase' as const, letterSpacing: '.08em', marginBottom: 8 }}>
+            ⚠ Margen por debajo del mínimo
+          </div>
+          {escandallos.filter(e => e.alerta_margen).map(e => (
+            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontFamily: SN, fontSize: 13, color: C.red, fontWeight: 500 }}>{e.nombre}</span>
+              <span style={{ fontFamily: SM, fontSize: 10, color: C.red }}>
+                margen actual {e.margen_pct}% · mínimo fijado {e.margen_minimo}%
+              </span>
+              <button onClick={() => openEdit(e)} style={{ marginLeft: 'auto', fontFamily: SM, fontSize: 9, color: C.red, background: 'none', border: `1px solid ${C.red}55`, borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>
+                Revisar precio
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Aviso si hay artículos sin coste */}
       {sinCoste > 0 && (
@@ -8643,6 +8670,20 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
             {/* Notas */}
             <div style={{ marginBottom: 16 }}>
               <input value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas opcionales" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.bone, fontFamily: SN, fontSize: 13, color: C.ink, boxSizing: 'border-box' as const, outline: 'none' }} />
+            </div>
+
+            {/* Alerta de margen mínimo */}
+            <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+              <div style={{ fontFamily: SM, fontSize: 9, fontWeight: 700, color: C.ink3, textTransform: 'uppercase' as const, letterSpacing: '.1em', marginBottom: 6 }}>Alerta de margen mínimo</div>
+              <div style={{ fontFamily: SN, fontSize: 11, color: C.ink4, marginBottom: 8 }}>
+                Si el margen cae por debajo de este %, recibirás una alerta automática cuando cambies el coste de algún ingrediente.
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="number" min="0" max="100" step="1" value={form.margen_minimo} onChange={e => setForm(f => ({ ...f, margen_minimo: e.target.value }))} placeholder="Ej: 60"
+                  style={{ width: 80, padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.bone, fontFamily: SE, fontStyle: 'italic', fontSize: 18, color: C.ink, textAlign: 'center' as const, outline: 'none' }} />
+                <span style={{ fontFamily: SN, fontSize: 14, color: C.ink3 }}>% mínimo</span>
+                {form.margen_minimo && <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4 }}>— alerta si baja de {form.margen_minimo}%</span>}
+              </div>
             </div>
 
             {err && <div style={{ fontFamily: SN, fontSize: 12, color: C.red, marginBottom: 10 }}>{err}</div>}
