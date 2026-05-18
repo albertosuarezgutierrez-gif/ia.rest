@@ -48,15 +48,15 @@ Deno.serve(async (req) => {
   try {
     const { data: bridges } = await supabase
       .from('bridge_tokens')
-      .select('restaurante_id, last_seen, activo')
+      .select('restaurante_id, ultimo_ping, activo')
       .eq('activo', true)
-      .not('last_seen', 'is', null)
+      .not('ultimo_ping', 'is', null)
 
     const ahora = Date.now()
     let bridgesOffline = 0
 
     for (const b of bridges ?? []) {
-      const min = (ahora - new Date(b.last_seen).getTime()) / 60000
+      const min = (ahora - new Date(b.ultimo_ping).getTime()) / 60000
       if (min < 15) continue
       bridgesOffline++
 
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         tipo: 'bridge_offline',
         modulo: 'bridge',
         mensaje: `Bridge desconectado hace ${Math.round(min)} min`,
-        detalle: { last_seen: b.last_seen, minutos: Math.round(min) },
+        detalle: { ultimo_ping: b.ultimo_ping, minutos: Math.round(min) },
         restaurante_id: b.restaurante_id,
         nivel: min > 60 ? 'critico' : 'aviso',
       })
