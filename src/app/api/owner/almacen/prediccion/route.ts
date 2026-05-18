@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getSession, getRestauranteId } from '@/lib/session'
 import { callAI, cleanJSON } from '@/lib/ai-client'
+import { logTraining } from '@/lib/training-log'
 
 export async function GET(req: NextRequest) {
   const session = getSession(req)
@@ -49,5 +50,17 @@ pedido_urgente = en mínimos O rotura <3 días. pedido_esta_semana = rotura 3-7 
 
   let prediccion = null
   try { prediccion = JSON.parse(cleanJSON(raw ?? '')) } catch { /* sin prediccion */ }
+  if (prediccion) {
+    await logTraining({
+      restaurante_id: restauranteId,
+      input_raw: `Predicción almacén ${new Date().toLocaleDateString('es-ES')}`,
+      input_context: { modulo: 'almacen_prediccion', num_productos: stockConConsumo.length },
+      output_brain: prediccion,
+      fuente: 'nim_analitico',
+      calidad: 3,
+      confianza: 0.75,
+      modelo_usado: 'nvidia/llama-3.3-70b',
+    })
+  }
   return NextResponse.json({ stock: stockConConsumo, prediccion })
 }

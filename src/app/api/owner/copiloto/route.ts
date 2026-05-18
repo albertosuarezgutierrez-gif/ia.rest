@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getSession, getRestauranteId } from '@/lib/session'
 import { callAI } from '@/lib/ai-client'
+import { logTraining } from '@/lib/training-log'
 
 export async function POST(req: NextRequest) {
   const session = getSession(req)
@@ -51,5 +52,23 @@ Responde en español, tono cálido y directo, hostelero. Máximo 3 frases. No in
   ]
 
   const respuesta = await callAI(system, msgs, 300)
+  // ── Log de entrenamiento analítico ────────────────────────────────────────
+  // El copiloto genera pares pregunta/respuesta sobre datos reales del restaurante.
+  // Calidad 3: útil para aprender qué métricas consultan los dueños y cómo responder.
+  await logTraining({
+    restaurante_id: restauranteId,
+    input_raw: pregunta,
+    input_context: {
+      modulo: 'copiloto_owner',
+      historial_turnos: msgs.length - 1,
+      metricas: { totalComandas, stockAlertas: stockAlertas?.length ?? 0, turnosActivos: turnosActivos?.length ?? 0 },
+    },
+    output_brain: { respuesta: respuesta?.trim(), top5 },
+    fuente: 'nim_analitico',
+    calidad: 3,
+    confianza: 0.80,
+    modelo_usado: 'nvidia/llama-3.3-70b',
+  })
+
   return NextResponse.json({ respuesta: respuesta?.trim() ?? 'Sin respuesta disponible.' })
 }

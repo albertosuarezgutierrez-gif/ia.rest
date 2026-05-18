@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getSession, getRestauranteId } from '@/lib/session'
 import { callAI, cleanJSON } from '@/lib/ai-client'
+import { logTraining } from '@/lib/training-log'
 
 export async function GET(req: NextRequest) {
   const session = getSession(req)
@@ -60,5 +61,17 @@ Solo JSON: {"horas_criticas":[{"hora":"H:00","situacion":"sobredotado|infradotad
 
   let analisis = null
   try { analisis = JSON.parse(cleanJSON(raw ?? '')) } catch { /* sin analisis */ }
+  if (analisis) {
+    await logTraining({
+      restaurante_id: restauranteId,
+      input_raw: `Análisis turnos ${new Date().toLocaleDateString('es-ES')}`,
+      input_context: { modulo: 'turnos_analisis', dias: 30 },
+      output_brain: analisis,
+      fuente: 'nim_analitico',
+      calidad: 3,
+      confianza: 0.75,
+      modelo_usado: 'nvidia/llama-3.3-70b',
+    })
+  }
   return NextResponse.json({ resumenHoras, resumenDias, analisis })
 }

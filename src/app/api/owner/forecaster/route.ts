@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getSession, getRestauranteId } from '@/lib/session'
 import { callAI, cleanJSON } from '@/lib/ai-client'
+import { logTraining } from '@/lib/training-log'
 
 export async function GET(req: NextRequest) {
   const session = getSession(req)

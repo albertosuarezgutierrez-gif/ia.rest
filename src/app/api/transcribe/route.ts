@@ -645,19 +645,42 @@ export async function POST(req: NextRequest) {
       await supabase.from('alergeno_confirmaciones').insert(logs)
     }
 
-    // ── Log de aprendizaje: guardar casos de baja confianza para mejora del modelo ──
-    if ((brainResult.confianza ?? 1) < 0.65 || brainResult.items.length === 0) {
-      try {
-        await supabase.from('ia_training_log').insert({
-          restaurante_id: rid,
-          texto_original: texto,
-          resultado_brain: brainResult,
-          fuente_brain: (brainResult as { fuente?: string }).fuente ?? 'desconocido',
-          confianza: brainResult.confianza ?? 0,
-          revisado: false,
-        })
-      } catch { /* no bloquear la respuesta si falla el log */ }
-    }
+    // ── Log de aprendizaje: TODOS los casos (columnas reales de ia_training_log) ──────
+    // Guarda: baja confianza, items vacíos, Y todos los casos resueltos (fuente real)
+    // calidad: 1=fallo, 2=dudoso, 3=ok, 4=bueno, 5=perfecto (con corrección humana)
+    try {
+      const conf = brainResult.confianza ?? 0
+      const fuente = (brainResult as { fuente?: string }).fuente ?? 'claude_api'
+      // Calidad automática basada en confianza y resultado
+      let calidad: number
+      if (conf >= 0.90 && brainResult.items.length > 0) calidad = 4        // bueno
+      else if (conf >= 0.75 && brainResult.items.length > 0) calidad = 3   // ok
+      else if (conf >= 0.50) calidad = 2                                    // dudoso
+      else calidad = 1                                                       // fallo
+
+      await supabase.from('ia_training_log').insert({
+        restaurante_id: rid,
+        input_raw: texto,
+        input_context: {
+          hora: new Date().toISOString(),
+          turno_id: turnoId,
+          comanda_id: comandaId,
+          camarero_id: camareroId,
+          mesa: brainResult.mesa,
+          aviso_ruido: avisoRuido,
+          speaker_match: speakerMatch,
+        },
+        output_brain: brainResult,
+        fuente,
+        calidad,
+        confianza: conf,
+        fue_corregido: false,
+        latencia_ms: latenciaTotal,
+        modelo_usado: fuente === 'patron' ? 'patron' : 'nvidia/llama-3.3-70b',
+        turno_id: turnoId,
+        camarero_id: camareroId,
+      })
+    } catch { /* nunca bloquear la comanda */ }
 
     const okResult = { ok: true, texto, brain: brainResult, fuente_brain: brainResult.fuente, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, latencia_brain_ms: brainResult.latencia_brain_ms, comanda_id: comandaId, mesa_id: mesa?.id ?? null, nombre_cuenta: nombreCuentaUsada, alertas_86: alertas86, alertas_alergenos: alertasAlergenos, aviso_ruido: avisoRuido, speaker_match: speakerMatch, no_speech_prob, avg_logprob }
     // Cachear resultado para idempotencia (si vuelve la misma recording_id, devuelve esto)

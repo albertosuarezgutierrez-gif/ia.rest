@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getSession, getRestauranteId } from '@/lib/session'
 import { callAI, cleanJSON } from '@/lib/ai-client'
+import { logTraining } from '@/lib/training-log'
 
 export async function GET(req: NextRequest) {
   const session = getSession(req)
@@ -39,5 +40,17 @@ criticos = margen<50% O muy vendido con margen bajo. sugerencia_precio = precio 
 
   let analisis = null
   try { analisis = JSON.parse(cleanJSON(raw ?? '')) } catch { /* sin analisis */ }
+  if (analisis) {
+    await logTraining({
+      restaurante_id: restauranteId,
+      input_raw: `Análisis escandallos ${new Date().toLocaleDateString('es-ES')}`,
+      input_context: { modulo: 'escandallos_optimizer', num_productos: contexto.length },
+      output_brain: analisis,
+      fuente: 'nim_analitico',
+      calidad: 3,
+      confianza: 0.75,
+      modelo_usado: 'nvidia/llama-3.3-70b',
+    })
+  }
   return NextResponse.json({ escandallos: contexto, analisis })
 }

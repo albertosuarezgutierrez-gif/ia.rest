@@ -668,19 +668,62 @@ export default function SuperPage() {
               <div style={{ fontFamily: SM, fontSize: 12, color: C.ink3 }}>Cargando estadísticas…</div>
             ) : (
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 32 }}>
+                {/* ── Totales globales ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
                   {[
-                    { l: 'Total pares', v: trainingStats.total ?? 0 },
-                    { l: 'Restaurantes activos', v: trainingStats.restaurantes ?? 0 },
-                    { l: 'Hoy', v: trainingStats.hoy ?? 0 },
-                    { l: 'Esta semana', v: trainingStats.semana ?? 0 },
+                    { l: 'Total pares', v: trainingStats.global?.total ?? 0, col: C.red },
+                    { l: 'Alta calidad (≥4)', v: trainingStats.global?.alta_calidad ?? 0, col: C.green },
+                    { l: 'Corregidos (human)', v: trainingStats.global?.corregidos ?? 0, col: C.green },
+                    { l: 'Hoy', v: trainingStats.global?.hoy ?? 0, col: C.ink },
+                    { l: 'Esta semana', v: trainingStats.global?.semana ?? 0, col: C.ink },
+                    { l: 'Calidad media', v: trainingStats.global?.calidad_media_global ?? '—', col: '#E8A33B' },
                   ].map(m => (
-                    <div key={m.l} style={{ background: C.bg2, borderRadius: 8, padding: '20px 24px', border: `1px solid ${C.rule}` }}>
-                      <div style={{ fontFamily: SM, fontSize: 9, color: C.ink4, letterSpacing: '.1em', marginBottom: 8 }}>{m.l.toUpperCase()}</div>
-                      <div style={{ fontFamily: SE, fontSize: 40, fontWeight: 500, color: C.red, lineHeight: 1 }}>{m.v}</div>
+                    <div key={m.l} style={{ background: C.bg2, borderRadius: 8, padding: '16px 18px', border: `1px solid ${C.rule}` }}>
+                      <div style={{ fontFamily: SM, fontSize: 9, color: C.ink4, letterSpacing: '.1em', marginBottom: 6 }}>{m.l.toUpperCase()}</div>
+                      <div style={{ fontFamily: SE, fontSize: 32, fontWeight: 500, color: m.col, lineHeight: 1 }}>{m.v}</div>
                     </div>
                   ))}
                 </div>
+                {/* ── Desglose por fuente ── */}
+                {trainingStats.porFuente?.length > 0 && (
+                  <div style={{ background: C.bg2, borderRadius: 8, padding: 20, border: `1px solid ${C.rule}`, marginBottom: 20 }}>
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, letterSpacing: '.1em', marginBottom: 14 }}>PARES POR FUENTE</div>
+                    {trainingStats.porFuente.map((f: any) => {
+                      const colores: Record<string,string> = { patron: C.green, claude_api: '#E8A33B', sintetico: C.ink3, nim_conversacional: C.red, nim_analitico: '#7B5EA7' }
+                      const pct = trainingStats.global?.total ? Math.round((f.total / trainingStats.global.total) * 100) : 0
+                      return (
+                        <div key={f.fuente} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 0', borderBottom: `1px solid ${C.rule}` }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: colores[f.fuente] ?? C.ink4, flexShrink: 0 }} />
+                          <span style={{ fontFamily: SM, fontSize: 12, color: C.ink, width: 180 }}>{f.fuente}</span>
+                          <span style={{ fontFamily: SM, fontSize: 13, color: colores[f.fuente] ?? C.ink3, fontWeight: 600, width: 50 }}>{f.total}</span>
+                          <div style={{ flex: 1, height: 4, background: C.rule, borderRadius: 2 }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: colores[f.fuente] ?? C.ink4, borderRadius: 2 }} />
+                          </div>
+                          <span style={{ fontFamily: SM, fontSize: 11, color: C.ink4, width: 35 }}>{pct}%</span>
+                          <span style={{ fontFamily: SM, fontSize: 11, color: C.ink4 }}>cal:{f.calidad_media}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {/* ── Últimos registros ── */}
+                {trainingStats.recientes?.length > 0 && (
+                  <div style={{ background: C.bg2, borderRadius: 8, padding: 20, border: `1px solid ${C.rule}`, marginBottom: 20 }}>
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, letterSpacing: '.1em', marginBottom: 14 }}>ÚLTIMOS 20 REGISTROS</div>
+                    {trainingStats.recientes.map((r: any) => {
+                      const calCol = r.calidad >= 4 ? C.green : r.calidad >= 3 ? '#E8A33B' : C.red
+                      return (
+                        <div key={r.id} style={{ display: 'flex', gap: 10, padding: '5px 0', borderBottom: `1px solid ${C.rule}`, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: SM, fontSize: 10, color: calCol, fontWeight: 700, width: 14 }}>{r.calidad}</span>
+                          <span style={{ fontFamily: SM, fontSize: 10, color: C.ink4, width: 120, flexShrink: 0 }}>{r.fuente}</span>
+                          <span style={{ fontFamily: SN, fontSize: 12, color: C.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.input_raw}</span>
+                          {r.fue_corregido && <span style={{ fontFamily: SM, fontSize: 9, color: C.green }}>✓ human</span>}
+                          <span style={{ fontFamily: SM, fontSize: 9, color: C.ink4 }}>{new Date(r.created_at).toLocaleDateString('es-ES')}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
                 <div style={{ background: C.bg2, borderRadius: 8, padding: 24, border: `1px solid ${C.rule}`, marginBottom: 24 }}>
                   <div style={{ fontFamily: SM, fontSize: 10, color: C.ink4, letterSpacing: '.1em', marginBottom: 16 }}>ESTADO DEL PIPELINE DE ENTRENAMIENTO</div>
                   {[
