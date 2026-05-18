@@ -24,7 +24,7 @@ export async function sendEmail({
     subject,
     html,
     ...(text && { text }),
-    reply_to: replyTo ?? REPLY_TO,
+    replyTo: replyTo ?? REPLY_TO,
   })
 
   if (error) {
