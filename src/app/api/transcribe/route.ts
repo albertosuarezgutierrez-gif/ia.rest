@@ -193,14 +193,16 @@ export async function POST(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let comanda: any = null
       if (brainResult.tipo === 'cuenta') {
+        // FIX: buscar la comanda MÁS RECIENTE que tenga al menos un item (inner join)
+        // Evita marcar como cuenta_pedida comandas vacías creadas por asignar-rapida u otros flows
         const { data: existente } = await supabase.from('comandas')
-          .select()
+          .select('*, comanda_items!inner(id)')
           .eq('mesa_id', mesa.id)
           .eq('restaurante_id', rid)
-          .in('estado', ['activa', 'en_cocina', 'marchar', 'nueva', 'pendiente_confirmacion'])
+          .in('estado', ['en_cocina', 'marchar', 'nueva', 'pendiente_confirmacion'])
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
         comanda = existente ?? null
         if (comanda) comandaId = comanda.id
       } else {

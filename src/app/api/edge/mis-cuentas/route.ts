@@ -26,12 +26,15 @@ export async function GET(req: NextRequest) {
 
   type RawItem = { precio_unitario: number | null; cantidad: number }
 
-  const cuentas = (data ?? []).map(c => {
-    const items = (c.items ?? []) as RawItem[]
-    const total = items.reduce((s, it) => s + (it.precio_unitario ?? 0) * it.cantidad, 0)
-    const min = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 60000)
-    return { ...c, total_estimado: total, minutos_esperando: min }
-  })
+  const cuentas = (data ?? [])
+    // FIX: excluir comandas vacías (0 items) — son artefactos de asignar-rapida u otros flows
+    .filter(c => (c.items as RawItem[])?.length > 0)
+    .map(c => {
+      const items = (c.items ?? []) as RawItem[]
+      const total = items.reduce((s, it) => s + (it.precio_unitario ?? 0) * it.cantidad, 0)
+      const min = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 60000)
+      return { ...c, total_estimado: total, minutos_esperando: min }
+    })
 
   return NextResponse.json({ cuentas })
 }

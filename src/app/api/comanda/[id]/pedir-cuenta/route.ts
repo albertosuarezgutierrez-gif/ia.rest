@@ -59,6 +59,14 @@ export async function POST(
     // Continuamos para re-imprimir el ticket
   }
 
+  // ── GUARD: no permitir pedir cuenta sin items ─────────────
+  type RawItemCheck = { nombre: string; cantidad: number; precio_unitario: number | null }
+  const itemsCheck = (comanda.items as RawItemCheck[]) ?? []
+  if (itemsCheck.length === 0 && comanda.estado !== 'cuenta_pedida') {
+    console.warn(`[PEDIR-CUENTA] Comanda ${comanda_id} sin items — rechazado`)
+    return NextResponse.json({ error: 'La comanda no tiene items' }, { status: 422 })
+  }
+
   // ── 2. Actualizar estado a cuenta_pedida ──────────────────
   const { error: errUpdate } = await supabase
     .from('comandas')
