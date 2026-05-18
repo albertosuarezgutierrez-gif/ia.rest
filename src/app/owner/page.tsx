@@ -2209,7 +2209,7 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<null | 'create' | { edit: Producto } | { del: Producto }>(null)
   const [modalTrad, setModalTrad] = useState<null | { id: string; nombre: string; descripcion?: string | null }>(null)
-  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', seccion: '', nombre_alternativo: '', familia: '', proveedor_id: '', stock_actual: '', stock_minimo: '', cantidad_reposicion: '', unidad_stock: 'ud' })
+  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', seccion: '', nombre_alternativo: '', familia: '', proveedor_id: '', stock_actual: '', stock_minimo: '', cantidad_reposicion: '', unidad_stock: 'ud', modo_reposicion: 'desactivado' })
   const [wineForm, setWineForm] = useState({ bodega: '', varietal: '', do: '', anada: '', temperatura: '', maridaje: '', descripcion_cata: '', maridaje_tags: [] as string[] })
   const [wineEnriching, setWineEnriching] = useState(false)
 
@@ -2278,7 +2278,7 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
   const primeraSeccion = secciones[0]?.id || SECCIONES_DEFAULT[0]
 
   // ── CRUD ──
-  const openCreate = () => { setForm({ nombre: '', descripcion: '', precio: '', seccion: primeraSeccion, nombre_alternativo: '', familia: '', proveedor_id: '', stock_actual: '', stock_minimo: '', cantidad_reposicion: '', unidad_stock: 'ud' }); setWineForm({ bodega: '', varietal: '', do: '', anada: '', temperatura: '', maridaje: '', descripcion_cata: '', maridaje_tags: [] }); setErr(''); setModal('create') }
+  const openCreate = () => { setForm({ nombre: '', descripcion: '', precio: '', seccion: primeraSeccion, nombre_alternativo: '', familia: '', proveedor_id: '', stock_actual: '', stock_minimo: '', cantidad_reposicion: '', unidad_stock: 'ud', modo_reposicion: 'desactivado' }); setWineForm({ bodega: '', varietal: '', do: '', anada: '', temperatura: '', maridaje: '', descripcion_cata: '', maridaje_tags: [] }); setErr(''); setModal('create') }
   const openEdit = (p: Producto) => {
     const pr = p as Record<string,unknown>
     setForm({
@@ -2292,6 +2292,7 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
       stock_minimo: pr.stock_minimo != null ? String(pr.stock_minimo) : '',
       cantidad_reposicion: pr.cantidad_reposicion != null ? String(pr.cantidad_reposicion) : '',
       unidad_stock: pr.unidad_stock as string || 'ud',
+      modo_reposicion: pr.modo_reposicion as string || 'desactivado',
     })
     const m = (p as Record<string,unknown>).metadata as Record<string,string> | null ?? {}
     setWineForm({ bodega: m.bodega || '', varietal: m.varietal || '', do: m.do || '', anada: m.anada || m['añada'] || '', temperatura: m.temperatura_servicio || '', maridaje: m.maridaje || '', descripcion_cata: m.descripcion_cata || '', maridaje_tags: Array.isArray(m.maridaje_tags) ? m.maridaje_tags : [] })
@@ -2318,6 +2319,7 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
       stock_minimo: form.stock_minimo !== '' ? parseFloat(form.stock_minimo) : null,
       cantidad_reposicion: form.cantidad_reposicion !== '' ? parseFloat(form.cantidad_reposicion) : null,
       unidad_stock: form.unidad_stock || 'ud',
+      modo_reposicion: form.modo_reposicion || 'desactivado',
       metadata: (form.familia.startsWith('vino') || ['vinos','vino','bodega','carta de vinos','vinos tintos','vinos blancos','vinos rosados','espumosos','cava','champagne'].includes((form.seccion||'').toLowerCase()))
         ? {
             tipo: 'vino',
@@ -2686,63 +2688,98 @@ function CartaTab({ restauranteId }: { restauranteId: string }) {
             {/* ── CONTROL DE STOCK ── */}
             <div style={{ background:C.paper2, border:`1px solid ${C.rule}`, borderRadius:8, padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
               <div style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.14em', color:'#2B8A8F', textTransform:'uppercase' as const }}>
-                Almacén &amp; reposición automática
+                Almacén &amp; reposición
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 80px', gap:8 }}>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Stock actual</label>
-                  <input type="number" min={0} step={0.1} placeholder="—"
-                    value={form.stock_actual}
-                    onChange={e => setForm(f => ({ ...f, stock_actual: e.target.value }))}
-                    style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none', boxSizing:'border-box' as const }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Unidad</label>
-                  <select value={form.unidad_stock} onChange={e => setForm(f => ({ ...f, unidad_stock: e.target.value }))}
-                    style={{ width:'100%', padding:'8px 6px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none' }}>
-                    {['ud','kg','g','l','cl','ml'].map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Mínimo para pedir</label>
-                  <input type="number" min={0} step={0.1} placeholder={`Ej: 2 ${form.unidad_stock}`}
-                    value={form.stock_minimo}
-                    onChange={e => setForm(f => ({ ...f, stock_minimo: e.target.value }))}
-                    style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none', boxSizing:'border-box' as const }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Cantidad a reponer</label>
-                  <input type="number" min={0} step={0.1} placeholder={`Ej: 10 ${form.unidad_stock}`}
-                    value={form.cantidad_reposicion}
-                    onChange={e => setForm(f => ({ ...f, cantidad_reposicion: e.target.value }))}
-                    style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none', boxSizing:'border-box' as const }}
-                  />
+
+              {/* Selector de modo */}
+              <div>
+                <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:8 }}>Modo</label>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                  {([
+                    { value:'desactivado', label:'Desactivado',  desc:'Sin control',                          color: C.ink4 },
+                    { value:'informativo', label:'Informativo',  desc:'Badge en dashboard al bajar',           color: '#E8A33B' },
+                    { value:'revision',    label:'Revisión',     desc:'Genera borrador · tú apruebas',         color: '#2B8A8F' },
+                    { value:'automatico',  label:'Automático',   desc:'Pide solo al proveedor',                color: C.green },
+                  ] as {value:string;label:string;desc:string;color:string}[]).map(m => (
+                    <button key={m.value} type="button"
+                      onClick={() => setForm(f => ({ ...f, modo_reposicion: m.value }))}
+                      style={{
+                        padding:'8px 10px', borderRadius:6, cursor:'pointer', textAlign:'left' as const, transition:'all .12s',
+                        background: form.modo_reposicion === m.value ? `${m.color}18` : C.bone,
+                        border: `1.5px solid ${form.modo_reposicion === m.value ? m.color : C.rule}`,
+                      }}>
+                      <div style={{ fontFamily:SM, fontSize:11, fontWeight:700, color: form.modo_reposicion === m.value ? m.color : C.ink2 }}>{m.label}</div>
+                      <div style={{ fontFamily:SN, fontSize:10, color:C.ink4, marginTop:2, lineHeight:1.3 }}>{m.desc}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
-              {/* Indicador visual de estado */}
-              {form.stock_actual !== '' && form.stock_minimo !== '' && (
-                <div style={{
-                  padding:'8px 12px', borderRadius:6,
-                  background: parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo) ? '#7D1A0E18' : '#3F7D4418',
-                  border: `1px solid ${parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo) ? '#D9442B44' : '#3F7D4444'}`,
-                  color: parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo) ? C.red : C.green,
-                  fontFamily: SM, fontSize: 11,
-                }}>
-                  {parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo)
-                    ? `⚠ Bajo mínimo — se pedirán ${form.cantidad_reposicion || '?'} ${form.unidad_stock}${form.proveedor_id ? ` a ${listaProvs.find(p => p.id === form.proveedor_id)?.nombre ?? 'proveedor'}` : ' (asigna proveedor)'}`
-                    : `✓ Stock OK · ${form.stock_actual} ${form.unidad_stock} disponibles`
-                  }
+
+              {/* Campos de stock (se muestran si modo != desactivado) */}
+              {form.modo_reposicion !== 'desactivado' && (<>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 80px', gap:8 }}>
+                  <div>
+                    <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Stock actual</label>
+                    <input type="number" min={0} step={0.1} placeholder="—"
+                      value={form.stock_actual}
+                      onChange={e => setForm(f => ({ ...f, stock_actual: e.target.value }))}
+                      style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none', boxSizing:'border-box' as const }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Unidad</label>
+                    <select value={form.unidad_stock} onChange={e => setForm(f => ({ ...f, unidad_stock: e.target.value }))}
+                      style={{ width:'100%', padding:'8px 6px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none' }}>
+                      {['ud','kg','g','l','cl','ml'].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
                 </div>
-              )}
-              {form.stock_actual === '' && (
-                <div style={{ fontFamily:SM, fontSize:10, color:C.ink4, lineHeight:1.5 }}>
-                  Rellena «Stock actual» para activar el control de inventario y el pedido automático al proveedor.
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                  <div>
+                    <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Mínimo para pedir</label>
+                    <input type="number" min={0} step={0.1} placeholder={`Ej: 2 ${form.unidad_stock}`}
+                      value={form.stock_minimo}
+                      onChange={e => setForm(f => ({ ...f, stock_minimo: e.target.value }))}
+                      style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none', boxSizing:'border-box' as const }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontFamily:SM, fontSize:10, fontWeight:700, letterSpacing:'.1em', color:C.ink3, textTransform:'uppercase' as const, display:'block', marginBottom:5 }}>Cantidad a reponer</label>
+                    <input type="number" min={0} step={0.1} placeholder={`Ej: 10 ${form.unidad_stock}`}
+                      value={form.cantidad_reposicion}
+                      onChange={e => setForm(f => ({ ...f, cantidad_reposicion: e.target.value }))}
+                      style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none', boxSizing:'border-box' as const }}
+                    />
+                  </div>
                 </div>
-              )}
+
+                {/* Indicador visual de estado */}
+                {form.stock_actual !== '' && form.stock_minimo !== '' && (
+                  <div style={{
+                    padding:'8px 12px', borderRadius:6,
+                    background: parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo) ? '#7D1A0E18' : '#3F7D4418',
+                    border: `1px solid ${parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo) ? '#D9442B44' : '#3F7D4444'}`,
+                    color: parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo) ? C.red : C.green,
+                    fontFamily: SM, fontSize: 11,
+                  }}>
+                    {parseFloat(form.stock_actual) <= parseFloat(form.stock_minimo)
+                      ? `⚠ Bajo mínimo · ${
+                          form.modo_reposicion === 'automatico' ? 'se pedirá automáticamente' :
+                          form.modo_reposicion === 'revision'   ? 'se generará borrador de pedido' :
+                          'aparecerá en el dashboard'
+                        }${form.proveedor_id ? ` · ${listaProvs.find(p => p.id === form.proveedor_id)?.nombre ?? ''}` : ' (sin proveedor)'}`
+                      : `✓ Stock OK · ${form.stock_actual} ${form.unidad_stock} disponibles`
+                    }
+                  </div>
+                )}
+
+                {/* Aviso si modo revision/automatico y sin proveedor */}
+                {(form.modo_reposicion === 'revision' || form.modo_reposicion === 'automatico') && !form.proveedor_id && (
+                  <div style={{ fontFamily:SM, fontSize:10, color:'#E8A33B', background:'#E8A33B12', border:'1px solid #E8A33B33', borderRadius:6, padding:'7px 10px' }}>
+                    Asigna un proveedor arriba para que el pedido automático sepa a quién enviar.
+                  </div>
+                )}
+              </>)}
             </div>
             {(form.familia.startsWith('vino') || ['vinos','vino','bodega','carta de vinos','vinos tintos','vinos blancos','vinos rosados','espumosos','cava','champagne'].includes((form.seccion||'').toLowerCase())) && (
               <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
