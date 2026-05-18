@@ -4,6 +4,7 @@
 // El dueño puede ver qué pasa sin necesitar llamar a soporte
 
 import React, { useState, useEffect, useCallback } from 'react'
+import HealerWidget from '@/components/owner/HealerWidget'
 
 /* ─── Tokens de diseño (idénticos a owner/page.tsx) ─── */
 const C = {
@@ -190,6 +191,9 @@ export default function DiagnosticoTab({ restauranteId }: Props) {
 
   return (
     <div style={{ maxWidth: 680 }}>
+
+      {/* Auto-Healer Widget */}
+      <HealerWidget restauranteId={restauranteId} />
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>

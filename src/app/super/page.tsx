@@ -4,6 +4,7 @@ import { useAuth, Session } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import SugerenciasPanel from '@/components/SugerenciasPanel'
 import SystemHealth from '@/components/SystemHealth'
+import AutoCurasPanel from '@/components/AutoCurasPanel'
 
 const C = {
   bg: '#F6F1E7', bg2: '#EFE7D6', bg3: '#E5DAC2', ink: '#1A1714',
@@ -64,7 +65,7 @@ export default function SuperPage() {
   const [form, setForm] = useState({ nombre: '', slug: '', codigo_acceso: '', plan: 'starter', ciudad: 'Madrid' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'leads'|'sugerencias'|'ia_training'|'sistema'|'cobro'|'soporte'>('restaurantes')
+  const [tabSuper, setTabSuper] = useState<'restaurantes'|'clientes'|'leads'|'sugerencias'|'ia_training'|'sistema'|'autocuras'|'cobro'|'soporte'>('restaurantes')
   const [sugerencias, setSugerencias] = useState<any[]>([])
   const [loadingSug, setLoadingSug] = useState(false)
   const [filtroSug, setFiltroSug] = useState<string>('todas')
@@ -279,6 +280,7 @@ export default function SuperPage() {
             { id: 'sugerencias',  label: 'Sugerencias', badge: badgeSug },
             { id: 'ia_training',  label: 'IA Training' },
             { id: 'sistema',      label: 'Sistema' },
+            { id: 'autocuras',    label: '⚡ Autocuras' },
             { id: 'soporte',      label: 'Soporte', badge: badgeSoporte },
           ] as any[]).map((t: any) => (
             <button key={t.id} onClick={() => setTabSuper(t.id as any)}
@@ -747,6 +749,12 @@ export default function SuperPage() {
         {tabSuper === 'sistema' && (
           <div style={{ padding: '24px 0' }}>
             <SystemHealth session={session} />
+          </div>
+        )}
+
+        {tabSuper === 'autocuras' && (
+          <div style={{ padding: '24px 0' }}>
+            <AutoCurasPanel />
           </div>
         )}
 
