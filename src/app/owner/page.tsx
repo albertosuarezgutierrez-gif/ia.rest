@@ -7079,6 +7079,46 @@ export default function OwnerPage() {
         .owner-subtabs::-webkit-scrollbar { display:none; }
         .owner-tab-lbl { display:inline; }
         .owner-wrap { max-width:960px; margin:0 auto; padding:24px 20px 80px; }
+        .owner-content-area { min-width:0; flex:1; }
+
+        /* ── Desktop: sidebar layout ─────────────────────────── */
+        @media (min-width:1024px) {
+          .owner-wrap {
+            max-width:1440px;
+            padding:0;
+            display:flex;
+            align-items:flex-start;
+            min-height:calc(100dvh - 52px);
+          }
+          .owner-tabs {
+            flex-direction:column;
+            width:200px;
+            flex-shrink:0;
+            overflow-x:unset;
+            overflow-y:auto;
+            padding:16px 10px;
+            gap:3px;
+            margin-bottom:0;
+            border-right:1px solid ${C.rule};
+            background:${C.paper2};
+            position:sticky;
+            top:52px;
+            height:calc(100dvh - 52px);
+            scrollbar-width:none;
+            align-self:flex-start;
+          }
+          .owner-tabs::-webkit-scrollbar { display:none; }
+          .owner-tab-lbl { display:inline !important; }
+          .owner-content-area { padding:24px 32px 60px; }
+          .owner-subtabs { flex-wrap:wrap; }
+        }
+        @media (min-width:1280px) {
+          .owner-tabs { width:220px; padding:20px 12px; }
+          .owner-content-area { padding:28px 40px 60px; }
+        }
+        @media (min-width:1600px) {
+          .owner-tabs { width:240px; }
+        }
 
         /* ── Camareros: cards en móvil ─────────────────────── */
         .cam-table-hdr { display:grid; grid-template-columns:1fr 100px 120px 80px 80px 100px; }
@@ -7306,53 +7346,56 @@ export default function OwnerPage() {
           })}
         </div>
 
-        {/* ── Sub-tabs del grupo activo ── */}
-        {(() => {
-          const grupo = getGrupo(tab)
-          if (grupo.tabs.length <= 1) return null
-          return (
-            <div className="owner-subtabs" style={{ display:'flex', gap:2, marginBottom:20, borderBottom:`1px solid ${C.rule}`, paddingBottom:0 }}>
-              {grupo.tabs.map(t => (
-                <button key={t.id} onClick={() => setTab(t.id)}
-                  style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 14px',
-                    background:'none', border:'none', borderBottom:`2px solid ${tab===t.id ? C.red : 'transparent'}`,
-                    color: tab===t.id ? C.ink : C.ink3,
-                    fontFamily:SN, fontSize:12, fontWeight:tab===t.id?600:500,
-                    cursor:'pointer', whiteSpace:'nowrap', transition:'all .15s', marginBottom:-1 }}>
-                  <Icon d={t.icon} size={13}/>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          )
-        })()}
+        {/* ── Contenido: sub-tabs + tab activo ── */}
+        <div className="owner-content-area">
+          {/* Sub-tabs del grupo activo */}
+          {(() => {
+            const grupo = getGrupo(tab)
+            if (grupo.tabs.length <= 1) return null
+            return (
+              <div className="owner-subtabs" style={{ display:'flex', gap:2, marginBottom:20, borderBottom:`1px solid ${C.rule}`, paddingBottom:0 }}>
+                {grupo.tabs.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 14px',
+                      background:'none', border:'none', borderBottom:`2px solid ${tab===t.id ? C.red : 'transparent'}`,
+                      color: tab===t.id ? C.ink : C.ink3,
+                      fontFamily:SN, fontSize:12, fontWeight:tab===t.id?600:500,
+                      cursor:'pointer', whiteSpace:'nowrap', transition:'all .15s', marginBottom:-1 }}>
+                    <Icon d={t.icon} size={13}/>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
 
-        {/* ── Contenido ── */}
-        <div style={{ marginTop: getGrupo(tab).tabs.length <= 1 ? 20 : 0 }}>
-          {tab === 'sistema'          && <DiagnosticoTab restauranteId={session.restaurante_id} />}
-          {tab === 'soporte'          && <SoporteTab restauranteId={session.restaurante_id} />}
-          {tab === 'supervisor'     && <SupervisorTab rol={session.rol} restauranteId={session.restaurante_id} sh={sh} />}
-          {tab === 'qr'             && <QRTabOwner restauranteId={session.restaurante_id} sh={sh} />}
-          {tab === 'cubierto'       && <ServicioTab/>}
-          {tab === 'reservas'       && <ReservasTab/>}
-          {tab === 'camareros'      && <CamarerosTab/>}
-          {tab === 'mesas'          && <MesasTab/>}
-          {tab === 'secciones'      && <SeccionesTab/>}
-          {tab === 'carta'          && <CartaTab restauranteId={session.restaurante_id}/>}
-          {tab === 'recomendaciones' && <RecomendacionesTab sh={sh} restauranteId={session.restaurante_id} />}
-          {tab === 'turno'          && <TurnoTab/>}
-          {tab === 'caja'           && <CajaTab/>}
-          {tab === 'analytics'      && <Analytics compact />}
-          {tab === 'facturas'       && <FacturasTab/>}
-          {tab === 'impresoras'     && <ImpresorasTab/>}
-          {tab === 'flujos'         && <FlujoTab/>}
-          {tab === 'notificaciones' && <NotificacionesTab/>}
-          {tab === 'modificaciones' && <ModificacionesTab restauranteId={session.restaurante_id}/>}
-          {tab === 'mensajes'       && <MensajesOwnerTab sh={sh} />}
-          {tab === 'fichajes'       && <FichajesTab/>}
-          {tab === 'manual'         && <ManualVozTab restauranteId={session.restaurante_id} session={{ id: session.id, nombre: session.nombre, rol: session.rol }} />}
-          {tab === 'restaurante'    && <RestauranteTab/>}
-          {tab === 'suscripcion'    && <SuscripcionTab restauranteId={session.restaurante_id} onSetupClick={() => setTab('camareros')}/>}
+          {/* Tab activo */}
+          <div style={{ marginTop: getGrupo(tab).tabs.length <= 1 ? 20 : 0 }}>
+            {tab === 'sistema'          && <DiagnosticoTab restauranteId={session.restaurante_id} />}
+            {tab === 'soporte'          && <SoporteTab restauranteId={session.restaurante_id} />}
+            {tab === 'supervisor'     && <SupervisorTab rol={session.rol} restauranteId={session.restaurante_id} sh={sh} />}
+            {tab === 'qr'             && <QRTabOwner restauranteId={session.restaurante_id} sh={sh} />}
+            {tab === 'cubierto'       && <ServicioTab/>}
+            {tab === 'reservas'       && <ReservasTab/>}
+            {tab === 'camareros'      && <CamarerosTab/>}
+            {tab === 'mesas'          && <MesasTab/>}
+            {tab === 'secciones'      && <SeccionesTab/>}
+            {tab === 'carta'          && <CartaTab restauranteId={session.restaurante_id}/>}
+            {tab === 'recomendaciones' && <RecomendacionesTab sh={sh} restauranteId={session.restaurante_id} />}
+            {tab === 'turno'          && <TurnoTab/>}
+            {tab === 'caja'           && <CajaTab/>}
+            {tab === 'analytics'      && <Analytics compact />}
+            {tab === 'facturas'       && <FacturasTab/>}
+            {tab === 'impresoras'     && <ImpresorasTab/>}
+            {tab === 'flujos'         && <FlujoTab/>}
+            {tab === 'notificaciones' && <NotificacionesTab/>}
+            {tab === 'modificaciones' && <ModificacionesTab restauranteId={session.restaurante_id}/>}
+            {tab === 'mensajes'       && <MensajesOwnerTab sh={sh} />}
+            {tab === 'fichajes'       && <FichajesTab/>}
+            {tab === 'manual'         && <ManualVozTab restauranteId={session.restaurante_id} session={{ id: session.id, nombre: session.nombre, rol: session.rol }} />}
+            {tab === 'restaurante'    && <RestauranteTab/>}
+            {tab === 'suscripcion'    && <SuscripcionTab restauranteId={session.restaurante_id} onSetupClick={() => setTab('camareros')}/>}
+          </div>
         </div>
       </div>
     </div>

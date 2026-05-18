@@ -1567,7 +1567,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const isProcessing = screen==='processing'
 
   return (
-    <div style={{height:'100dvh',background:C.bg,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:SN,position:'relative',color:C.ink,zoom:fontBig?'110%':'100%'}}>
+    <div className="edge-root" style={{height:'100dvh',background:C.bg,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:SN,position:'relative',color:C.ink,zoom:fontBig?'110%':'100%'}}>
       <style>{`
         @keyframes ldot{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes hout{0%{transform:scale(1);opacity:.4}100%{transform:scale(2);opacity:0}}
@@ -1581,6 +1581,43 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         * { -webkit-tap-highlight-color: transparent; }
         button, a { touch-action: manipulation; }
         input, select, textarea { font-size: 16px; } /* evita zoom en iOS */
+
+        /* ── Desktop: nav lateral ─────────────────────────── */
+        @media (min-width:1024px) {
+          .edge-root { flex-direction:row !important; }
+          .edge-main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+          .edge-nav {
+            flex-direction:column !important;
+            width:72px;
+            flex-shrink:0;
+            border-top:none !important;
+            border-right:1px solid ${C.rule};
+            padding:12px 6px !important;
+            gap:4px;
+            justify-content:flex-start !important;
+            order:-1;
+            overflow-y:auto;
+            scrollbar-width:none;
+          }
+          .edge-nav::-webkit-scrollbar { display:none; }
+          .edge-nav-btn {
+            border-bottom:none !important;
+            padding:10px 6px !important;
+            border-radius:8px;
+            gap:4px !important;
+          }
+          .edge-nav-btn.edge-nav-on { background:${C.bg2}; }
+          .edge-nav-indicator {
+            top:6px !important; left:0 !important; right:0 !important; bottom:auto !important;
+            height:auto !important; width:2px !important; border-radius:0 3px 3px 0 !important;
+          }
+          .edge-nav-lbl { display:block !important; font-size:8px !important; }
+          .edge-nav-badge { right:6px !important; top:4px !important; }
+        }
+        @media (min-width:1280px) {
+          .edge-nav { width:88px; }
+          .edge-nav-lbl { font-size:9px !important; }
+        }
       `}</style>
 
       {/* ALERTAS — banner audio + notificación */}
@@ -1674,6 +1711,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           </button>
         </div>
       )}
+
+      {/* ── AREA PRINCIPAL: header + contenido ─────────────────── */}
+      <div className="edge-main" style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
       {/* ── HEADER ─── oculto en tab Manual (tiene su propio header) ── */}
       {tab !== 'manual' && <div style={{padding:'10px 16px',borderBottom:`1px solid ${C.rule}`,background:C.bg1,flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',boxShadow:'0 1px 0 rgba(26,23,20,.06)'}}>
@@ -2386,28 +2426,32 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         />
       )}
 
+      {/* fin edge-main */}
+      </div>
+
       {/* ── BOTTOM NAV ─────────────────────────────────────────── */}
-      <nav style={{display:'flex',background:C.bg1,borderTop:`1px solid ${C.rule}`,flexShrink:0}}>
+      <nav className="edge-nav" style={{display:'flex',background:C.bg1,borderTop:`1px solid ${C.rule}`,flexShrink:0}}>
         {ALL_TABS.filter(t=>tabsVisibles.includes(t.id)).map(t => {
           const on = tab===t.id
           return (
             <button key={t.id} onClick={()=>setTab(t.id)}
+              className={`edge-nav-btn${on?' edge-nav-on':''}`}
               style={{flex:1,padding:'9px 4px 13px',background:'transparent',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,position:'relative',color:on?C.verm:C.ink3,transition:'color .15s'}}>
-              {on && <div style={{position:'absolute',top:0,left:'22%',right:'22%',height:2,background:C.verm,borderRadius:'0 0 3px 3px'}}/>}
+              {on && <div className="edge-nav-indicator" style={{position:'absolute',top:0,left:'22%',right:'22%',height:2,background:C.verm,borderRadius:'0 0 3px 3px'}}/>}
               {t.id==='chat' && noLeidos>0 && !on && (
-                <div style={{position:'absolute',top:5,right:'18%',minWidth:16,height:16,borderRadius:8,background:C.verm,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>
+                <div className="edge-nav-badge" style={{position:'absolute',top:5,right:'18%',minWidth:16,height:16,borderRadius:8,background:C.verm,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>
                   <span style={{fontFamily:SN,fontSize:9,fontWeight:700,color:'#fff'}}>{noLeidos>9?'9+':noLeidos}</span>
                 </div>
               )}
               {t.id==='manual' && cuentasCount>0 && !on && (
-                <div style={{position:'absolute',top:5,right:'18%',minWidth:16,height:16,borderRadius:8,background:C.verm,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>
+                <div className="edge-nav-badge" style={{position:'absolute',top:5,right:'18%',minWidth:16,height:16,borderRadius:8,background:C.verm,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>
                   <span style={{fontFamily:SN,fontSize:9,fontWeight:700,color:'#fff'}}>{cuentasCount>9?'9+':cuentasCount}</span>
                 </div>
               )}
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 {t.path.split('M').filter(Boolean).map((seg,i) => <path key={i} d={`M${seg}`}/>)}
               </svg>
-              <span style={{fontSize:9,fontWeight:600,textTransform:'uppercase',letterSpacing:'.8px'}}>{t.lbl}</span>
+              <span className="edge-nav-lbl" style={{fontSize:9,fontWeight:600,textTransform:'uppercase',letterSpacing:'.8px'}}>{t.lbl}</span>
             </button>
           )
         })}
