@@ -58,33 +58,50 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient()
     const rid = getRestauranteId(req)
 
-    // ── VOICE PROFILE: verificación no bloqueante ────────────────────────────
-    // Si el camarero tiene perfil activo, verificamos que la voz coincide.
-    // NUNCA bloquea la comanda — solo registra el score para auditoría.
+    // ── VOICE PROFILE + DETECCIÓN DE RUIDO ─────────────────────────────────
+    // Dos capas de calidad:
+    //   1. Whisper (siempre): no_speech_prob + avg_logprob — detecta ruido sin Azure
+    //   2. Azure Speaker Recognition (si configurado): verifica que es la voz del camarero
+    //
+    // Nunca bloquea la comanda. Si hay baja calidad → devuelve aviso_ruido:true
+    // para que el camarero revise antes de confirmar.
     let speakerMatch: number | null = null
-    if (azureDisponible()) {
-      try {
-        const { data: vp } = await supabase
+
+    // Capa 2: Azure speaker verification (paralela a la transcripción)
+    const speakerPromise: Promise<void> = azureDisponible()
+      ? supabase
           .from('voice_profiles')
           .select('azure_profile_id, estado')
           .eq('camarero_id', camareroId)
           .eq('estado', 'activo')
           .maybeSingle()
+          .then(async ({ data: vp }) => {
+            if (!vp?.azure_profile_id) return
+            speakerMatch = await verificarAzure(vp.azure_profile_id, audio)
+            if (speakerMatch !== null) {
+              supabase.from('voice_profiles').update({
+                ultimo_score:    speakerMatch,
+                ultimo_score_at: new Date().toISOString(),
+              }).eq('camarero_id', camareroId).then(() => {})
+            }
+          })
+          .catch(() => { /* no bloquear */ })
+      : Promise.resolve()
 
-        if (vp?.azure_profile_id) {
-          speakerMatch = await verificarAzure(vp.azure_profile_id, audio)
-          if (speakerMatch !== null) {
-            supabase.from('voice_profiles').update({
-              ultimo_score:    speakerMatch,
-              ultimo_score_at: new Date().toISOString(),
-            }).eq('camarero_id', camareroId).then(() => {/* fire and forget */})
-          }
-        }
-      } catch { /* no bloquear la comanda bajo ningún concepto */ }
-    }
+    // Capa 1: Whisper con verbose_json → métricas de calidad de audio
+    const [{ texto: textoRaw, latencia_ms: latenciaEar, no_speech_prob, avg_logprob }] =
+      await Promise.all([transcribir(audio), speakerPromise])
+
+    // ── Calcular aviso de ruido/baja confianza ───────────────────────────────
+    // no_speech_prob > 0.55 → Whisper cree que es ruido, no voz
+    // avg_logprob < -1.0   → muy baja confianza en lo transcrito
+    // speakerMatch < 0.40  → (si hay Azure) la voz no coincide con el perfil
+    const esRuidoWhisper =
+      (no_speech_prob !== null && no_speech_prob > 0.55) ||
+      (avg_logprob    !== null && avg_logprob < -1.0)
+    const esSpeakerBajo = speakerMatch !== null && speakerMatch < 0.40
+    const avisoRuido    = esRuidoWhisper || esSpeakerBajo
     // ────────────────────────────────────────────────────────────────────────
-
-    const { texto: textoRaw, latencia_ms: latenciaEar } = await transcribir(audio)
     // Si hay contexto previo de clarificación, se lo pasamos a BRAIN para que resuelva
     const texto = pendingContext
       ? `${pendingContext} → respuesta: ${textoRaw}`
@@ -540,7 +557,7 @@ export async function POST(req: NextRequest) {
       } catch { /* no bloquear la respuesta si falla el log */ }
     }
 
-    const okResult = { ok: true, texto, brain: brainResult, fuente_brain: brainResult.fuente, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, latencia_brain_ms: brainResult.latencia_brain_ms, comanda_id: comandaId, mesa_id: mesa?.id ?? null, nombre_cuenta: nombreCuentaUsada, alertas_86: alertas86, alertas_alergenos: alertasAlergenos }
+    const okResult = { ok: true, texto, brain: brainResult, fuente_brain: brainResult.fuente, latencia_ms: latenciaTotal, latencia_ear_ms: latenciaEar, latencia_brain_ms: brainResult.latencia_brain_ms, comanda_id: comandaId, mesa_id: mesa?.id ?? null, nombre_cuenta: nombreCuentaUsada, alertas_86: alertas86, alertas_alergenos: alertasAlergenos, aviso_ruido: avisoRuido, speaker_match: speakerMatch, no_speech_prob, avg_logprob }
     // Cachear resultado para idempotencia (si vuelve la misma recording_id, devuelve esto)
     if (recordingId) recentRecordings.set(recordingId, { ts: Date.now(), result: okResult })
     return NextResponse.json(okResult)

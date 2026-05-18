@@ -525,6 +525,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [pendingItems, setPendingItems] = useState<BrainResult['items']>([])
   const [alertas86, setAlertas86]       = useState<string[]>([])
   const [alertasAlerg, setAlertasAlerg] = useState<{producto:string;alergenos:string[]}[]>([])
+  const [avisoRuido,   setAvisoRuido]   = useState(false)
   const [mostrarAlerg, setMostrarAlerg] = useState(false)
   const [pedidoCuenta, setPedidoCuenta] = useState<{loading:boolean;error:string;factura:null|{numero_factura:number;importe_total:number}}>({loading:false,error:'',factura:null})
   const [sheetOpen, setSheetOpen]   = useState(false)
@@ -869,7 +870,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
       speakingRef.current = false
       setBrain(null); brainRef.current = null; setTranscript(''); setError('')
-      setAlertas86([]); setAlertasAlerg([]); setPendingItems([])
+      setAlertas86([]); setAlertasAlerg([]); setPendingItems([]); setAvisoRuido(false)
       setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
       setChipsClarificacion([]); setMesaClarificacion(null)
       setPedidoCuenta({ loading: false, error: '', factura: null })
@@ -1078,7 +1079,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       const d = await r.json()
       if (d.ok) {
         setTranscript(d.texto); setBrain(d.brain); brainRef.current = d.brain; setLatencia(d.latencia_ms)
-        setLastComandaId(d.comanda_id??null); setAlertas86(d.alertas_86??[]); setAlertasAlerg(d.alertas_alergenos??[])
+        setLastComandaId(d.comanda_id??null); setAlertas86(d.alertas_86??[]); setAlertasAlerg(d.alertas_alergenos??[]); setAvisoRuido(d.aviso_ruido??false)
         addMsg('camarero', d.texto)
 
         // ── BRAIN pide clarificación por ambigüedad (ej: "un tinto" con 4 tintos) ──
@@ -1532,7 +1533,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     speakingRef.current=false; processingRef.current=false; recordingRef.current=false
     setScreenSafe('idle'); setBrain(null); brainRef.current = null; setTranscript('')
     setError(''); setPedidoCuenta({loading:false,error:'',factura:null})
-    setAlertas86([]); setAlertasAlerg([]); setPendingItems([])
+    setAlertas86([]); setAlertasAlerg([]); setPendingItems([]); setAvisoRuido(false)
     setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
     setChipsClarificacion([]); setMesaClarificacion(null)
   }
@@ -1787,6 +1788,12 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                   <span style={{fontFamily:SE,fontStyle:'italic',fontSize:17,color:C.ink,flex:1}}>{brain.mesa}</span>
                   <span style={{fontFamily:SM,fontSize:9,color:C.gr}}>{Math.round((brain.confianza||.9)*100)}%</span>
                 </div>
+                {avisoRuido&&(
+                  <div style={{margin:'6px 14px 0',background:'#FFF3CD',border:'1px solid #E8A33B',borderRadius:6,padding:'7px 10px',display:'flex',alignItems:'center',gap:6}}>
+                    <span style={{fontSize:14}}>🎙️</span>
+                    <span style={{fontFamily:SM,fontSize:10,color:'#7A5A1A',flex:1}}>RUIDO DETECTADO — revisa la comanda antes de confirmar</span>
+                  </div>
+                )}
                 {alertas86.length>0&&(
                   <div style={{margin:'6px 14px 0',background:C.vermS,border:`1px solid ${C.verm}44`,borderRadius:6,padding:'5px 10px',fontFamily:SM,fontSize:10,color:C.verm}}>
                     ⚠ 86 · {alertas86.join(', ')}
