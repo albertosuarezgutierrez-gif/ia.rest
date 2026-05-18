@@ -7844,13 +7844,14 @@ type StockArticulo = {
 type ProductoSimple = { id: string; nombre: string; categoria: string }
 
 function BodegaTab({ sh, restauranteId }: { sh: () => Record<string,string>; restauranteId: string }) {
-  const [articulos, setArticulos] = useState<StockArticulo[]>([])
-  const [productos, setProductos] = useState<ProductoSimple[]>([])
+  const [articulos,   setArticulos]   = useState<StockArticulo[]>([])
+  const [productos,   setProductos]   = useState<ProductoSimple[]>([])
+  const [listaProvs,  setListaProvs]  = useState<{ id: string; nombre: string; email: string | null; telefono: string | null; categoria: string | null }[]>([])
   const [loading,  setLoading]   = useState(true)
   const [modal,    setModal]     = useState<null | 'crear' | 'ocr' | 'pedidos' | { edit: StockArticulo } | { entrada: StockArticulo }>(null)
   const [err,      setErr]       = useState('')
   // Form crear/editar
-  const emptyForm = { nombre:'', unidad_compra:'unidad', stock_inicial:'', stock_minimo:'', coste_unitario:'', notas:'', proveedor_nombre:'', proveedor_email:'', proveedor_telefono:'', cantidad_pedido:'', pedido_auto: false }
+  const emptyForm = { nombre:'', unidad_compra:'unidad', stock_inicial:'', stock_minimo:'', coste_unitario:'', notas:'', proveedor_id:'', cantidad_pedido:'', pedido_auto: false }
   const [form, setForm] = useState(emptyForm)
   const [rendimientos, setRendimientos] = useState<{producto_id:string;consumo:string}[]>([])
   // Form entrada
@@ -7877,12 +7878,14 @@ function BodegaTab({ sh, restauranteId }: { sh: () => Record<string,string>; res
 
   const load = async () => {
     setLoading(true)
-    const [rA, rP] = await Promise.all([
-      fetch('/api/owner/stock', { headers: sh() }).then(r => r.json()),
-      fetch('/api/owner/carta', { headers: sh() }).then(r => r.json()),
+    const [rA, rP, rProv] = await Promise.all([
+      fetch('/api/owner/stock',        { headers: sh() }).then(r => r.json()),
+      fetch('/api/owner/carta',        { headers: sh() }).then(r => r.json()),
+      fetch('/api/owner/proveedores',  { headers: sh() }).then(r => r.json()),
     ])
     setArticulos(rA.articulos ?? [])
     setProductos((rP.productos ?? []).filter((p: ProductoSimple & { activo: boolean }) => p.activo))
+    setListaProvs(rProv.proveedores ?? [])
     setLoading(false)
   }
 
@@ -7892,7 +7895,7 @@ function BodegaTab({ sh, restauranteId }: { sh: () => Record<string,string>; res
     setForm(emptyForm); setRendimientos([]); setErr(''); setModal('crear')
   }
   const openEdit = (a: StockArticulo) => {
-    setForm({ nombre: a.nombre, unidad_compra: a.unidad_compra, stock_inicial: '', stock_minimo: String(a.stock_minimo), coste_unitario: a.coste_unitario ? String(a.coste_unitario) : '', notas: a.notas ?? '', proveedor_nombre: a.proveedor_nombre ?? '', proveedor_email: a.proveedor_email ?? '', proveedor_telefono: a.proveedor_telefono ?? '', cantidad_pedido: a.cantidad_pedido ? String(a.cantidad_pedido) : '', pedido_auto: a.pedido_auto ?? false })
+    setForm({ nombre: a.nombre, unidad_compra: a.unidad_compra, stock_inicial: '', stock_minimo: String(a.stock_minimo), coste_unitario: a.coste_unitario ? String(a.coste_unitario) : '', notas: a.notas ?? '', proveedor_id: (a as StockArticulo & { proveedor_id?: string }).proveedor_id ?? '', cantidad_pedido: a.cantidad_pedido ? String(a.cantidad_pedido) : '', pedido_auto: a.pedido_auto ?? false })
     setRendimientos(a.productos_vinculados.map(p => ({ producto_id: p.producto_id, consumo: String(p.consumo_por_venta) })))
     setErr(''); setModal({ edit: a })
   }
@@ -8029,9 +8032,10 @@ function BodegaTab({ sh, restauranteId }: { sh: () => Record<string,string>; res
       stock_minimo:  form.stock_minimo  !== '' ? parseFloat(form.stock_minimo)  : 0,
       coste_unitario: form.coste_unitario !== '' ? parseFloat(form.coste_unitario) : null,
       notas: form.notas.trim() || null,
-      proveedor_nombre:   form.proveedor_nombre.trim()   || null,
-      proveedor_email:    form.proveedor_email.trim()    || null,
-      proveedor_telefono: form.proveedor_telefono.trim() || null,
+      proveedor_id:       form.proveedor_id || null,
+      proveedor_nombre:   form.proveedor_id ? (listaProvs.find(p => p.id === form.proveedor_id)?.nombre ?? null) : null,
+      proveedor_email:    form.proveedor_id ? (listaProvs.find(p => p.id === form.proveedor_id)?.email ?? null) : null,
+      proveedor_telefono: form.proveedor_id ? (listaProvs.find(p => p.id === form.proveedor_id)?.telefono ?? null) : null,
       cantidad_pedido:    form.cantidad_pedido !== '' ? parseFloat(form.cantidad_pedido) : null,
       pedido_auto:        form.pedido_auto,
       rendimientos: rendimientos.filter(r => r.producto_id && r.consumo !== '').map(r => ({ producto_id: r.producto_id, consumo: parseFloat(r.consumo) })),
@@ -8368,32 +8372,47 @@ function BodegaTab({ sh, restauranteId }: { sh: () => Record<string,string>; res
             {/* Proveedor */}
             <div style={{ background:C.paper2, border:`1px solid ${C.rule}`, borderRadius:8, padding:'12px 14px', marginBottom:16 }}>
               <div style={{ fontFamily:SM, fontSize:9, fontWeight:700, color:C.ink3, textTransform:'uppercase' as const, letterSpacing:'.1em', marginBottom:10 }}>Proveedor habitual</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>NOMBRE</label>
-                  <input value={form.proveedor_nombre} onChange={e => setForm(f=>({...f, proveedor_nombre:e.target.value}))} placeholder="Distribuidora García" style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, boxSizing:'border-box' as const, outline:'none' }} />
+              {listaProvs.length === 0 ? (
+                <div style={{ fontFamily:SN, fontSize:12, color:C.ink4 }}>
+                  No tienes proveedores aún. Ve al tab <strong>Proveedores</strong> y añade los tuyos primero.
                 </div>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>TELÉFONO</label>
-                  <input value={form.proveedor_telefono} onChange={e => setForm(f=>({...f, proveedor_telefono:e.target.value}))} placeholder="600 000 000" style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, boxSizing:'border-box' as const, outline:'none' }} />
-                </div>
-              </div>
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>EMAIL DEL PROVEEDOR (para pedidos)</label>
-                <input type="email" value={form.proveedor_email} onChange={e => setForm(f=>({...f, proveedor_email:e.target.value}))} placeholder="pedidos@proveedor.com" style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, boxSizing:'border-box' as const, outline:'none' }} />
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                <div>
-                  <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>CANTIDAD HABITUAL A PEDIR</label>
-                  <input type="number" min="0.1" step="0.5" value={form.cantidad_pedido} onChange={e => setForm(f=>({...f, cantidad_pedido:e.target.value}))} placeholder={`Ej: 3 ${form.unidad_compra}`} style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, boxSizing:'border-box' as const, outline:'none' }} />
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:14 }}>
-                  <input type="checkbox" id="pedido_auto_ck" checked={form.pedido_auto} onChange={e => setForm(f=>({...f, pedido_auto:e.target.checked}))} style={{ accentColor: '#2B8A8F' }} />
-                  <label htmlFor="pedido_auto_ck" style={{ fontFamily:SN, fontSize:12, color:C.ink2, cursor:'pointer' }}>Pedir automático al bajar del mínimo</label>
-                </div>
-              </div>
-              {form.pedido_auto && !form.proveedor_email && (
-                <div style={{ fontFamily:SM, fontSize:9, color:C.amber, marginTop:6 }}>⚠ Necesitas el email del proveedor para el pedido automático</div>
+              ) : (
+                <>
+                  <div style={{ marginBottom:10 }}>
+                    <select value={form.proveedor_id} onChange={e => setForm(f => ({ ...f, proveedor_id: e.target.value, pedido_auto: e.target.value ? f.pedido_auto : false }))}
+                      style={{ width:'100%', padding:'8px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:13, color:C.ink, outline:'none' }}>
+                      <option value="">— Sin proveedor asignado —</option>
+                      {listaProvs.map(p => (
+                        <option key={p.id} value={p.id}>{p.nombre}{p.categoria ? ` · ${p.categoria}` : ''}{p.email ? ` (${p.email})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {form.proveedor_id && (() => {
+                    const prov = listaProvs.find(p => p.id === form.proveedor_id)
+                    if (!prov) return null
+                    return (
+                      <div style={{ background:C.bone, border:`1px solid ${C.rule}`, borderRadius:6, padding:'8px 12px', marginBottom:10, display:'flex', gap:12, flexWrap:'wrap' as const }}>
+                        <span style={{ fontFamily:SN, fontSize:12, fontWeight:600, color:C.ink }}>{prov.nombre}</span>
+                        {prov.email    && <span style={{ fontFamily:SM, fontSize:10, color:'#2B8A8F' }}>✉ {prov.email}</span>}
+                        {prov.telefono && <span style={{ fontFamily:SM, fontSize:10, color:C.ink3 }}>📞 {prov.telefono}</span>}
+                      </div>
+                    )
+                  })()}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>CANTIDAD HABITUAL A PEDIR</label>
+                      <input type="number" min="0.1" step="0.5" value={form.cantidad_pedido} onChange={e => setForm(f=>({...f, cantidad_pedido:e.target.value}))} placeholder={`Ej: 3 ${form.unidad_compra}`}
+                        style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, boxSizing:'border-box' as const, outline:'none' }} />
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:14 }}>
+                      <input type="checkbox" id="pedido_auto_ck" checked={form.pedido_auto} disabled={!form.proveedor_id}
+                        onChange={e => setForm(f=>({...f, pedido_auto:e.target.checked}))} style={{ accentColor:'#2B8A8F' }} />
+                      <label htmlFor="pedido_auto_ck" style={{ fontFamily:SN, fontSize:12, color: form.proveedor_id ? C.ink2 : C.ink4, cursor: form.proveedor_id ? 'pointer' : 'not-allowed' }}>
+                        Pedir automático al bajar del mínimo
+                      </label>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
