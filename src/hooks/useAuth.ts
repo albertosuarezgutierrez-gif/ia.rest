@@ -49,7 +49,7 @@ export function useAuth(requiredRoles?: Rol | Rol[]) {
 
     if (requiredRoles) {
       const allowed: Rol[] = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles]
-      if (s.rol !== 'super_admin' && !allowed.includes(s.rol)) {
+      if (allowed.length > 0 && s.rol !== 'super_admin' && !allowed.includes(s.rol)) {
         window.location.href = REDIRECT[s.rol] ?? '/login'
         return
       }

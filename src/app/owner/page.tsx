@@ -2651,6 +2651,12 @@ function SeccionesTab() {
     })
   }
 
+  const abrirKds = (seccionId: string) => {
+    if (!kdsToken) return
+    const url = `${window.location.origin}/kds?token=${kdsToken}&seccion=${seccionId}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   const load = useCallback(async () => {
     const r = await fetch('/api/owner/secciones', { headers: sh() })
     const d = await r.json()
@@ -2722,12 +2728,20 @@ function SeccionesTab() {
               </div>
               <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap' }}>
                 {kdsToken && (
-                  <button
-                    onClick={() => copiarEnlace(s.id)}
-                    title="Copiar enlace directo a este KDS"
-                    style={{ background: copiedId===s.id ? '#3F7D44' : 'none', border:`1px solid ${copiedId===s.id?'#3F7D44':C.rule}`, borderRadius:3, padding:'3px 8px', fontFamily:SM, fontSize:9, letterSpacing:'.08em', color: copiedId===s.id ? '#fff' : C.ink3, cursor:'pointer', textTransform:'uppercase', transition:'all .2s' }}>
-                    {copiedId===s.id ? '✓ Copiado' : '🔗 Enlace KDS'}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => copiarEnlace(s.id)}
+                      title="Copiar enlace directo a este KDS"
+                      style={{ background: copiedId===s.id ? '#3F7D44' : 'none', border:`1px solid ${copiedId===s.id?'#3F7D44':C.rule}`, borderRadius:3, padding:'3px 8px', fontFamily:SM, fontSize:9, letterSpacing:'.08em', color: copiedId===s.id ? '#fff' : C.ink3, cursor:'pointer', textTransform:'uppercase', transition:'all .2s' }}>
+                      {copiedId===s.id ? '✓ Copiado' : '🔗 Enlace KDS'}
+                    </button>
+                    <button
+                      onClick={() => abrirKds(s.id)}
+                      title="Abrir KDS en nueva pestaña"
+                      style={{ background:'none', border:`1px solid ${C.rule}`, borderRadius:3, padding:'3px 8px', fontFamily:SM, fontSize:9, letterSpacing:'.08em', color:C.ink3, cursor:'pointer', textTransform:'uppercase' }}>
+                      ↗ Abrir
+                    </button>
+                  </>
                 )}
                 <button onClick={() => toggleActiva(s)} style={{ background:'none', border:`1px solid ${C.rule}`, borderRadius:3, padding:'3px 8px', fontFamily:SM, fontSize:9, letterSpacing:'.08em', color:C.ink3, cursor:'pointer', textTransform:'uppercase' }}>
                   {s.activa===false?'Activar':'Ocultar'}
