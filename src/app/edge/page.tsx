@@ -664,7 +664,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
         // Asegurar que hablar y config siempre están (fijos)
         const fijos = ALL_TABS.filter(t=>t.fijo).map(t=>t.id)
         const saved: Tab[] = cfg.tabsVisibles
-        setTabsVisibles([...new Set([...fijos, ...saved])])
+        // Añadir tabs nuevos que no existían cuando el usuario guardó su config
+        const nuevos = ALL_TABS.filter(t=>!t.fijo && !saved.includes(t.id)).map(t=>t.id)
+        setTabsVisibles([...new Set([...fijos, ...saved, ...nuevos])])
       }
     } catch {}
     // Cargar config de servicio/cubierto
