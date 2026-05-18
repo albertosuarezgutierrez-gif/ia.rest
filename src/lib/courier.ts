@@ -459,12 +459,13 @@ export async function crearPrintJobs(
     const { data: job, error } = await supabase
       .from('print_jobs')
       .insert({
-        comanda_id:   comanda.id,
-        impresora_id: imp.id,
-        seccion_id:   grupo.seccion_label || imp.seccion_id,
+        comanda_id:    comanda.id,
+        impresora_id:  imp.id,
+        seccion_id:    grupo.seccion_label || imp.seccion_id,
+        restaurante_id: comanda.restaurante_id ?? null,
         payload,
-        print_data:   printData,
-        status:       'pendiente',
+        print_data:    printData,
+        status:        'pendiente',
       })
       .select('id')
       .single()
@@ -479,7 +480,7 @@ export async function crearPrintJobs(
           : Buffer.from(generarTextoPlano(payload), 'utf8').toString('base64')
         const { data: jobFallback } = await supabase
           .from('print_jobs')
-          .insert({ comanda_id: comanda.id, impresora_id: imp.id, seccion_id: grupo.seccion_label || imp.seccion_id, payload, print_data: printDataFallback, status: 'pendiente' })
+          .insert({ comanda_id: comanda.id, impresora_id: imp.id, seccion_id: grupo.seccion_label || imp.seccion_id, restaurante_id: comanda.restaurante_id ?? null, payload, print_data: printDataFallback, status: 'pendiente' })
           .select('id')
           .single()
         if (jobFallback) jobIds.push(jobFallback.id)
@@ -573,7 +574,7 @@ export async function crearPrintJobMarchar(
 
     const { data: job } = await supabase
       .from('print_jobs')
-      .insert({ comanda_id: comanda.id, impresora_id: imp.id, seccion_id: imp.seccion_id, payload, print_data: printData, status: 'pendiente' })
+      .insert({ comanda_id: comanda.id, impresora_id: imp.id, seccion_id: imp.seccion_id, restaurante_id: comanda.restaurante_id ?? null, payload, print_data: printData, status: 'pendiente' })
       .select('id')
       .single()
 
