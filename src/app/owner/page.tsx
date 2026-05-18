@@ -8907,7 +8907,7 @@ function ProveedoresTab({ sh, restauranteId }: { sh: () => Record<string,string>
   const [modal,       setModal]       = useState<null | 'crear' | { edit: Proveedor }>(null)
   const [err,         setErr]         = useState('')
 
-  const empty = { nombre:'', email:'', telefono:'', web:'', contacto_nombre:'', categoria:'', notas:'' }
+  const empty = { nombre:'', email:'', telefono:'', web:'', contacto_nombre:'', categoria:'', notas:'', dias_reparto:[] as number[], hora_corte:'', pedido_minimo_eur:'' }
   const [form, setForm] = useState(empty)
 
   const load = async () => {
@@ -8921,14 +8921,18 @@ function ProveedoresTab({ sh, restauranteId }: { sh: () => Record<string,string>
 
   const openCreate = () => { setForm(empty); setErr(''); setModal('crear') }
   const openEdit   = (p: Proveedor) => {
-    setForm({ nombre: p.nombre, email: p.email??'', telefono: p.telefono??'', web: p.web??'', contacto_nombre: p.contacto_nombre??'', categoria: p.categoria??'', notas: p.notas??'' })
+    setForm({ nombre: p.nombre, email: p.email??'', telefono: p.telefono??'', web: p.web??'', contacto_nombre: p.contacto_nombre??'', categoria: p.categoria??'', notas: p.notas??'', dias_reparto: (p as unknown as Record<string,unknown>).dias_reparto as number[] ?? [], hora_corte: (p as unknown as Record<string,unknown>).hora_corte as string ?? '', pedido_minimo_eur: (p as unknown as Record<string,unknown>).pedido_minimo_eur ? String((p as unknown as Record<string,unknown>).pedido_minimo_eur) : '' })
     setErr(''); setModal({ edit: p })
   }
 
   const guardar = async () => {
     if (!form.nombre.trim()) return setErr('El nombre es obligatorio')
     const isEdit = modal && typeof modal === 'object' && 'edit' in modal
-    const body = { ...(isEdit ? { id: (modal as {edit:Proveedor}).edit.id } : {}), ...form }
+    const body = { ...(isEdit ? { id: (modal as {edit:Proveedor}).edit.id } : {}), ...form,
+      dias_reparto: form.dias_reparto.length > 0 ? form.dias_reparto : null,
+      hora_corte: form.hora_corte || null,
+      pedido_minimo_eur: form.pedido_minimo_eur !== '' ? parseFloat(form.pedido_minimo_eur) : null,
+    }
     const r = await fetch('/api/owner/proveedores', { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type':'application/json', ...sh() }, body: JSON.stringify(body) })
     const d = await r.json()
     if (!r.ok) return setErr(d.error || 'Error')
@@ -9033,6 +9037,50 @@ function ProveedoresTab({ sh, restauranteId }: { sh: () => Record<string,string>
                 <label style={{ fontFamily:SM, fontSize:8, fontWeight:700, color:C.ink4, textTransform:'uppercase' as const, letterSpacing:'.12em', display:'block', marginBottom:3 }}>NOTAS</label>
                 <textarea value={form.notas} onChange={e => setForm(f=>({...f,notas:e.target.value}))} placeholder="Condiciones especiales, días de reparto, referencia cliente…" rows={2}
                   style={{ width:'100%', padding:'7px 10px', borderRadius:6, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, resize:'vertical' as const, outline:'none', boxSizing:'border-box' as const }} />
+              </div>
+
+              {/* Flujos de pedido automático */}
+              <div style={{ background:C.paper2, border:`1px solid ${C.rule}`, borderRadius:8, padding:'12px 14px' }}>
+                <div style={{ fontFamily:SM, fontSize:9, fontWeight:700, color:C.ink3, textTransform:'uppercase' as const, letterSpacing:'.1em', marginBottom:10 }}>
+                  Reglas de pedido automático
+                </div>
+                {/* Días de reparto */}
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:5 }}>DÍAS DE REPARTO (solo se pedirá en estos días)</label>
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
+                    {[['L',1],['M',2],['X',3],['J',4],['V',5],['S',6],['D',7]].map(([lbl,num]) => {
+                      const n = num as number
+                      const active = form.dias_reparto.includes(n)
+                      return (
+                        <button key={n} type="button" onClick={() => setForm(f => ({ ...f, dias_reparto: active ? f.dias_reparto.filter(d => d !== n) : [...f.dias_reparto, n] }))}
+                          style={{ width:32, height:32, borderRadius:'50%', fontFamily:SM, fontSize:11, fontWeight:700, cursor:'pointer',
+                            background: active ? C.red : C.bone, color: active ? C.paper : C.ink3,
+                            border: `1px solid ${active ? C.redD : C.rule}` }}>
+                          {lbl}
+                        </button>
+                      )
+                    })}
+                    {form.dias_reparto.length > 0 && (
+                      <button type="button" onClick={() => setForm(f=>({...f,dias_reparto:[]}))} style={{ fontFamily:SM, fontSize:9, color:C.ink4, background:'none', border:'none', cursor:'pointer', padding:'0 4px' }}>✕ cualquier día</button>
+                    )}
+                  </div>
+                  {form.dias_reparto.length === 0 && <div style={{ fontFamily:SM, fontSize:9, color:C.ink4, marginTop:4 }}>Sin restricción de día — se pedirá cuando baje del mínimo</div>}
+                </div>
+                {/* Hora de corte */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>HORA DE CORTE DE PEDIDOS</label>
+                    <input type="time" value={form.hora_corte} onChange={e => setForm(f=>({...f,hora_corte:e.target.value}))}
+                      style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, outline:'none' }} />
+                    <div style={{ fontFamily:SM, fontSize:9, color:C.ink4, marginTop:3 }}>Después de esta hora → pedido al día siguiente</div>
+                  </div>
+                  <div>
+                    <label style={{ fontFamily:SM, fontSize:8, color:C.ink4, display:'block', marginBottom:3 }}>IMPORTE MÍNIMO DE PEDIDO (€)</label>
+                    <input type="number" min="0" step="0.01" value={form.pedido_minimo_eur} onChange={e => setForm(f=>({...f,pedido_minimo_eur:e.target.value}))} placeholder="Ej: 150"
+                      style={{ width:'100%', padding:'6px 8px', borderRadius:5, border:`1px solid ${C.rule}`, background:C.bone, fontFamily:SN, fontSize:12, color:C.ink, boxSizing:'border-box' as const, outline:'none' }} />
+                    <div style={{ fontFamily:SM, fontSize:9, color:C.ink4, marginTop:3 }}>Acumula pedidos hasta llegar al mínimo</div>
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -515,6 +515,11 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   turnoId: string|null
   setTurnoId: (id:string|null)=>void
 }) {
+  // B2 FIX: iOS no permite getUserMedia desde promesas — necesita gesto directo
+  const isIOS = typeof navigator !== 'undefined' &&
+    /iPhone|iPad|iPod/.test(navigator.userAgent) &&
+    !('MSStream' in window)
+
   const [tab, setTab]     = useState<Tab>('hablar')
   const [screen, setScreen] = useState<Screen>('idle')
   const [cuentasCount, setCuentasCount] = useState(0)
@@ -1117,7 +1122,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
             // Pocas opciones → flujo de voz (blanco/tinto/rosado)
             setChipsClarificacion([])
             setScreenSafe('asking')
-            speak(pregunta).then(() => startRecording())
+            // B2 FIX: iOS no permite autostart getUserMedia desde promesa
+            if (!isIOS) speak(pregunta).then(() => startRecording())
+            else speak(pregunta)  // solo TTS, el camarero pulsa PTT
           }
           processingRef.current = false
           return
@@ -1175,7 +1182,9 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           if (d.brain?.items?.length>0) setPendingItems(d.brain.items)
           // NO añadimos al chat aquí — ya lo muestra screen==='asking' directamente
           setScreenSafe('asking')
-          speak('¿Qué mesa?').then(() => startRecording())
+          // B2 FIX: iOS requiere gesto directo para getUserMedia
+          if (!isIOS) speak('¿Qué mesa?').then(() => startRecording())
+          else speak('¿Qué mesa?')
           processingRef.current = false
           return
         }
@@ -1813,6 +1822,18 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
                     ))}
                     <button onClick={reset} style={{marginTop:6,background:'none',border:`1px solid ${C.rule}`,color:C.ink3,borderRadius:6,padding:'4px 10px',fontFamily:SN,fontSize:11,cursor:'pointer',alignSelf:'flex-start'}}>Cancelar</button>
                   </div>
+                )}
+                {/* B2 FIX: en iOS mostrar botón explícito para que el gesto active getUserMedia */}
+                {isIOS && chipsClarificacion.length === 0 && (
+                  <button
+                    onTouchEnd={e => { e.preventDefault(); startRecording() }}
+                    onClick={() => startRecording()}
+                    style={{marginTop:10,width:'100%',padding:'11px',borderRadius:10,
+                      background:C.teal,color:C.bg,border:'none',
+                      fontFamily:SM,fontSize:11,fontWeight:700,letterSpacing:'.08em',
+                      textTransform:'uppercase',cursor:'pointer'}}>
+                    🎙 Toca para responder
+                  </button>
                 )}
               </div>
             )}

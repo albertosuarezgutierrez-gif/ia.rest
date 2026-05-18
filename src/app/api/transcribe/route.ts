@@ -420,21 +420,41 @@ export async function POST(req: NextRequest) {
       // Solo crear print_jobs si no requiere confirmación — si la requiere, /confirmar los crea
       if (!requireConfirm && ['comanda', 'marchar'].includes(brainResult.tipo) && brainResult.items.length > 0) {
         const { data: camarero } = await supabase.from('camareros').select('nombre').eq('id', camareroId).single()
-        crearPrintJobs(
-          {
-            id: comanda.id,
-            tipo: brainResult.tipo,
-            mesa_codigo: mesa.codigo,
-            camarero_nombre: camarero?.nombre ?? 'Equipo',
-            numero_ticket: comanda.numero_ticket ?? undefined,
-            restaurante_id: rid,
-            zona_tipo:   (mesa as Record<string, unknown>).zona as string ?? null,
-            zona_nombre: ((mesa as Record<string, unknown>).zonas as { nombre?: string } | null)?.nombre ?? null,
-            nota_general: brainResult.nota_general ?? null,
-          },
-          brainResult.items.map(item => ({ nombre: item.nombre, cantidad: item.cantidad,
-            notas: item.notas ?? null, seccion_id: (item as Record<string, unknown>).seccion_id as string ?? null }))
-        ).catch(err => console.error('[COURIER]', err))
+
+        if (brainResult.tipo === 'marchar') {
+          // ── B1 FIX: usar /api/marchar para notificaciones al running + marchar_log ──
+          const baseUrl = process.env.APP_URL ?? 'https://www.iarest.es'
+          fetch(`${baseUrl}/api/marchar`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-ia-session': req.headers.get('x-ia-session') ?? '',
+            },
+            body: JSON.stringify({
+              comanda_id:  comanda.id,
+              mesa_codigo: mesa.codigo,
+              items:       brainResult.items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad })),
+              zona_nombre: ((mesa as Record<string, unknown>).zonas as { nombre?: string } | null)?.nombre ?? null,
+              camarero_nombre: camarero?.nombre ?? 'Equipo',
+            }),
+          }).catch(err => console.error('[MARCHAR-VOZ]', err))
+        } else {
+          crearPrintJobs(
+            {
+              id: comanda.id,
+              tipo: brainResult.tipo,
+              mesa_codigo: mesa.codigo,
+              camarero_nombre: camarero?.nombre ?? 'Equipo',
+              numero_ticket: comanda.numero_ticket ?? undefined,
+              restaurante_id: rid,
+              zona_tipo:   (mesa as Record<string, unknown>).zona as string ?? null,
+              zona_nombre: ((mesa as Record<string, unknown>).zonas as { nombre?: string } | null)?.nombre ?? null,
+              nota_general: brainResult.nota_general ?? null,
+            },
+            brainResult.items.map(item => ({ nombre: item.nombre, cantidad: item.cantidad,
+              notas: item.notas ?? null, seccion_id: (item as Record<string, unknown>).seccion_id as string ?? null }))
+          ).catch(err => console.error('[COURIER]', err))
+        }
       }
 
       const nuevoEstado = ({ comanda: 'activa', marchar: 'marchar', '86': mesa.estado, cuenta: 'cuenta_pedida', aviso: 'aviso' })[brainResult.tipo] as string

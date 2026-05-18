@@ -45,6 +45,7 @@ const CLAUSULAS = [
   { titulo: 'Alérgenos y VeriFactu', texto: 'El sistema de alérgenos es una herramienta de apoyo, no sustituye tu responsabilidad legal. Las facturas VeriFactu requieren configurar correctamente tu NIF y razón social.' },
   { titulo: 'Compatibilidad de hardware', texto: 'Las impresoras están garantizadas solo con protocolo ESC/POS TCP/IP y CloudPRNT Star LAN/Wi-Fi. Otros modelos pueden funcionar pero sin garantía de soporte.' },
   { titulo: 'Tus datos son tuyos', texto: 'ia.rest actúa como encargado del tratamiento (RGPD). Puedes exportar y borrar tus datos en cualquier momento. El uso para entrenamiento de IA es opt-in.' },
+  { titulo: 'Datos agregados y estadísticos', texto: 'ia.rest podrá utilizar datos de uso de la plataforma de forma agregada y completamente anonimizada — sin posibilidad de identificar tu establecimiento — con fines estadísticos, de mejora del servicio y comerciales. Nunca se compartirán datos individuales de tu negocio con terceros sin tu consentimiento expreso.' },
 ]
 
 export default function RegistroPage() {
