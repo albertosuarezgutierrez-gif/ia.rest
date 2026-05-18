@@ -26,7 +26,6 @@ async function buildRecomendacionesContext(restaurante_id?: string): Promise<str
 
 /** Construye el bloque de carta para el prompt usando el cache de menú (evita DB queries). */
 async function buildMenuContext(restaurante_id?: string): Promise<string> {
-  // Si tenemos restaurante_id, usar el cache para evitar 2 DB queries por llamada
   if (restaurante_id) {
     try {
       const cache = await getMenuCache(restaurante_id)
@@ -60,7 +59,6 @@ async function buildMenuContext(restaurante_id?: string): Promise<string> {
     }
   }
 
-  // Fallback legacy: query directa sin restaurante_id (modo demo/compatibilidad)
   try {
     const supabase = createServerClient()
     const [{ data: productos }, { data: formatos }] = await Promise.all([
@@ -79,7 +77,6 @@ async function buildMenuContext(restaurante_id?: string): Promise<string> {
 
     if (!productos?.length) return ''
 
-    // Build formato map: producto_id → formatos[]
     const fmtMap: Record<string, { nombre: string; precio: number }[]> = {}
     for (const f of formatos ?? []) {
       if (!fmtMap[f.producto_id]) fmtMap[f.producto_id] = []
@@ -219,36 +216,106 @@ CLARIFICACIÓN POR AMBIGÜEDAD:
 SCHEMA:
 {"mesa":"S4","nombre_cuenta":null,"tipo":"comanda|marchar|86|cuenta|aviso","items":[{"nombre":"Nombre canónico de la carta","cantidad":2,"notas":"","formato":null}],"num_comensales":null,"nota_general":null,"necesita_clarificacion":false,"pregunta_clarificacion":null,"opciones_clarificacion":[],"confianza":0.95,"raw":"texto original"}`
 
+// ── Tipos internos ──────────────────────────────────────────────────────────
+
+type BrainProvider = 'anthropic' | 'nvidia'
+
+interface NvidiaMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+// ── Llamada a NVIDIA NIM (OpenAI-compatible) ────────────────────────────────
+
+async function callNvidia(systemPrompt: string, userText: string): Promise<string> {
+  const apiKey = process.env.NVIDIA_API_KEY
+  if (!apiKey) throw new Error('BRAIN[nvidia]: NVIDIA_API_KEY no configurada en Vercel')
+
+  const model = process.env.NVIDIA_BRAIN_MODEL ?? 'meta/llama-3.3-70b-instruct'
+
+  const messages: NvidiaMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userText },
+  ]
+
+  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: 512,
+      temperature: 0.1,     // bajo para JSON determinista
+      top_p: 0.95,
+      stream: false,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`BRAIN[nvidia] HTTP ${res.status}: ${err.substring(0, 200)}`)
+  }
+
+  const data = await res.json()
+  const text = data?.choices?.[0]?.message?.content
+  if (!text) throw new Error('BRAIN[nvidia]: respuesta vacía de NVIDIA NIM')
+
+  console.log(`[BRAIN] nvidia/${model} OK`)
+  return text
+}
+
+// ── Llamada a Anthropic (Claude Haiku) ─────────────────────────────────────
+
+async function callAnthropic(systemPrompt: string, userText: string): Promise<string> {
+  const Anthropic = await import('@anthropic-ai/sdk').then(m => m.default)
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userText }],
+  })
+
+  const content = response.content[0]
+  if (content.type !== 'text') throw new Error('Respuesta inesperada de BRAIN[anthropic]')
+  console.log('[BRAIN] anthropic/claude-haiku OK')
+  return content.text
+}
+
+// ── Función principal ───────────────────────────────────────────────────────
+
 export async function parsearComanda(texto: string, restaurante_id?: string): Promise<BrainResult> {
-  // Usar cache cuando sea posible para evitar DB queries en cada llamada (~200ms ahorrados)
-  const [Anthropic, menuContext, zonasContext, recomContext] = await Promise.all([
-    import('@anthropic-ai/sdk').then(m => m.default),
+  const provider: BrainProvider =
+    (process.env.BRAIN_PROVIDER as BrainProvider | undefined) ?? 'anthropic'
+
+  const [menuContext, zonasContext, recomContext] = await Promise.all([
     buildMenuContext(restaurante_id),
     buildZonasContext(restaurante_id),
     buildRecomendacionesContext(restaurante_id),
   ])
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const systemPrompt = BASE_PROMPT + zonasContext + menuContext + recomContext
 
-  // Timeout 20s — si Haiku no responde, lanzar error para que el router maneje
-  const response = await Promise.race([
-    client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      system: BASE_PROMPT + zonasContext + menuContext + recomContext,
-      messages: [{ role: 'user', content: texto }],
-    }),
+  // Timeout 20s — si el proveedor no responde, el router captura el error
+  const raw_text = await Promise.race([
+    provider === 'nvidia'
+      ? callNvidia(systemPrompt, texto)
+      : callAnthropic(systemPrompt, texto),
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('BRAIN timeout: Haiku no respondió en 20s')), 20_000)
-    )
+      setTimeout(
+        () => reject(new Error(`BRAIN timeout: ${provider} no respondió en 20s`)),
+        20_000
+      )
+    ),
   ])
 
-  const content = response.content[0]
-  if (content.type !== 'text') throw new Error('Respuesta inesperada de BRAIN')
-
-  // Limpiar markdown code blocks que Haiku a veces añade
-  const raw_text = content.text.trim()
+  // Limpiar markdown code blocks que algunos modelos añaden
   const clean = raw_text
+    .trim()
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '')
@@ -256,12 +323,11 @@ export async function parsearComanda(texto: string, restaurante_id?: string): Pr
 
   try {
     const parsed = JSON.parse(clean)
-    // Garantizar que items siempre es array (Claude a veces devuelve null o lo omite)
     if (!Array.isArray(parsed.items)) parsed.items = []
-    console.log('[BRAIN] OK:', parsed.mesa, parsed.tipo, parsed.items.length, 'items')
+    console.log(`[BRAIN] OK via ${provider}:`, parsed.mesa, parsed.tipo, parsed.items.length, 'items')
     return { ...parsed, raw: texto }
   } catch (e) {
-    console.error('[BRAIN] JSON.parse failed. raw_text:', raw_text.substring(0, 200), 'error:', e)
+    console.error(`[BRAIN][${provider}] JSON.parse failed. raw:`, raw_text.substring(0, 200), 'err:', e)
     return { mesa: 'T00', tipo: 'aviso', items: [], confianza: 0.1, raw: texto }
   }
 }
