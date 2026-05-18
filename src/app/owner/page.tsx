@@ -2749,9 +2749,13 @@ function ImpresorasTab() {
   const [saving, setSaving] = useState(false)
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const [scanState, setScanState] = useState<'idle'|'scanning'|'done'>('idle')
+  const [scanResults, setScanResults] = useState<{ ip: string; port: number; ms: number }[]>([])
+  const [scanModalIp, setScanModalIp] = useState<string | null>(null)
+  const [assigningIp, setAssigningIp] = useState<string | null>(null)
 
   async function scanImpresoras() {
     setScanState('scanning')
+    setScanResults([])
     try {
       const r = await fetch('/api/bridge/scan', { method: 'POST', headers: sh() })
       const d = await r.json()
@@ -2760,23 +2764,38 @@ function ImpresorasTab() {
         setScanState('idle')
         return
       }
-      // Poll cada 3s hasta 40s esperando impresoras
+      // Poll /api/bridge/scan GET cada 3s hasta 45s esperando resultados
       let tries = 0
       const poll = setInterval(async () => {
         tries++
-        const r2 = await fetch('/api/owner/impresoras', { headers: sh() })
+        const r2 = await fetch('/api/bridge/scan', { headers: sh() })
         const d2 = await r2.json()
-        const prev = impresoras.length
-        setImpresoras(d2.impresoras ?? [])
-        if ((d2.impresoras ?? []).length > 0 || tries >= 13) {
+        if (!d2.scanning && (d2.results?.length > 0 || tries >= 15)) {
           clearInterval(poll)
+          setScanResults(d2.results ?? [])
           setScanState('done')
-          setTimeout(() => setScanState('idle'), 3000)
+          if (d2.results?.length === 0) setTimeout(() => setScanState('idle'), 3000)
         }
       }, 3000)
     } catch {
       setScanState('idle')
     }
+  }
+
+  async function asignarIpImpresora(impresora_id: string, ip: string) {
+    setAssigningIp(ip)
+    try {
+      await fetch('/api/owner/impresoras', {
+        method: 'PATCH',
+        headers: { ...sh(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: impresora_id, ip_address: ip }),
+      })
+      await loadAll()
+      setScanResults([])
+      setScanState('idle')
+      setScanModalIp(null)
+    } catch { alert('Error al asignar IP') }
+    finally { setAssigningIp(null) }
   }
 
   const loadAll = useCallback(async () => {
@@ -2956,11 +2975,56 @@ function ImpresorasTab() {
             style={{ background: scanState === 'done' ? C.green : undefined, color: scanState === 'done' ? C.ink : undefined }}>
             {scanState === 'scanning' ? '⟳ Buscando...' : scanState === 'done' ? '✓ Listo' : '⊕ Buscar en red'}
           </Btn>
-          <Btn variant="primary" onClick={() => { setErr(''); setModal('create') }}>
+          <Btn variant="primary" onClick={() => { setErr(''); setScanModalIp(null); setForm(f => ({...f, ip_address: ''})); setModal('create') }}>
             <Icon d={ICONS.plus} size={15}/>Añadir impresora
           </Btn>
         </div>
       </div>
+
+      {/* Panel resultados escaneo de red */}
+      {scanState === 'done' && scanResults.length > 0 && (
+        <div style={{ background: '#0f2a1a', border: `1px solid ${C.green}`, borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ fontFamily: SM, fontSize: 11, fontWeight: 700, color: C.green, letterSpacing: '.08em', marginBottom: 10 }}>
+            🔍 {scanResults.length} IMPRESORA{scanResults.length !== 1 ? 'S' : ''} ENCONTRADA{scanResults.length !== 1 ? 'S' : ''}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {scanResults.map(r => (
+              <div key={r.ip} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.bone, borderRadius: 6, padding: '10px 14px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, color: C.ink }}>{r.ip}:{r.port}</div>
+                  <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, marginTop: 2 }}>Respuesta: {r.ms}ms</div>
+                </div>
+                {impresoras.length === 1 ? (
+                  <Btn variant="primary" onClick={() => asignarIpImpresora(impresoras[0].id, r.ip)}
+                    disabled={assigningIp === r.ip}>
+                    {assigningIp === r.ip ? '⟳' : '⟵ Asignar'}
+                  </Btn>
+                ) : impresoras.length > 1 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ fontFamily: SM, fontSize: 10, color: C.ink3, marginBottom: 2 }}>Asignar a:</div>
+                    {impresoras.map(imp => (
+                      <Btn key={imp.id} onClick={() => asignarIpImpresora(imp.id, r.ip)}
+                        disabled={assigningIp === r.ip}
+                        style={{ fontSize: 11, padding: '4px 10px' }}>
+                        {assigningIp === r.ip ? '⟳' : imp.nombre}
+                      </Btn>
+                    ))}
+                  </div>
+                ) : (
+                  <Btn variant="primary" onClick={() => { setScanModalIp(r.ip); setModal('create') }}
+                    disabled={assigningIp === r.ip}>
+                    + Crear impresora
+                  </Btn>
+                )}
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setScanResults([]); setScanState('idle') }}
+            style={{ marginTop: 10, background: 'none', border: 'none', color: C.ink3, fontFamily: SM, fontSize: 11, cursor: 'pointer' }}>
+            Cerrar ✕
+          </button>
+        </div>
+      )}
 
       {/* Nota compatibilidad hardware */}
       <div style={{ background: C.bone, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '10px 14px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -3184,7 +3248,7 @@ function ImpresorasTab() {
 
       {/* Modal: nueva impresora */}
       {modal === 'create' && (
-        <Modal title="Nueva impresora" onClose={() => setModal(null)}>
+        <Modal title="Nueva impresora" onClose={() => { setModal(null); setScanModalIp(null) }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Field label="Nombre" value={form.nombre} onChange={v => setForm(f => ({...f, nombre: v}))} placeholder="Cocina caliente 01"/>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -3216,7 +3280,7 @@ function ImpresorasTab() {
             </div>
             {(form.connection_type === 'ip_local' || form.connection_type === 'usb_bridge') && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
-                <Field label="IP address" value={form.ip_address} onChange={v => setForm(f => ({...f, ip_address: v}))} placeholder="192.168.1.50"/>
+                <Field label="IP address" value={scanModalIp ?? form.ip_address} onChange={v => { setScanModalIp(null); setForm(f => ({...f, ip_address: v})) }} placeholder="192.168.1.50"/>
                 <Field label="Puerto" value={form.port} onChange={v => setForm(f => ({...f, port: v}))} placeholder="9100"/>
               </div>
             )}

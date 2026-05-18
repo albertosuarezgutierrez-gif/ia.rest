@@ -79,6 +79,61 @@ function fetchJSON(url, opts = {}) {
   })
 }
 
+
+// ── Escaneo de red para impresoras ────────────────────────────
+function probePort(ip, port, timeoutMs = 800) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    const t = setTimeout(() => { socket.destroy(); resolve(null) }, timeoutMs)
+    const start = Date.now()
+    socket.connect(port, ip, () => {
+      clearTimeout(t)
+      const ms = Date.now() - start
+      socket.destroy()
+      resolve(ms)
+    })
+    socket.on('error', () => { clearTimeout(t); resolve(null) })
+  })
+}
+
+async function scanRed(TOKEN) {
+  // Determinar subred desde ip_lan o inferir 192.168.1.x
+  let base = '192.168.1'
+  try {
+    const ifaces = require('os').networkInterfaces()
+    for (const iface of Object.values(ifaces).flat()) {
+      if (iface.family === 'IPv4' && !iface.internal && iface.address.startsWith('192.168')) {
+        base = iface.address.split('.').slice(0, 3).join('.')
+        break
+      }
+    }
+  } catch {}
+
+  console.log(`[SCAN] Buscando impresoras en ${base}.1-254 :9100...`)
+  const PORT = 9100
+  const batch = 30 // paralelo de 30 en 30
+  const found = []
+
+  for (let start = 1; start <= 254; start += batch) {
+    const promises = []
+    for (let i = start; i < start + batch && i <= 254; i++) {
+      const ip = `${base}.${i}`
+      promises.push(probePort(ip, PORT).then(ms => ms !== null ? { ip, port: PORT, ms } : null))
+    }
+    const results = await Promise.all(promises)
+    results.forEach(r => r && found.push(r))
+  }
+
+  console.log(`[SCAN] Encontradas ${found.length} impresoras: ${found.map(f => f.ip).join(', ') || 'ninguna'}`)
+
+  // Reportar al servidor
+  await fetchJSON(`${API}/api/bridge/scan`, {
+    method: 'PATCH',
+    headers: { 'x-bridge-token': TOKEN },
+    body: { results: found },
+  }).catch(e => console.warn('[SCAN] Error reportando:', e.message))
+}
+
 // ── Autostart Windows (registro) ─────────────────────────────
 function installAutostart(token) {
   if (process.platform !== 'win32') return false
@@ -316,6 +371,10 @@ function wsConnect(TOKEN, restauranteId) {
       const r = await fetchJSON(`${API}/api/print?token=${TOKEN}&v=${VERSION}`)
       if (r.body?.jobs?.length) {
         for (const job of r.body.jobs) await printJob(job, TOKEN)
+      }
+      // Escaneo de red solicitado por el owner
+      if (r.body?.scan_requested) {
+        scanRed(TOKEN).catch(e => console.warn('[SCAN]', e.message))
       }
     } catch {}
   }, 60000)
