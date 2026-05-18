@@ -8154,7 +8154,7 @@ function BodegaTab({ sh, restauranteId }: { sh: () => Record<string,string>; res
 
       {/* Lista */}
       {loading ? (
-        <div style={{ textAlign:'center', padding:48, fontFamily:SE, fontStyle:'italic', color:C.ink4 }}>Cargando bodega…</div>
+        <div style={{ textAlign:'center', padding:48, fontFamily:SE, fontStyle:'italic', color:C.ink4 }}>Cargando almacén…</div>
       ) : articulos.filter(a=>a.activo).length === 0 ? (
         <div style={{ textAlign:'center', padding:48 }}>
           <div style={{ fontFamily:SE, fontStyle:'italic', fontSize:18, color:C.ink4, marginBottom:8 }}>Sin artículos aún</div>
@@ -8605,6 +8605,41 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
   const emptyForm = { nombre: '', producto_id: '', rendimiento: '1', notas: '', margen_minimo: '' }
   const [form, setForm] = useState(emptyForm)
   const [ingredientes, setIngredientes] = useState<{ stock_articulo_id: string; cantidad: string; notas: string }[]>([])
+  const [sugirendoIA,  setSugirendoIA]  = useState(false)
+  const [advertenciaIA, setAdvertenciaIA] = useState<string | null>(null)
+
+  const sugerirIngredientesIA = async () => {
+    if (!form.nombre.trim()) return
+    setSugirendoIA(true); setAdvertenciaIA(null)
+    try {
+      const res = await fetch('/api/owner/escandallos/sugerir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sh() },
+        body: JSON.stringify({ nombre: form.nombre.trim() }),
+      })
+      const data = await res.json()
+      if (data.error === 'sin_articulos') {
+        setAdvertenciaIA('Añade artículos al almacén primero para poder sugerir ingredientes.')
+        return
+      }
+      if (data.error === 'ia_no_disponible') {
+        setAdvertenciaIA('La IA no está disponible en este momento. Inténtalo de nuevo.')
+        return
+      }
+      const sugeridos = (data.ingredientes ?? []).filter((i: { articulo_id: string | null }) => i.articulo_id)
+      if (sugeridos.length === 0) {
+        setAdvertenciaIA('La IA no encontró ingredientes de tu almacén que coincidan. Añade más artículos al almacén.')
+        return
+      }
+      setIngredientes(sugeridos.map((i: { articulo_id: string; cantidad: number }) => ({
+        stock_articulo_id: i.articulo_id, cantidad: String(i.cantidad), notas: '',
+      })))
+      if (data.raciones && data.raciones > 1) setForm(f => ({ ...f, rendimiento: String(data.raciones) }))
+      if (data.advertencia) setAdvertenciaIA(data.advertencia)
+    } catch {
+      setAdvertenciaIA('Error al contactar con la IA. Inténtalo de nuevo.')
+    } finally { setSugirendoIA(false) }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -8621,7 +8656,7 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
   useEffect(() => { load() }, [])
 
   const openCreate = () => {
-    setForm(emptyForm); setIngredientes([]); setErr(''); setModal('crear')
+    setForm(emptyForm); setIngredientes([]); setErr(''); setAdvertenciaIA(null); setModal('crear')
   }
   const openEdit = (e: Escandallo) => {
     setForm({ nombre: e.nombre, producto_id: e.producto_id ?? '', rendimiento: String(e.rendimiento), notas: e.notas ?? '', margen_minimo: e.margen_minimo != null ? String(e.margen_minimo) : '' })
@@ -8710,7 +8745,7 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
       {sinCoste > 0 && (
         <div style={{ background: C.amberS, border: `1px solid ${C.amber}44`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
           <span style={{ fontFamily: SM, fontSize: 10, color: '#7A5A1A' }}>
-            ⚠ {sinCoste} artículo{sinCoste > 1 ? 's' : ''} de bodega sin coste unitario — los márgenes no serán exactos. Añade el coste en Bodega.
+            ⚠ {sinCoste} artículo{sinCoste > 1 ? 's' : ''} del almacén sin coste unitario — los márgenes no serán exactos. Añade el coste en Almacén.
           </span>
         </div>
       )}
@@ -8843,9 +8878,22 @@ function EscandallosTab({ sh, restauranteId }: { sh: () => Record<string,string>
             {/* Ingredientes */}
             <div style={{ background: C.paper2, border: `1px solid ${C.rule}`, borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
               <div style={{ fontFamily: SM, fontSize: 9, fontWeight: 700, color: C.ink3, textTransform: 'uppercase' as const, letterSpacing: '.1em', marginBottom: 10 }}>Ingredientes</div>
-              <div style={{ fontFamily: SN, fontSize: 11, color: C.ink4, marginBottom: 10 }}>
-                Selecciona artículos de tu bodega con la cantidad usada en la receta.
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8, flexWrap: 'wrap' as const }}>
+                <div style={{ fontFamily: SN, fontSize: 11, color: C.ink4 }}>
+                  Selecciona artículos de tu almacén con la cantidad usada en la receta.
+                </div>
+                {modal === 'crear' && form.nombre.trim().length > 3 && (
+                  <button type="button" onClick={sugerirIngredientesIA} disabled={sugirendoIA}
+                    style={{ fontFamily: SN, fontSize: 11, padding: '5px 12px', background: sugirendoIA ? C.bone : '#FFF8EC', border: `1px solid ${C.amber}`, borderRadius: 7, color: C.amber, cursor: sugirendoIA ? 'not-allowed' : 'pointer', opacity: sugirendoIA ? 0.7 : 1, whiteSpace: 'nowrap' as const, fontWeight: 600 }}>
+                    {sugirendoIA ? '⏳ Analizando…' : '✨ Sugerir con IA'}
+                  </button>
+                )}
               </div>
+              {advertenciaIA && (
+                <div style={{ fontFamily: SN, fontSize: 11, color: '#A8761A', background: '#FFF8EC', border: `1px solid ${C.amber}`, borderRadius: 6, padding: '7px 10px', marginBottom: 8 }}>
+                  ⚠ {advertenciaIA}
+                </div>
+              )}
               {ingredientes.map((ing, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px auto', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                   <select value={ing.stock_articulo_id} onChange={e => setIngredientes(is => is.map((x, j) => j === i ? { ...x, stock_articulo_id: e.target.value } : x))}
