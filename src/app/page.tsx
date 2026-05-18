@@ -620,7 +620,7 @@ export default function Page() {
         <div className="steps">
           {[
             {n:"1",ico:"🎙️",t:"El camarero habla",p:'Sin abrir apps, sin buscar platos. Dice la comanda en voz natural: "dos de la casa", "sin sal ojo", "que llegue primero".',time:"Tiempo: 4 segundos"},
-            {n:"2",ico:"🧠",t:"ia.rest entiende",p:"Whisper (Groq) transcribe en menos de 0,3s. Claude estructura: mesa, platos, cantidades, notas de alergias. En español real de hostelería.",time:"Tiempo: 0.4 segundos"},
+            {n:"2",ico:"🧠",t:"ia.rest entiende",p:"La IA transcribe el audio en menos de 0,3s y estructura la comanda: mesa, platos, cantidades, notas de alergias. En español real de hostelería.",time:"Tiempo: 0.4 segundos"},
             {n:"3",ico:"📺",t:"Cocina lo ve al momento",p:"El ticket aparece en el KDS con prioridades, alertas de alergia y orden de llegada. Venga del camarero o de un QR de mesa — la cocina marcha igual.",time:"Total: menos de 5 segundos"},
           ].map(s=>(
             <div key={s.n} className="step reveal" data-n={s.n}>
@@ -642,14 +642,14 @@ export default function Page() {
         </div>
         <div className="mgrid">
           {[
-            {ico:"🎙️",t:"Pedidos por voz",d:"El camarero dicta en español real. Whisper (Groq) transcribe en 0,3s, Claude estructura mesa, platos y notas. Sin tocar pantalla.",badge:null,cls:"mc-red"},
+            {ico:"🎙️",t:"Pedidos por voz",d:"El camarero dicta en español natural. La IA transcribe en menos de 0,3s y estructura mesa, platos, cantidades y notas de alergias. Sin tocar pantalla.",badge:null,cls:"mc-red"},
             {ico:"📱",t:"QR en mesa",d:"El cliente pide desde su móvil escaneando el QR. El ticket llega al mismo KDS que el resto — igual que si lo dictara el camarero.",badge:{t:"Add-on · 12€/mesa/mes",cls:"b-addon"},cls:"mc-amber"},
             {ico:"🛵",t:"Delivery integrado",d:"Los pedidos de Glovo, Uber Eats y Just Eat entrarán directamente al KDS. Sin reescribir comandas, sin tabletas extra.",badge:{t:"Próximamente",cls:"b-soon"},cls:"mc-green"},
             {ico:"📺",t:"KDS en cocina",d:"Pantalla compartida para cocina. Prioridades automáticas, alertas de alergia y timers por pase. Funciona en cualquier tablet de 70€.",badge:null,cls:""},
-            {ico:"🖨️",t:"Impresoras térmicas",d:"ESC/POS TCP y Star CloudPRNT. El Bridge local gestiona la conexión LAN — sin drivers, sin configuración, desde el primer día.",badge:null,cls:""},
+            {ico:"🖨️",t:"Impresoras térmicas",d:"Compatible con las impresoras térmicas más habituales del sector. El Bridge local gestiona la conexión a tu red — sin drivers, sin configuración, desde el primer día.",badge:null,cls:""},
             {ico:"💳",t:"Cobro completo",d:"Stripe Terminal, Bizum, efectivo y 6 métodos de pago. División de cuenta por ítems o partes iguales. Cierre de caja al instante.",badge:null,cls:""},
             {ico:"⏱️",t:"Fichaje digital",d:"Control horario conforme al RD-ley 8/2019. Cada trabajador ficha entrada y salida con su PIN. Registro disponible para inspección.",badge:{t:"Obligatorio por ley",cls:"b-legal"},cls:"mc-red"},
-            {ico:"📋",t:"VeriFactu AEAT",d:"Facturas homologadas con hash SHA-256 encadenado y QR verificable. Obligatorio desde enero 2026 para sociedades, julio 2026 para autónomos.",badge:{t:"Legal · incluido",cls:"b-legal"},cls:""},
+            {ico:"📋",t:"VeriFactu AEAT",d:"Facturas electrónicas homologadas con firma encadenada y QR verificable por la AEAT. Obligatorio desde enero 2026 para sociedades, julio 2026 para autónomos.",badge:{t:"Legal · incluido",cls:"b-legal"},cls:""},
           ].map((m,i)=>(
             <div key={i} className={`mcard reveal${m.cls?" "+m.cls:""}`} style={{animationDelay:`${i*0.05}s`}}>
               <div className="mico2">{m.ico}</div>
@@ -686,7 +686,7 @@ export default function Page() {
             <div className="bach ah"><span className="bal a">✓ &nbsp;Con ia.rest</span></div>
             <div className="bars2">
               {[["🎙️","Dictar la comanda de pie en la mesa → en cocina ya","4s","fast"],
-                ["✅","El LLM estructura exactamente lo que pidieron, <strong>sin errores de tecleo</strong>","0 errores","fast"],
+                ["✅","La IA estructura exactamente lo que pidieron, <strong>sin errores de tecleo</strong>","0 errores","fast"],
                 ["🚀","Personal nuevo operativo en <strong>5 minutos</strong> — hablan, no aprenden menús","5min","fast"],
                 ["😎","Hora punta fluida. Cada camarero es una línea directa a cocina","control","fast"]
               ].map(([i,t,v,cls],idx)=>(
@@ -751,13 +751,13 @@ export default function Page() {
         <h2 className="reveal">Lo que siempre<br/><em>preguntan primero</em></h2>
         <div className="faqlist">
           {[
-            {q:"¿Funciona si hay ruido en sala?",a:"Sí. Usamos Whisper large-v3 vía Groq, el mejor modelo de transcripción para español. Funciona bien con ruido de fondo, música y conversaciones cercanas. Recomendamos hablar a 15–20 cm del micrófono, algo natural cuando ya llevas la comanda en mente."},
+            {q:"¿Funciona si hay ruido en sala?",a:"Sí. El motor de transcripción de ia.rest está optimizado para entornos de hostelería: ruido de fondo, música y conversaciones cercanas. Funciona bien en la práctica. Recomendamos hablar a 15–20 cm del micrófono, algo natural cuando ya llevas la comanda en mente."},
             {q:"¿Cómo funcionará la integración con Glovo y Uber Eats?",a:"Estamos preparando la integración directa con las principales plataformas de delivery. Los pedidos entrarán automáticamente al KDS igual que cualquier comanda de sala — sin tabletas extra, sin reescribir. Estará disponible próximamente. Si tienes delivery activo y quieres ser de los primeros en probarlo, escríbenos."},
             {q:"¿Qué pasa si se cae internet en mitad del servicio?",a:"Las comandas ya enviadas siguen visibles en cocina. Para nuevas comandas cae a modo manual: el camarero puede abrir cualquier comanda anterior y modificarla."},
-            {q:"¿Necesito hardware nuevo? ¿Impresoras, tablets específicas?",a:"No. ia.rest funciona en cualquier móvil o tablet con navegador. Para el KDS en cocina, una tablet de 70€ es suficiente. Para impresoras de tickets, garantizamos compatibilidad 100% con modelos ESC/POS TCP (IP local) y Star CloudPRNT LAN/WiFi como la Star TSP143IIILAN o TSP143IIIW. Si ya tienes otra impresora, probablemente funcione, pero solo garantizamos las anteriores."},
+            {q:"¿Necesito hardware nuevo? ¿Impresoras, tablets específicas?",a:"No. ia.rest funciona en cualquier móvil o tablet con navegador. Para el KDS en cocina, una tablet de 70€ es suficiente. Para impresoras de tickets, garantizamos compatibilidad 100% con modelos como la Star TSP143IIILAN y la TSP143IIIW. Si ya tienes otra impresora térmica habitual, probablemente funcione — consúltanos."},
             {q:"¿El sistema entiende la carta de mi restaurante?",a:'Sí. Durante el onboarding (10 minutos) introduces tus platos y el sistema los aprende. Si el camarero dice "una de la casa" y en tu carta se llama "Ensaladilla de la abuela", el ticket sale con el nombre correcto.'},
             {q:"¿Cómo funciona el fichaje digital?",a:"Cada trabajador ficha entrada y salida con su PIN desde cualquier dispositivo. Los registros cumplen el RD-ley 8/2019 (obligatorio para todos los empleados desde 2019). El panel de propietario muestra el historial completo y las horas totales por trabajador, listo para una inspección."},
-            {q:"¿Cómo funciona lo de VeriFactu y Hacienda?",a:"VeriFactu es el sistema obligatorio de la AEAT para emitir facturas. Obligatorio para sociedades desde enero de 2026 y autónomos desde julio de 2026. Multa de hasta 50.000 €/ejercicio por software no homologado. ia.rest genera facturas con hash encadenado SHA-256 y QR verificable. Incluido en todos los perfiles."},
+            {q:"¿Cómo funciona lo de VeriFactu y Hacienda?",a:"VeriFactu es el sistema obligatorio de la AEAT para emitir facturas. Obligatorio para sociedades desde enero de 2026 y autónomos desde julio de 2026. Multa de hasta 50.000 €/ejercicio por software no homologado. ia.rest genera facturas con firma encadenada y QR verificable por la AEAT. Incluido en todos los perfiles."},
             {q:"¿Puedo cancelar en cualquier momento?",a:"Sí, siempre. Sin permanencia ni penalizaciones. El servicio sigue activo hasta final del período pagado. Datos exportables en CSV. No te vamos a llamar para retenerte."},
           ].map((f,i)=>(
             <div key={i} className={`faqitem${openFaq===i?" open":""}`}>
@@ -773,7 +773,7 @@ export default function Page() {
 
       {/* TRUST */}
       <div className="trust">
-        {[["🔒","Datos en España","· Supabase EU-West"],["🇪🇸","Soporte en español","· Respuesta el mismo día"],["📋","VeriFactu AEAT 2026","· Incluido en todos los perfiles"],["🛵","Delivery","· Glovo y Uber Eats · Próximamente"],["⏱️","Fichaje RD-ley 8/2019","· Control horario incluido"],["💳","Sin permanencia","· Cancela cuando quieras"]].map(([ico,b,t])=>(
+        {[["🔒","Datos en Europa","· Servidores certificados UE"],["🇪🇸","Soporte en español","· Respuesta el mismo día"],["📋","VeriFactu AEAT 2026","· Incluido en todos los perfiles"],["🛵","Delivery","· Glovo y Uber Eats · Próximamente"],["⏱️","Fichaje RD-ley 8/2019","· Control horario incluido"],["💳","Sin permanencia","· Cancela cuando quieras"]].map(([ico,b,t])=>(
           <div key={b} className="ti"><span className="ico">{ico}</span><span><strong>{b}</strong>{t}</span></div>
         ))}
       </div>
