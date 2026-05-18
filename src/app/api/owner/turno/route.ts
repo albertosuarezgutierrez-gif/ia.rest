@@ -5,11 +5,14 @@ import { getRestauranteId } from '@/lib/session'
 export async function GET(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
+  // FIX: solo turno de SERVICIO (camarero_id IS NULL) — los fichajes son independientes
   const { data: activo } = await supabase.from('turnos')
     .select('*').eq('estado', 'activo').eq('restaurante_id', rid)
+    .is('camarero_id', null)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
   const { data: ultimo } = await supabase.from('turnos')
     .select('*').eq('estado', 'cerrado').eq('restaurante_id', rid)
+    .is('camarero_id', null)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
   // Impacto del turno activo (para mostrar en confirm de cierre)
@@ -55,7 +58,8 @@ export async function POST(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
   const { nombre } = await req.json()
-  await supabase.from('turnos').update({ estado: 'cerrado' }).eq('estado', 'activo').eq('restaurante_id', rid)
+  // FIX: solo cierra el turno de SERVICIO (camarero_id IS NULL), nunca los fichajes individuales
+  await supabase.from('turnos').update({ estado: 'cerrado' }).eq('estado', 'activo').eq('restaurante_id', rid).is('camarero_id', null)
   const { data, error } = await supabase.from('turnos')
     .insert({ nombre: nombre || `Turno ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`, restaurante_id: rid })
     .select().single()
@@ -66,8 +70,9 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const supabase = createServerClient()
   const rid = getRestauranteId(req)
+  // FIX: solo cierra turno de SERVICIO (camarero_id IS NULL), maybeSingle evita error si no hay ninguno
   const { data, error } = await supabase.from('turnos')
-    .update({ estado: 'cerrado' }).eq('estado', 'activo').eq('restaurante_id', rid).select().single()
+    .update({ estado: 'cerrado' }).eq('estado', 'activo').eq('restaurante_id', rid).is('camarero_id', null).select().maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ turno: data })
 }
