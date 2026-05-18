@@ -83,8 +83,11 @@ export async function GET(req: NextRequest) {
     impresoraInfo[i.id] = { ip: i.ip_address ?? '', port: i.port ?? 9100 }
   }
 
-  // Obtener jobs pendientes + recuperar encolados con attempts=0 > 3min (TCP failure silenciosa)
-  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString()
+  // Obtener jobs pendientes + recuperar encolados con attempts=0 > 90s (TCP failure silenciosa)
+  // BUG FIX: usar created_at (inmutable) en lugar de sent_at (se resetea en cada intento fallido)
+  // Antes: sent_at < 3min → el contador se reiniciaba en cada fallo → delay acumulable de 3-4min
+  // Ahora: created_at < 90s  → el job se recupera siempre en el siguiente poll tras 90s de vida
+  const ninetySecondsAgo = new Date(Date.now() - 90 * 1000).toISOString()
   const { data: pendientes } = await sb
     .from('print_jobs')
     .select('id, impresora_id, print_data, payload, attempts')
@@ -98,7 +101,7 @@ export async function GET(req: NextRequest) {
     .in('impresora_id', impresoraIds)
     .eq('status', 'encolado')
     .eq('attempts', 0)
-    .lt('sent_at', threeMinutesAgo)
+    .lt('created_at', ninetySecondsAgo)
     .order('created_at', { ascending: true })
     .limit(10)
   const jobs = [...(pendientes ?? []), ...(staleEncolados ?? [])]

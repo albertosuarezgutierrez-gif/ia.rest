@@ -18,7 +18,7 @@ const os    = require('os')
 const { execSync, exec, spawn } = require('child_process')
 const readline = require('readline')
 
-const VERSION      = '6.0.0'
+const VERSION      = '6.0.1'
 const API          = 'https://www.iarest.es'
 const SUPABASE_URL = 'https://efncqyvhniaxsirhdxaa.supabase.co'
 const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmbmNxeXZobmlheHNpcmhkeGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2ODk5MzYsImV4cCI6MjA5MzI2NTkzNn0.dt3ko-HWzJK57FQyRDTjU07QBsYv9fpGo8Sm3Cs6heA'
@@ -231,6 +231,23 @@ async function setup() {
 }
 
 // ── Imprimir job ──────────────────────────────────────────────
+async function reportPrintResult(job_id, status, error_msg, TOKEN) {
+  // Retry 3x con backoff — evita que attempts quede en 0 por fallo de red puntual
+  for (let i = 0; i < 3; i++) {
+    try {
+      await fetchJSON(`${API}/api/print`, {
+        method: 'POST',
+        headers: { 'x-bridge-token': TOKEN },
+        body: { job_id, status, ...(error_msg ? { error_msg } : {}) },
+      })
+      return
+    } catch {
+      if (i < 2) await new Promise(r => setTimeout(r, 500 * (i + 1)))
+    }
+  }
+  console.warn(`[WARN] No se pudo reportar resultado del job ${job_id?.slice(0,8)} tras 3 intentos`)
+}
+
 async function printJob(job, TOKEN) {
   let ip = job.ip || job.ip_address
   const port = job.port || 9100
@@ -239,19 +256,11 @@ async function printJob(job, TOKEN) {
 
   try {
     await sendESCPOS(ip, port, data)
-    await fetchJSON(`${API}/api/print`, {
-      method: 'POST',
-      headers: { 'x-bridge-token': TOKEN },
-      body: { job_id: job.id, status: 'impreso' }
-    })
+    await reportPrintResult(job.id, 'impreso', null, TOKEN)
     console.log(`${G}[OK]${X} ${hora} · Job ${job.id.slice(0,8)} → ${ip}:${port}`)
   } catch (e) {
     console.warn(`${Y}[WARN]${X} Print failed: ${e.message}`)
-    await fetchJSON(`${API}/api/print`, {
-      method: 'POST',
-      headers: { 'x-bridge-token': TOKEN },
-      body: { job_id: job.id, status: 'error', error_msg: e.message }
-    }).catch(() => {})
+    await reportPrintResult(job.id, 'error', e.message, TOKEN)
   }
 }
 
