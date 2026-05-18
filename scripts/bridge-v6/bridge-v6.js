@@ -245,9 +245,14 @@ function wsConnect(TOKEN, restauranteId) {
       const record = msg.payload?.data?.record || msg.payload?.record
       if (record?.status === 'pendiente' && record?.restaurante_id === restauranteId) {
         console.log(`${B}[WS]${X} Nuevo job: ${record.id?.slice(0,8)}`)
-        fetchJSON(`${API}/api/print?token=${TOKEN}&v=${VERSION}`)
-          .then(r => { if (r.body?.jobs?.length) r.body.jobs.forEach(j => printJob(j, TOKEN)) })
-          .catch(e => console.error('Fetch job error:', e.message))
+        ;(async () => {
+          try {
+            const r = await fetchJSON(`${API}/api/print?token=${TOKEN}&v=${VERSION}`)
+            if (r.body?.jobs?.length) {
+              for (const j of r.body.jobs) await printJob(j, TOKEN)
+            }
+          } catch (e) { console.error('[WS] Fetch job error:', e.message) }
+        })()
       }
     } catch {}
   })

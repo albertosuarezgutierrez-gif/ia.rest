@@ -83,14 +83,25 @@ export async function GET(req: NextRequest) {
     impresoraInfo[i.id] = { ip: i.ip_address ?? '', port: i.port ?? 9100 }
   }
 
-  // Obtener jobs pendientes (máx. 20 por polling)
-  const { data: jobs } = await sb
+  // Obtener jobs pendientes + recuperar encolados con attempts=0 > 3min (TCP failure silenciosa)
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString()
+  const { data: pendientes } = await sb
     .from('print_jobs')
     .select('id, impresora_id, print_data, payload, attempts')
     .in('impresora_id', impresoraIds)
     .in('status', ['pendiente'])
     .order('created_at', { ascending: true })
     .limit(20)
+  const { data: staleEncolados } = await sb
+    .from('print_jobs')
+    .select('id, impresora_id, print_data, payload, attempts')
+    .in('impresora_id', impresoraIds)
+    .eq('status', 'encolado')
+    .eq('attempts', 0)
+    .lt('sent_at', threeMinutesAgo)
+    .order('created_at', { ascending: true })
+    .limit(10)
+  const jobs = [...(pendientes ?? []), ...(staleEncolados ?? [])]
 
   if (!jobs?.length) {
     return NextResponse.json({ jobs: [] })
