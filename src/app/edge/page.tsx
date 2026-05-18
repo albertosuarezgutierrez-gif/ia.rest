@@ -19,6 +19,7 @@ import ComensalesModal from '@/components/edge/ComensalesModal'
 import PlanoSala, { MesaPlano, ZonaInfo } from '@/components/PlanoSala'
 import { useMensajes } from '@/hooks/useMensajes'
 import FicharSalidaBtn from '@/components/FicharSalidaBtn'
+import SmartScanFAB from '@/components/SmartScanFAB'
 import CuentasTab from '@/components/edge/CuentasTab'
 
 /* ─── PALETA CREMA (light) ──────────────────────────────────── */
@@ -1728,6 +1729,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
 
       {/* ALERTAS — banner audio + notificación */}
       <AlertaBanner alertas={alertas} onMarcarLeida={marcarLeida} />
+      <SmartScanFAB session={session} bottom={96} right={16} />
 
       {/* BANNER ACTUALIZACIÓN DISPONIBLE */}
       {updateAvailable && (

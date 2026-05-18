@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const rid = getRestauranteId(req)
   const { data, error } = await supabase
     .from('camareros')
-    .select('id, nombre, pin, rol, activo, seccion_id, created_at')
+    .select('id, nombre, pin, rol, activo, seccion_id, created_at, puede_escanear')
     .eq('restaurante_id', rid)
     .neq('rol', 'owner').neq('rol', 'super_admin')
     .order('created_at', { ascending: true })

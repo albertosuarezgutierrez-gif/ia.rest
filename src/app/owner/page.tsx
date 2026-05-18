@@ -18,6 +18,7 @@ import RecomendacionesTab from '@/components/owner/RecomendacionesTab'
 import ManualVozTab from '@/components/owner/ManualVozTab'
 import ForecasterTab from '@/components/owner/ForecasterTab'
 import OwnerCopiloto from '@/components/owner/OwnerCopiloto'
+import SmartScanFAB from '@/components/SmartScanFAB'
 
 /* ─── Design Tokens ─── */
 const C = {
@@ -36,7 +37,7 @@ const SE = "'Newsreader',Georgia,serif"
 const SM = "'JetBrains Mono',ui-monospace,monospace"
 
 /* ─── Types ─── */
-type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean; seccion_id?: string | null }
+type Camarero = { id: string; nombre: string; pin: string; rol: string; activo: boolean; seccion_id?: string | null; puede_escanear?: boolean }
 type VpEstado = 'sin_calibrar' | 'calibrando' | 'activo' | 'error'
 type Mesa = { id: string; codigo: string; nombre: string | null; zona: string; capacidad: number; estado: string; pos_x: number | null; pos_y: number | null; forma: 'round' | 'square' | 'bar' | null }
 type Turno = { id: string; nombre: string; estado: string; created_at: string; fecha: string }
@@ -229,6 +230,21 @@ function CamarerosTab() {
   const openDel = (c: Camarero) => { setDelErr(''); setModal({ del: c }) }
   const openQr  = (c: Camarero) => { setModal({ qr: c }) }
 
+  const toggleEscanear = async (c: Camarero) => {
+    const nuevo = !c.puede_escanear
+    // Optimistic update
+    setCamareros(prev => prev.map(x => x.id === c.id ? { ...x, puede_escanear: nuevo } : x))
+    const r = await fetch('/api/owner/scanner/permiso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...sh() },
+      body: JSON.stringify({ camarero_id: c.id, puede_escanear: nuevo }),
+    })
+    if (!r.ok) {
+      // Revert on error
+      setCamareros(prev => prev.map(x => x.id === c.id ? { ...x, puede_escanear: !nuevo } : x))
+    }
+  }
+
   const save = async () => {
     setErr('')
     if (!form.nombre.trim()) return setErr('Nombre requerido')
@@ -353,6 +369,13 @@ function CamarerosTab() {
                 </button>
               </span>
               <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                <Btn size="sm" variant="ghost" onClick={() => toggleEscanear(c)}
+                  title={c.puede_escanear ? 'Revocar acceso escáner IA' : 'Autorizar escáner IA'}
+                  style={{ background: c.puede_escanear ? '#D9442B22' : 'transparent', border: `1px solid ${c.puede_escanear ? '#D9442B44' : C.rule}` }}>
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke={c.puede_escanear ? '#D9442B' : C.ink4} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </Btn>
                 <Btn size="sm" variant="ghost" onClick={() => openQr(c)}><Icon d={ICONS.qr} size={13}/></Btn>
                 <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}><Icon d={ICONS.edit} size={13}/></Btn>
                 <Btn size="sm" variant="danger" onClick={() => openDel(c)}><Icon d={ICONS.trash} size={13}/></Btn>
@@ -411,6 +434,13 @@ function CamarerosTab() {
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
+                  <Btn size="sm" variant="ghost" onClick={() => toggleEscanear(c)}
+                    title={c.puede_escanear ? 'Revocar escáner IA' : 'Autorizar escáner IA'}
+                    style={{ background: c.puede_escanear ? '#D9442B22' : 'transparent', border: `1px solid ${c.puede_escanear ? '#D9442B44' : C.rule}` }}>
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={c.puede_escanear ? '#D9442B' : C.ink4} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </Btn>
                   <Btn size="sm" variant="ghost" onClick={() => openQr(c)}><Icon d={ICONS.qr} size={14}/></Btn>
                   <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}><Icon d={ICONS.edit} size={14}/></Btn>
                   <Btn size="sm" variant="danger" onClick={() => openDel(c)}><Icon d={ICONS.trash} size={14}/></Btn>
@@ -7989,6 +8019,7 @@ export default function OwnerPage() {
       </div>
     </div>
     <OwnerCopiloto />
+    <SmartScanFAB session={session} bottom={24} right={24} />
     </>
   )
 }
