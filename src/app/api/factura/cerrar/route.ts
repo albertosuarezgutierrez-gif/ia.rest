@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { getRestauranteId, getSession } from '@/lib/session'
 import { construirFactura } from '@/lib/verifactu'
+import { crearPrintJobCuenta } from '@/lib/courier'
 
 export const runtime = 'nodejs'
 
@@ -157,6 +158,45 @@ export async function POST(req: NextRequest) {
   }
 
   console.log(`[factura/cerrar] ✓ Factura ${numero} · ${importe_total}€ · propina ${propina_val}€ · ${metodo.nombre} · cambio ${cambio}€`)
+
+  // ── 10. Imprimir ticket COBRADO ─────────────────────────
+  try {
+    // Recuperar items con precios para el ticket
+    const { data: camData } = await supabase
+      .from('camareros').select('nombre').eq('id', session?.id ?? comanda.camarero_id).single()
+    const { data: mesaData } = await supabase
+      .from('mesas').select('codigo, zona_id, zona:zonas(nombre, tipo)')
+      .eq('id', comanda.mesa_id ?? '').single()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mesaObj = mesaData as any
+
+    await crearPrintJobCuenta({
+      comanda_id,
+      restaurante_id,
+      mesa_label,
+      zona_tipo:   mesaObj?.zona?.tipo   ?? null,
+      zona_nombre: mesaObj?.zona?.nombre ?? null,
+      camarero_nombre: camData?.nombre ?? session?.nombre ?? 'Equipo',
+      numero_ticket: 0,
+      restaurante_nombre: rest?.nombre ?? razon_social,
+      restaurante_direccion: null,
+      nif_emisor:  nif_emisor,
+      razon_social: razon_social,
+      cobrado: true,
+      metodo_pago: metodo.nombre,
+      entregado: metodo.tipo === 'efectivo' ? entregado : null,
+      cambio:    cambio > 0 ? cambio : null,
+      items: items.map(it => ({
+        nombre:          it.nombre,
+        cantidad:        it.cantidad ?? 1,
+        precio_unitario: it.precio_unitario ?? 0,
+      })),
+      total: importe_total,
+    })
+  } catch (e) {
+    // No bloquear el cobro si la impresión falla
+    console.warn('[factura/cerrar] Aviso: no se pudo imprimir ticket cobrado:', e)
+  }
 
   return NextResponse.json({
     factura,

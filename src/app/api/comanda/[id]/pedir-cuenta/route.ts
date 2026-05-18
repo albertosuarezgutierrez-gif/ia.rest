@@ -104,7 +104,7 @@ export async function POST(
 
   // Datos del restaurante para el pie del ticket
   const { data: rest } = await supabase
-    .from('restaurantes').select('nombre, direccion').eq('id', restaurante_id).single()
+    .from('restaurantes').select('nombre, nif, razon_social, direccion').eq('id', restaurante_id).single()
 
   // Mesa info
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,6 +136,9 @@ export async function POST(
       numero_ticket: comanda.numero_ticket ?? 0,
       restaurante_nombre: rest?.nombre ?? 'Restaurante',
       restaurante_direccion: rest?.direccion ?? null,
+      nif_emisor:  rest?.nif          ?? null,
+      razon_social: rest?.razon_social ?? null,
+      cobrado: false,
       items: items.map(it => ({
         nombre:          it.nombre,
         cantidad:        it.cantidad,

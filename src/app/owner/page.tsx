@@ -6979,6 +6979,7 @@ export default function OwnerPage() {
   const [showBridgeSetup, setShowBridgeSetup] = useState(false)
   const [setupStatus, setSetupStatus] = useState<{ tiene_camareros:boolean; tiene_productos:boolean; tiene_mesas:boolean; turno_activo:boolean } | null>(null)
   const [showChecklist, setShowChecklist] = useState(true)
+  const [datosFiscales, setDatosFiscales] = useState<{ nif: string|null; razon_social: string|null; direccion: string|null } | null>(null)
 
   useEffect(() => {
     if (!session) return
@@ -6995,6 +6996,13 @@ export default function OwnerPage() {
         .then(d => {
           if (d.restaurante && d.restaurante.onboarding_completado === false) {
             window.location.href = '/onboarding'
+          }
+          if (d.restaurante) {
+            setDatosFiscales({
+              nif:          d.restaurante.nif          ?? null,
+              razon_social: d.restaurante.razon_social ?? null,
+              direccion:    d.restaurante.direccion    ?? null,
+            })
           }
         })
         .catch(() => {})
@@ -7226,6 +7234,51 @@ export default function OwnerPage() {
           setTab={setTab}
           onDismiss={() => setShowChecklist(false)}
         />
+      )}
+
+      {/* ── BANNER DATOS FISCALES OBLIGATORIOS ── */}
+      {datosFiscales && (!datosFiscales.nif || !datosFiscales.razon_social || !datosFiscales.direccion) && (
+        <div style={{
+          margin: '0 16px 0',
+          background: '#2a1a00',
+          border: '1px solid #7c4d00',
+          borderRadius: 8,
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8A33B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 13, fontWeight: 600, color: '#E8A33B' }}>
+              Datos fiscales incompletos —{' '}
+            </span>
+            <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 13, color: '#D8CDB6' }}>
+              Los tickets impresos deben incluir{' '}
+              {[!datosFiscales.razon_social && 'Razón social', !datosFiscales.nif && 'CIF/NIF', !datosFiscales.direccion && 'Dirección'].filter(Boolean).join(', ')}.
+              {' '}Sin estos datos el ticket no es válido fiscalmente.
+            </span>
+          </div>
+          <button
+            onClick={() => setTab('restaurante')}
+            style={{
+              flexShrink: 0,
+              background: '#E8A33B',
+              border: 'none',
+              borderRadius: 6,
+              padding: '7px 14px',
+              cursor: 'pointer',
+              fontFamily: 'Inter Tight, sans-serif',
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#14110E',
+            }}>
+            Completar ahora
+          </button>
+        </div>
       )}
 
       <div className="owner-wrap">

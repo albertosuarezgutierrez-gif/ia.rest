@@ -760,6 +760,14 @@ interface CuentaParams {
   numero_ticket:        number
   restaurante_nombre:   string
   restaurante_direccion?: string | null
+  // Datos fiscales (obligatorios para ticket legal)
+  nif_emisor?:          string | null
+  razon_social?:        string | null
+  // Estado cobrado
+  cobrado?:             boolean
+  metodo_pago?:         string | null
+  entregado?:           number | null
+  cambio?:              number | null
   items: {
     nombre:          string
     cantidad:        number
@@ -769,94 +777,150 @@ interface CuentaParams {
 }
 
 /**
- * Genera ESC/POS para el ticket de cuenta (pre-cobro).
- * Incluye listado de items con precios + total + pie ia.rest.
+ * Genera ESC/POS para el ticket de cuenta — diseño moderno ia.rest.
+ * Compatible con Epson TM / Sunmi NT311 / Star TSP143 (80mm, 48 chars).
+ * Soporta dos estados: PENDIENTE DE COBRO y COBRADO (con método y cambio).
  */
 export function generarEscPosCuenta(p: CuentaParams): Buffer {
   const ESC = 0x1B, GS = 0x1D, LF = 0x0A
+  // Trunca a 48 chars para no desbordar línea; usa latin1 para ESC/POS
   const t = (s: string) => Buffer.from(s.substring(0, 48), 'latin1')
   const b = (...bytes: number[]) => Buffer.from(bytes)
 
-  const SEP = '-'.repeat(40)
+  // Helpers de formato
+  const fmtEur  = (v: number) => v.toFixed(2).replace('.', ',') + ' EUR'
+  const fmtNum  = (v: number) => v.toFixed(2).replace('.', ',')
+  const sep40   = '-'.repeat(40)
+  const sep40eq = '='.repeat(40)
+
   const ahora = new Date()
   const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   const fecha = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
-  const fmt = (v: number) => v.toFixed(2).replace('.', ',') + ' EUR'
-
   const bufs: Buffer[] = []
 
-  // Init
-  bufs.push(b(ESC, 0x40), b(ESC, 0x74, 0x00))
+  // ── INIT ──────────────────────────────────────────────────
+  bufs.push(b(ESC, 0x40))       // reset
+  bufs.push(b(ESC, 0x74, 0x00)) // codepage PC437
 
-  // Cabecera restaurante (centrado)
+  // ── CABECERA: NOMBRE DEL RESTAURANTE (2x ancho, bold, centrado) ──
   bufs.push(b(ESC, 0x61, 0x01)) // center
-  bufs.push(b(ESC, 0x45, 0x01)) // bold on
-  bufs.push(t(p.restaurante_nombre.toUpperCase()), b(LF))
+  bufs.push(b(GS,  0x21, 0x10)) // 2x ancho
+  bufs.push(b(ESC, 0x45, 0x01)) // bold
+  bufs.push(t(p.restaurante_nombre.toUpperCase().substring(0, 24)), b(LF))
+  bufs.push(b(GS,  0x21, 0x00)) // tamaño normal
   bufs.push(b(ESC, 0x45, 0x00)) // bold off
+
+  // ── DATOS FISCALES ──────────────────────────────────────
+  if (p.razon_social && p.razon_social.toUpperCase() !== p.restaurante_nombre.toUpperCase()) {
+    bufs.push(t(p.razon_social), b(LF))
+  }
+  if (p.nif_emisor) {
+    bufs.push(t('CIF/NIF: ' + p.nif_emisor), b(LF))
+  }
   if (p.restaurante_direccion) {
-    bufs.push(t(p.restaurante_direccion), b(LF))
+    bufs.push(t(p.restaurante_direccion.substring(0, 40)), b(LF))
   }
   bufs.push(b(LF))
 
-  // "CUENTA" centrado grande
-  bufs.push(b(GS, 0x21, 0x11))  // 2x size
-  bufs.push(b(ESC, 0x45, 0x01))
-  bufs.push(t('CUENTA'), b(LF))
-  bufs.push(b(GS, 0x21, 0x00), b(ESC, 0x45, 0x00))
-  bufs.push(b(LF))
-
-  // Mesa + fecha/hora (izquierda)
+  // ── BLOQUE MESA / ESTADO ────────────────────────────────
   bufs.push(b(ESC, 0x61, 0x00)) // left
-  const mesaLine = (p.zona_nombre ? p.zona_nombre.toUpperCase() + ' - ' : '') + 'Mesa ' + p.mesa_label.toUpperCase()
-  bufs.push(b(ESC, 0x45, 0x01), t(mesaLine), b(ESC, 0x45, 0x00), b(LF))
-  bufs.push(t(fecha + '  ' + hora + '  ' + p.camarero_nombre), b(LF))
-  bufs.push(t(SEP), b(LF))
+  bufs.push(t(sep40), b(LF))
 
-  // Items
+  // Mesa + estado en la misma línea (40 chars)
+  const mesaLabel  = (p.zona_nombre ? p.zona_nombre.toUpperCase().substring(0, 12) + ' - ' : '') +
+                     'MESA ' + p.mesa_label.toUpperCase()
+  const estadoLabel = p.cobrado ? '[ COBRADO ]' : '[PENDIENTE]'
+  const mesaPad    = Math.max(1, 40 - mesaLabel.length - estadoLabel.length)
+  bufs.push(b(ESC, 0x45, 0x01))
+  bufs.push(t(mesaLabel + ' '.repeat(mesaPad) + estadoLabel), b(LF))
+  bufs.push(b(ESC, 0x45, 0x00))
+
+  // Fecha + hora + camarero
+  const camareroShort = p.camarero_nombre.substring(0, 14)
+  bufs.push(t(fecha + '  ' + hora + '  ' + camareroShort), b(LF))
+  bufs.push(t(sep40), b(LF))
+
+  // ── CABECERA DE COLUMNAS ────────────────────────────────
+  // Formato 40 chars: NOMBRE(18) UD(3) P.UNIT(7) IVA(4) IMPORT(8)
   bufs.push(b(LF))
+  bufs.push(t(
+    'ARTICULO'.padEnd(18) +
+    ' UD' +
+    ' P.UNIT' +
+    ' IVA' +
+    ' IMPORTE'
+  ), b(LF))
+  bufs.push(t(sep40), b(LF))
+
+  // ── ITEMS ───────────────────────────────────────────────
   for (const item of p.items) {
-    const precioTotal = item.precio_unitario * item.cantidad
-    const izq  = `${item.cantidad}x ${item.nombre.substring(0, 26)}`
-    const der  = fmt(precioTotal)
-    const pad  = Math.max(1, 40 - izq.length - der.length)
-    const line = izq + ' '.repeat(pad) + der
+    const nombre  = item.nombre.substring(0, 18).padEnd(18)
+    const qty     = String(item.cantidad).padStart(3)
+    const punit   = fmtNum(item.precio_unitario).padStart(7)
+    const iva     = '10%'.padStart(4)
+    const total   = fmtNum(item.precio_unitario * item.cantidad).padStart(8)
     bufs.push(b(ESC, 0x45, 0x01))
-    bufs.push(t(line), b(LF))
+    bufs.push(t(nombre + qty + punit + iva + total), b(LF))
     bufs.push(b(ESC, 0x45, 0x00))
-    // Precio unitario si cantidad > 1
-    if (item.cantidad > 1) {
-      const uLine = '   (' + fmt(item.precio_unitario) + ' / ud.)'
-      bufs.push(t(uLine), b(LF))
-    }
   }
 
-  // Separador + TOTAL
+  // ── DESGLOSE IVA ────────────────────────────────────────
   bufs.push(b(LF))
-  bufs.push(t(SEP), b(LF))
-  const totalLabel = 'TOTAL'
-  const totalStr   = fmt(p.total)
-  const totalPad   = Math.max(1, 40 - totalLabel.length - totalStr.length)
-  bufs.push(b(GS, 0x21, 0x01))  // 2x alto
-  bufs.push(b(ESC, 0x45, 0x01))
-  bufs.push(t(totalLabel + ' '.repeat(totalPad) + totalStr), b(LF))
-  bufs.push(b(GS, 0x21, 0x00), b(ESC, 0x45, 0x00))
-  bufs.push(t(SEP), b(LF))
+  bufs.push(t(sep40), b(LF))
+  const baseIva = p.total / 1.10
+  const cuotaIva = p.total - baseIva
+  bufs.push(t(
+    'IVA 10%  Base: ' + fmtNum(baseIva) +
+    '  Cuota: ' + fmtNum(cuotaIva)
+  ), b(LF))
+  bufs.push(t(sep40eq), b(LF))
+
+  // ── TOTAL (2x alto) ─────────────────────────────────────
+  const totalStr = fmtEur(p.total)
+  const totalPad = Math.max(1, 40 - 'TOTAL'.length - totalStr.length)
+  bufs.push(b(GS, 0x21, 0x01))   // 2x alto
+  bufs.push(b(ESC, 0x45, 0x01))  // bold
+  bufs.push(t('TOTAL' + ' '.repeat(totalPad) + totalStr), b(LF))
+  bufs.push(b(GS, 0x21, 0x00))
+  bufs.push(b(ESC, 0x45, 0x00))
+  bufs.push(t(sep40eq), b(LF))
   bufs.push(b(LF))
 
-  // Nota factura
+  // ── BLOQUE PAGO (solo si cobrado) ───────────────────────
+  if (p.cobrado && p.metodo_pago) {
+    bufs.push(t('FORMA DE PAGO: ' + p.metodo_pago.toUpperCase()), b(LF))
+    if (p.entregado && p.entregado > 0) {
+      const entregadoStr = fmtEur(p.entregado)
+      bufs.push(t('Entregado: '.padEnd(40 - entregadoStr.length) + entregadoStr), b(LF))
+    }
+    if (p.cambio && p.cambio > 0) {
+      const cambioStr = fmtEur(p.cambio)
+      bufs.push(b(ESC, 0x45, 0x01))
+      bufs.push(t('Cambio:    '.padEnd(40 - cambioStr.length) + cambioStr), b(LF))
+      bufs.push(b(ESC, 0x45, 0x00))
+    }
+    bufs.push(b(LF))
+  }
+
+  // ── PIE ─────────────────────────────────────────────────
   bufs.push(b(ESC, 0x61, 0x01)) // center
-  bufs.push(t('Solicite factura al camarero'), b(LF))
-  bufs.push(t('si la necesita'), b(LF))
+  bufs.push(t('Gracias por su visita'), b(LF))
+  if (!p.cobrado) {
+    bufs.push(t('Solicite factura al camarero'), b(LF))
+  }
   bufs.push(b(LF))
 
-  // Pie ia.rest
-  bufs.push(t('- - - - - - - - - - - - - - - - - - -'), b(LF))
-  bufs.push(t('Gestion con ia.rest'), b(LF))
+  // ── BRANDING ia.rest ────────────────────────────────────
+  bufs.push(t('- - - - - - - - - - - - - - - - - - - -'), b(LF))
+  bufs.push(t('gestionado con ia.rest'), b(LF))
+  bufs.push(b(ESC, 0x45, 0x01))
   bufs.push(t('www.iarest.es'), b(LF))
+  bufs.push(b(ESC, 0x45, 0x00))
+
   bufs.push(b(LF), b(LF), b(LF))
 
-  // Corte
+  // Corte parcial
   bufs.push(b(GS, 0x56, 0x01))
 
   return Buffer.concat(bufs)
