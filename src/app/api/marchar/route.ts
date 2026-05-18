@@ -153,6 +153,7 @@ export async function POST(req: NextRequest) {
     camarero_id: string | null
     camarero_nombre: string | null
     zona_id: string | null
+    zona_tipo: string | null   // 'salon' | 'terraza' | ... (mesas.zona text column)
     zona_nombre: string | null
     restaurante_id: string
     notif_config: { marchar: NotifConfig }
@@ -252,12 +253,14 @@ export async function POST(req: NextRequest) {
       }))
     }
     if (itemsParaPrint.length > 0) {
-      // Verificar si ya existe un print_job de marchar reciente (últimos 30s) para evitar duplicados
+      // Verificar si ya existe un print_job de MARCHAR reciente (últimos 30s) para evitar duplicados
+      // IMPORTANTE: filtrar payload->tipo='marchar' para no bloquear con el job de comanda
       const hace30s = new Date(Date.now() - 30_000).toISOString()
       const { data: jobsRecientes } = await supabase
         .from('print_jobs')
         .select('id')
         .eq('comanda_id', comanda_id)
+        .eq('payload->>tipo', 'marchar')
         .gte('created_at', hace30s)
         .limit(1)
 
@@ -269,7 +272,8 @@ export async function POST(req: NextRequest) {
             mesa_codigo,
             camarero_nombre: receptor.camarero_nombre ?? 'Sala',
             restaurante_id:  receptor.restaurante_id,
-            zona_tipo:       receptor.zona_id ?? null,
+            zona_tipo:       receptor.zona_tipo ?? null,
+            zona_nombre:     receptor.zona_nombre ?? null,
           },
           itemsParaPrint
         )
@@ -289,7 +293,7 @@ export async function POST(req: NextRequest) {
           mesa_codigo,
           camarero_nombre: receptor.camarero_nombre ?? 'Equipo',
           restaurante_id:  receptor.restaurante_id,
-          zona_tipo:       receptor.zona_id ?? null,
+          zona_tipo:       receptor.zona_tipo ?? null,
           zona_nombre:     receptor.zona_nombre ?? null,
         },
         items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad }))
