@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
     // (Whisper genera estas frases cuando graba ruido/silencio, muy bien documentado)
     const ALUCINACIONES = ['gracias', 'suscríbete', 'hasta pronto', 'hasta la próxima',
       'subtítulos', 'muchas gracias', 'de nada', 'bye', 'thank you', 'thanks', 'you']
-    const textoNorm = textoRaw.trim().toLowerCase().replace(/[.!?,]/g, '')
+    const textoNorm = textoRaw.trim().toLowerCase().replace(/[.!?,¡¿]/g, '').trim()
     const esAlucinacion = ALUCINACIONES.some(a => textoNorm === a || textoNorm.startsWith(a + ' '))
     //
     // Capa C — texto demasiado corto sin items (grabación cortada o ruido)
