@@ -570,6 +570,10 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
   const [preguntaBrain, setPreguntaBrain]       = useState<string>('¿Qué mesa?')
   const [chipsClarificacion, setChipsClarificacion] = useState<{nombre:string;precio?:number|null;cantidad:number}[]>([])
   const [mesaClarificacion, setMesaClarificacion]   = useState<string|null>(null) // codigo de mesa
+  // ── NIM conversacional: cuando BRAIN no entiende ────────────────────
+  const [nimActivo, setNimActivo]               = useState(false)
+  const [nimHistorial, setNimHistorial]         = useState<{role:string;content:string}[]>([])
+  const [nimTextoOriginal, setNimTextoOriginal] = useState<string>("")
   const [alergenosMesa, setAlergenosMesa]   = useState<string[]>([])
   const [zonasAsignadas, setZonasAsignadas] = useState<string[]>([])   // [] = todas
   const [fontBig, setFontBig]               = useState(false)
@@ -883,7 +887,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
       speakingRef.current = false
       setBrain(null); brainRef.current = null; setTranscript(''); setError('')
       setAlertas86([]); setAlertasAlerg([]); setPendingItems([]); setAvisoRuido(false); ruidoRetryRef.current = 0
-      setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
+      setNimActivo(false); setNimHistorial([]); setNimTextoOriginal(""); setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
       setChipsClarificacion([]); setMesaClarificacion(null)
       setPedidoCuenta({ loading: false, error: '', factura: null })
       // continúa sin return — empieza a grabar directamente
@@ -1138,7 +1142,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           return
         }
         // Limpiar contexto de clarificación si se resolvió con éxito
-        setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
+        setNimActivo(false); setNimHistorial([]); setNimTextoOriginal(""); setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
         setChipsClarificacion([]); setMesaClarificacion(null)
 
         // ── Intent: MESA RÁPIDA por voz ─────────────────────────────────
@@ -1209,16 +1213,51 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
           return
         }
 
-        // ── Detectar productos fuera de carta ─────────────────────────────
-        // BRAIN devolvió comanda pero con items vacíos (producto no reconocido)
+        // ── Detectar productos fuera de carta → NIM conversacional ──────────
+        // Si BRAIN no entendió (items vacíos, confianza baja), NIM pregunta al camarero
         const bItems: BrainResult['items'] = d.brain?.items || []
         const esFueraCarta = bItems.length === 0 &&
           d.brain?.tipo === 'comanda' &&
           d.brain?.confianza < 0.5
         if (esFueraCarta) {
-          const aviso = `"${d.texto}" — producto no encontrado en carta. Repítelo o avisa al dueño para añadirlo`
-          addMsg('sistema', aviso, 'aviso')
-          setScreenSafe('idle')
+          // ── Activar NIM conversacional en vez de mostrar error ──────────
+          const sesion = localStorage.getItem('ia_rest_session') ?? ''
+          const nimHistorialActual = nimActivo ? nimHistorial : []
+          try {
+            const nimRes = await fetch('/api/brain/conversar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-ia-session': sesion },
+              body: JSON.stringify({
+                texto_original: d.texto,
+                historial: nimHistorialActual,
+              }),
+            })
+            const nimData = await nimRes.json()
+            if (nimData.resuelto && nimData.brain_texto) {
+              // NIM resolvió → pasar el texto normalizado a BRAIN como pendingContext
+              addMsg('brain', nimData.respuesta, 'ok')
+              if (!ttsOff) speak(nimData.respuesta)
+              setClarificacionCtx(nimData.brain_texto)
+              setNimActivo(false); setNimHistorial([]); setNimTextoOriginal('')
+              setScreenSafe('asking')
+              processingRef.current = false
+              return
+            }
+            // NIM hace una pregunta al camarero
+            addMsg('brain', nimData.respuesta, 'pregunta')
+            if (!ttsOff) speak(nimData.respuesta)
+            setNimActivo(true)
+            setNimHistorial(nimData.historial_nuevo ?? [])
+            setNimTextoOriginal(d.texto)
+            setClarificacionCtx(d.texto)   // para que el siguiente transcribe lo use como contexto
+            setScreenSafe('asking')
+            if (!isIOS) speak(nimData.respuesta).then(() => startRecording())
+          } catch {
+            // Fallback al mensaje de error clásico si NIM falla
+            const aviso = `"${d.texto}" — no lo entendí. ¿Puedes repetirlo?`
+            addMsg('sistema', aviso, 'aviso')
+            setScreenSafe('idle')
+          }
           processingRef.current = false
           return
         }
@@ -1597,7 +1636,7 @@ function EdgeContent({ session, turnoId, setTurnoId }:{
     setScreenSafe('idle'); setBrain(null); brainRef.current = null; setTranscript('')
     setError(''); setPedidoCuenta({loading:false,error:'',factura:null})
     setAlertas86([]); setAlertasAlerg([]); setPendingItems([]); setAvisoRuido(false); ruidoRetryRef.current = 0
-    setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
+    setNimActivo(false); setNimHistorial([]); setNimTextoOriginal(""); setClarificacionCtx(null); setPreguntaBrain('¿Qué mesa?')
     setChipsClarificacion([]); setMesaClarificacion(null)
   }
   const pedirCuenta = async () => {
